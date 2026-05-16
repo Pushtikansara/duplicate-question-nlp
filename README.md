@@ -1,4 +1,4 @@
-# quora-dupdetect-nlp
+# duplicate-question-detection-nlp
 
 > Detecting duplicate questions on Quora using Classical ML and Transformer-based models.
 
@@ -37,7 +37,7 @@ Label:       duplicate ✓
 ## Project Structure
 
 ```
-quora-dupdetect-nlp/
+duplicate-question-nlp/
 ├── data_analysis.ipynb       # EDA & dataset exploration
 ├── baseline_model.ipynb      # TF-IDF + classical ML
 ├── transformer_model.ipynb   # Fine-tuned BERT / Sentence-BERT
@@ -69,8 +69,8 @@ quora-dupdetect-nlp/
 ## Setup
 
 ```bash
-git clone https://github.com/<your-username>/quora-dupdetect-nlp.git
-cd quora-dupdetect-nlp
+git clone https://github.com/<your-username>/duplicate-question-nlp.git
+cd duplicate-question-nlp
 pip install -r requirements.txt
 ```
 
