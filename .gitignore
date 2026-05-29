@@ -10,6 +10,7 @@
 *.tsv
 *.json
 *.jsonl
+*.png
 
 # Keep sample/test data if you have any small reference files
 # !sample_data.csv
