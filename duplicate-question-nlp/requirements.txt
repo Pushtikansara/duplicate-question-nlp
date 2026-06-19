@@ -7,3 +7,9 @@ nltk
 gensim
 scikit-learn
 pyarrow
+sentence-transformers
+torch
+transformers>=4.30.0
+datasets>=2.12.0
+evaluate>=0.4.0
+accelerate>=1.1.0
