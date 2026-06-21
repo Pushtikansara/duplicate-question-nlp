@@ -91,6 +91,12 @@ ipython_config.py
 *.pdf
 *.svg
 
+# EXCEPTION: keep results folder plots
+!results/
+!results/*.png
+!results/*.csv
+!results/*.jpg
+
 # EXCEPTION: keep any images that are part of README or docs
 # !docs/images/*.png
 # !README_assets/*.png
