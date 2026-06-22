@@ -28,15 +28,15 @@ KEY ACHIEVEMENTS:
    - Device: cuda
 
 4. FINAL PERFORMANCE (Test Set):
-   - Accuracy:  0.8963 (89.63%)
-   - Precision: 0.8976
-   - Recall:    0.8963
-   - F1 Score:  0.8967
+   - Accuracy:  0.8971 (89.71%)
+   - Precision: 0.8983
+   - Recall:    0.8971
+   - F1 Score:  0.8975
 
 5. COMPARISON WITH WEEK 2 BASELINE:
    - Baseline (TF-IDF + Logistic Regression): Accuracy=0.7416, F1=0.5911
-   - Week 3 (DistilBERT): Accuracy=0.8963, F1=0.8967
-   - Improvement: Accuracy +15.47%, F1 +30.56%
+   - Week 3 (DistilBERT): Accuracy=0.8971, F1=0.8975
+   - Improvement: Accuracy +15.55%, F1 +30.64%
 
 6. OUTPUTS GENERATED:
    - Fine-tuned model saved in models/saved_transformer_model/

@@ -34,6 +34,7 @@
 /models/
 /saved_models/
 /checkpoints/
+models/
 
 
 # ── NOTEBOOK OUTPUT (cell outputs bloat file size) ────────────────
@@ -131,3 +132,4 @@ desktop.ini
 /tmp/
 
 
+*.safetensors
