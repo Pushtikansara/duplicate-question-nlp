@@ -10,7 +10,7 @@
 *.tsv
 *.json
 *.jsonl
-*.png
+
 
 # Keep sample/test data if you have any small reference files
 # !sample_data.csv
@@ -58,6 +58,7 @@ env/
 .venv/
 ENV/
 myenv/
+.venv/
 
 
 # ── ENVIRONMENT VARIABLES (never push secrets/API keys) ───────────
@@ -86,7 +87,7 @@ ipython_config.py
 
 # ── MATPLOTLIB / PLOT OUTPUT ──────────────────────────────────────
 # PNGs are regenerated when notebooks run — don't push them
-*.png
+
 *.jpg
 *.jpeg
 *.pdf
@@ -94,7 +95,6 @@ ipython_config.py
 
 # EXCEPTION: keep results folder plots
 !results/
-!results/*.png
 !results/*.csv
 !results/*.jpg
 

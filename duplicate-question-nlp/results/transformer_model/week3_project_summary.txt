@@ -41,11 +41,11 @@ KEY ACHIEVEMENTS:
 6. OUTPUTS GENERATED:
    - Fine-tuned model saved in models/saved_transformer_model/
    - Training outputs saved in models/transformer_training_outputs/
-   - Training visualization saved in results/transformer_training_visualization.png
-   - Comparison plot saved in results/week2_vs_week3_comparison.png
-   - Test predictions saved in results/transformer_test_predictions.csv
-   - Confusion matrix saved in results/transformer_confusion_matrix.csv
-   - Project summary saved in results/week3_project_summary.txt
+   - Training visualization saved in results/transformer_model/transformer_training_visualization.png
+   - Comparison plot saved in results/transformer_model/week2_vs_week3_comparison.png
+   - Test predictions saved in results/transformer_model/transformer_test_predictions.csv
+   - Confusion matrix saved in results/transformer_model/transformer_confusion_matrix.csv
+   - Project summary saved in results/transformer_model/week3_project_summary.txt
 
 7. PRODUCTION READINESS:
    - Model and tokenizer saved for deployment
