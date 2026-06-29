@@ -1,115 +1,109 @@
-# duplicate-question-detection-nlp
+# Duplicate Question Detection NLP
 
-> Detecting duplicate questions on Quora using Classical ML and Transformer-based models.
+A Streamlit application for detecting duplicate Quora question pairs. The project follows the Summer Internship roadmap from data preparation through classical machine learning baselines, transformer fine-tuning, Week 4 improvements, and a Week 5 demonstration app.
 
----
+## Roadmap Coverage
 
-## Overview
+- **Week 1:** data cleaning, exploratory analysis, and preprocessing in `notebooks/data_analysis.ipynb`.
+- **Week 2:** classical NLP baselines in `notebooks/baseline_model.ipynb`, including TF-IDF + Logistic Regression and TF-IDF + Linear SVM.
+- **Week 3:** DistilBERT fine-tuning in `notebooks/transformer_model.ipynb` with saved transformer artifacts and evaluation exports.
+- **Week 4:** improved DistilBERT workflow in `notebooks/week4_improvement.ipynb`, including class weighting, threshold tuning, ablation results, ROC comparison, and error analysis.
+- **Week 5:** Streamlit app in `app.py` demonstrating the complete project with prediction, batch prediction, dashboards, model comparison, and artifact-aware model loading.
 
-This project builds an end-to-end NLP pipeline to identify whether two Quora questions share the same intent. It covers everything from classical TF-IDF baselines to fine-tuned Sentence-BERT models, with a working interactive demo.
+## Week 5 App Pages
 
-**Dataset:** [`sentence-transformers/quora-duplicates`](https://huggingface.co/datasets/sentence-transformers/quora-duplicates)  
-**Task:** Duplicate Question Detection / Semantic Textual Similarity  
-**Language:** English
+- Landing Page
+- Project Overview
+- Dataset Information
+- NLP Pipeline Visualization
+- Model Information
+- Model Comparison
+- Prediction Page
+- Batch CSV Prediction
+- Performance Dashboard
+- Error Analysis
+- Explainability
 
----
+## Model Behavior
 
-## Dataset
+The prediction page uses the **Week 4 Improved DistilBERT** model by default when `models/week4_improved_model/` contains loadable Hugging Face artifacts. If Week 4 artifacts are unavailable or fail to load, the app automatically falls back to the Week 3 DistilBERT model in `models/saved_transformer_model/`.
 
-The dataset is the Quora Question Pairs dataset, reformatted into four subsets:
+The app does not expose unnecessary model selection on the prediction page. It reports the active model and decision threshold clearly.
 
-| Subset | Columns | Rows |
-|---|---|---|
-| `pair-class` | sentence1, sentence2, label | 404k |
-| `pair` | anchor, positive | 149k |
-| `triplet` | anchor, positive, negative | 102k |
-| `triplet-all` | anchor, positive, negative | 2.79M |
+## Model Comparison
 
-**Example:**
-```
-Question 1: "How can I be a good geologist?"
-Question 2: "What should I do to be a great geologist?"
-Label:       duplicate ✓
-```
+The dedicated Model Comparison page summarizes:
 
----
+- TF-IDF + Logistic Regression
+- TF-IDF + Linear SVM
+- DistilBERT (Week 3)
+- Improved DistilBERT (Week 4)
+
+Displayed fields include accuracy, precision, recall, F1 score, ROC AUC when available, training time when available, model size when available, and a short description.
 
 ## Project Structure
 
-```
+```text
 duplicate-question-nlp/
-├── data_analysis.ipynb       # EDA & dataset exploration
-├── baseline_model.ipynb      # TF-IDF + classical ML
-├── transformer_model.ipynb   # Fine-tuned BERT / Sentence-BERT
-├── improvement.ipynb         # Ablation & enhancements
-├── app.py                    # Streamlit demo
-├── requirements.txt
-├── results/
-│   ├── confusion_matrix.png
-│   ├── training_curve.png
-│   └── result_table.csv
-└── report/
-    ├── final_report.docx
-    └── presentation.pptx
+  app.py
+  requirements.txt
+  .streamlit/
+    config.toml
+  data/
+  models/
+  notebooks/
+  results/
+    baseline_model/
+    transformer_model/
+    week4_improvement/
+  src/
+    duplicate_question_app/
+      artifacts.py
+      config.py
+      inference.py
+      visuals.py
+  Submission/
 ```
 
----
+## Required Artifacts
 
-## Results
+The app reads project artifacts from repository-relative paths:
 
-| Model | Accuracy | Precision | Recall | F1 |
-|---|---|---|---|---|
-| TF-IDF + Logistic Regression | - | - | - | - |
-| TF-IDF + SVM | - | - | - | - |
-| Sentence-BERT (fine-tuned) | - | - | - | - |
-| Transformer + Improvement | - | - | - | - |
+- Dataset: `data/cleaned_quora.parquet` or `data/cleaned_quora.csv`
+- Week 2 comparison: `results/baseline_model/week2_model_comparison.parquet`
+- Week 3 model: `models/saved_transformer_model/`
+- Week 3 predictions: `results/transformer_model/transformer_test_predictions.csv`
+- Week 3 comparison: `results/transformer_model/week2_vs_week3_comparison.csv`
+- Week 4 model: `models/week4_improved_model/`
+- Week 4 threshold tuning: `results/week4_improvement/threshold_analysis.csv`
+- Week 4 ablation: `results/week4_improvement/ablation_study.csv`
+- Week 4 predictions: `results/week4_improvement/predictions_week4.csv`
+- Week 4 figures: `results/week4_improvement/fig*.png`
 
----
+## Run Locally
 
-## Setup
+From the folder that contains `app.py`:
 
 ```bash
-git clone https://github.com/<your-username>/duplicate-question-nlp.git
-cd duplicate-question-nlp
+cd duplicate-question-nlp/duplicate-question-nlp
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-**Load the dataset:**
-```python
-from datasets import load_dataset
-
-# Labeled pairs for classification
-ds = load_dataset("sentence-transformers/quora-duplicates", "pair-class")
-
-# Triplets with hard negatives
-ds_triplets = load_dataset("sentence-transformers/quora-duplicates", "triplet")
-```
-
----
-
-## Demo
-
-```bash
 streamlit run app.py
 ```
 
-Enter two questions and get a real-time duplicate prediction with a similarity score.
+## Deployment Notes
 
----
+For Streamlit Community Cloud, set the app entrypoint to:
 
-## Tech Stack
+```text
+duplicate-question-nlp/duplicate-question-nlp/app.py
+```
 
-- **Data:** HuggingFace Datasets, Pandas
-- **Classical ML:** Scikit-learn, NLTK, Gensim
-- **Deep Learning:** HuggingFace Transformers, Sentence-Transformers, PyTorch
-- **Demo:** Streamlit / Gradio
-- **Evaluation:** F1, ROC-AUC, Cosine Similarity
+Keep `requirements.txt` in the same folder as `app.py`.
 
----
+## Troubleshooting
 
-## References
-
-- [Quora Question Pairs – Kaggle](https://www.kaggle.com/c/quora-question-pairs)
-- [sentence-transformers/quora-duplicates – HuggingFace](https://huggingface.co/datasets/sentence-transformers/quora-duplicates)
-- [Sentence-BERT Paper](https://arxiv.org/abs/1908.10084)
-- [RoBERTa Paper](https://arxiv.org/abs/1907.11692)
+- If the dataset page fails, verify that `data/cleaned_quora.parquet` or `data/cleaned_quora.csv` exists.
+- If prediction fails, verify that either Week 4 or Week 3 model artifacts include `config.json`, tokenizer files, and model weights.
+- If the dashboard or model comparison page has missing metrics, rerun the corresponding notebook to regenerate the exported files under `results/`.
