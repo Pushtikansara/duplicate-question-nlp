@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -166,3 +167,43 @@ def resolve_model_selection(paths: AppPaths) -> ModelResolution:
 
 def resolve_preferred_model_dir(paths: AppPaths) -> Path:
     return resolve_model_selection(paths).selected_model_dir
+
+
+MODEL_CHOICES: list[str] = [
+    "TF-IDF + Logistic Regression (Week 2)",
+    "TF-IDF + Linear SVM (Week 2)",
+    "DistilBERT (Week 3)",
+    "Improved DistilBERT (Week 4)",
+]
+
+MODEL_VERSION_SHORT: dict[str, str] = {
+    "TF-IDF + Logistic Regression (Week 2)": "week2_lr",
+    "TF-IDF + Linear SVM (Week 2)": "week2_svm",
+    "DistilBERT (Week 3)": "week3",
+    "Improved DistilBERT (Week 4)": "week4",
+}
+
+
+def is_transformer_model(model_name: str) -> bool:
+    """Return True if the model requires loading Hugging Face transformer artifacts."""
+    return model_name in ("DistilBERT (Week 3)", "Improved DistilBERT (Week 4)")
+
+
+@dataclass
+class ModelMetrics:
+    accuracy: float | None = None
+    precision: float | None = None
+    recall: float | None = None
+    f1: float | None = None
+    roc_auc: float | None = None
+    source: str = ""
+
+
+@dataclass
+class FullModelInfo:
+    display_name: str
+    version_key: str
+    week: str
+    description: str
+    metrics: ModelMetrics
+    is_transformer: bool

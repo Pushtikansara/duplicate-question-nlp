@@ -10,7 +10,8 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from duplicate_question_app.artifacts import load_week4_threshold_analysis
-from duplicate_question_app.config import AppPaths, ModelDirectoryStatus, resolve_model_selection
+from duplicate_question_app.config import AppPaths, ModelDirectoryStatus, is_transformer_model, resolve_model_selection
+from duplicate_question_app.week2_inference import Week2InferenceService, is_week2_model
 
 
 DEFAULT_MAX_LENGTH = 128
@@ -79,16 +80,28 @@ def _build_metadata(
     )
 
 
-def load_model_and_tokenizer(paths: AppPaths) -> tuple[AutoModelForSequenceClassification, AutoTokenizer, ModelMetadata]:
+def load_model_and_tokenizer(paths: AppPaths, model_version: str | None = None) -> tuple[AutoModelForSequenceClassification, AutoTokenizer, ModelMetadata]:
     resolution = resolve_model_selection(paths)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if model_version and not is_transformer_model(model_version):
+        raise ValueError(f"Model '{model_version}' does not support live inference (not a transformer model).")
+
     candidates: list[tuple[str, ModelDirectoryStatus, str | None]] = []
-    if resolution.week4.ready:
-        candidates.append(("week4", resolution.week4, None))
-    if resolution.week3.ready:
-        candidates.append(("week3", resolution.week3, resolution.fallback_reason))
+    if model_version == "TF-IDF + Logistic Regression (Week 2)" or model_version == "TF-IDF + Linear SVM (Week 2)":
+        raise ValueError(f"Model '{model_version}' is a classical ML model and cannot be used for live inference.")
+
+    if model_version == "Improved DistilBERT (Week 4)" or model_version is None:
+        if resolution.week4.ready:
+            candidates.append(("week4", resolution.week4, None))
+    if model_version == "DistilBERT (Week 3)" or (model_version is None and not candidates):
+        if resolution.week3.ready:
+            fallback = None if model_version else resolution.fallback_reason
+            candidates.append(("week3", resolution.week3, fallback))
 
     if not candidates:
+        if model_version:
+            raise FileNotFoundError(f"Model '{model_version}' artifacts are not available or incomplete.")
         week4_issues = ", ".join(resolution.week4.issues) or "unavailable"
         week3_issues = ", ".join(resolution.week3.issues) or "unavailable"
         raise FileNotFoundError(
@@ -97,14 +110,14 @@ def load_model_and_tokenizer(paths: AppPaths) -> tuple[AutoModelForSequenceClass
         )
 
     load_errors: list[str] = []
-    for model_version, status, fallback_reason in candidates:
+    for ver, status, fallback_reason in candidates:
         try:
             model, tokenizer = _load_hugging_face_artifacts(status.model_dir)
             model = model.to(device)
             model.eval()
             metadata = _build_metadata(
                 status=status,
-                model_version=model_version,
+                model_version=ver,
                 device=device,
                 fallback_reason=fallback_reason,
                 load_errors=tuple(load_errors),

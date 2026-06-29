@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
+import time
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -22,14 +23,22 @@ from duplicate_question_app.artifacts import (
     build_week4_metrics,
     load_dataset_frame,
     load_transformer_predictions,
+    load_week2_model_comparison,
     load_week2_vs_week3_comparison,
     load_week4_ablation,
     load_week4_predictions,
     load_week4_threshold_analysis,
     reconstruct_week3_test_frame,
 )
-from duplicate_question_app.config import get_app_paths, resolve_model_selection
+from duplicate_question_app.config import (
+    MODEL_CHOICES,
+    MODEL_VERSION_SHORT,
+    get_app_paths,
+    is_transformer_model,
+    resolve_model_selection,
+)
 from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
+from duplicate_question_app.week2_inference import Week2InferenceService, is_week2_model, check_week2_artifacts
 from duplicate_question_app.visuals import (
     create_batch_summary_figure,
     create_confusion_matrix_figure,
@@ -207,6 +216,17 @@ def get_week2_vs_week3() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def _get_week2_model_comparison(comparison_signature: str) -> pd.DataFrame:
+    del comparison_signature
+    return load_week2_model_comparison(PATHS)
+
+
+def get_week2_model_comparison() -> pd.DataFrame:
+    comparison_path = PATHS.baseline_results_dir / "week2_model_comparison.parquet"
+    return _get_week2_model_comparison(path_signature(comparison_path))
+
+
+@st.cache_data(show_spinner=False)
 def _get_week4_ablation_df(ablation_signature: str) -> pd.DataFrame:
     del ablation_signature
     return load_week4_ablation(PATHS)
@@ -259,9 +279,29 @@ def get_week4_plot_paths() -> list[Path]:
 
 
 @st.cache_resource(show_spinner=False)
-def get_inference_service(model_cache_key: str) -> tuple[DuplicateQuestionInferenceService, Any]:
+def get_inference_service(model_cache_key: str) -> tuple[Any, Any]:
     del model_cache_key
-    model, tokenizer, metadata = load_model_and_tokenizer(PATHS)
+    selected = st.session_state.get("selected_model", "Improved DistilBERT (Week 4)")
+    
+    # Handle Week 2 models
+    if is_week2_model(selected):
+        service = Week2InferenceService(PATHS)
+        metadata = {
+            "model_label": selected,
+            "model_version": "week2",
+            "decision_threshold": 0.5,
+            "threshold_source": "Default 0.50 threshold for classical ML model",
+            "device": "cpu",
+            "fallback_reason": None,
+            "load_errors": (),
+        }
+        return service, metadata
+    
+    # Handle transformer models (Week 3 and Week 4)
+    try:
+        model, tokenizer, metadata = load_model_and_tokenizer(PATHS, model_version=selected)
+    except (ValueError, FileNotFoundError):
+        model, tokenizer, metadata = load_model_and_tokenizer(PATHS)
     service = DuplicateQuestionInferenceService(model=model, tokenizer=tokenizer, metadata=metadata)
     return service, metadata
 
@@ -277,14 +317,23 @@ def get_model_resolution():
     return resolve_model_selection(PATHS)
 
 
-def get_runtime_context() -> tuple[DuplicateQuestionInferenceService, Any, Any]:
+def get_runtime_context() -> tuple[Any, Any, Any]:
     resolution = get_model_resolution()
     service, metadata = get_inference_service(resolution.cache_key)
     return service, metadata, resolution
 
 
 def render_model_runtime_message(metadata: Any) -> None:
-    if metadata.model_version == "week4":
+    if isinstance(metadata, dict):
+        model_label = metadata.get("model_label", "Unknown")
+    elif hasattr(metadata, "model_label"):
+        model_label = metadata.model_label
+    else:
+        model_label = "Unknown"
+    
+    if isinstance(metadata, dict):
+        st.info(f"Active model: **{model_label}** | Threshold: **0.50** | Device: **CPU**")
+    elif metadata.model_version == "week4":
         st.success(
             f"Active model: {metadata.model_label}. "
             f"Threshold source: {metadata.threshold_source}"
@@ -296,7 +345,7 @@ def render_model_runtime_message(metadata: Any) -> None:
             f"Using threshold {metadata.decision_threshold:.2f}."
         )
 
-    if metadata.load_errors:
+    if not isinstance(metadata, dict) and metadata.load_errors:
         st.info("Earlier load attempts: " + " | ".join(metadata.load_errors))
 
 
@@ -314,6 +363,29 @@ def build_model_status_table(resolution: Any) -> pd.DataFrame:
                 "Issues": ", ".join(status.issues) if status.issues else "None",
             }
         )
+    
+    # Add Week 2 model info
+    week2_artifacts = check_week2_artifacts(PATHS)
+    week2_ready = all(week2_artifacts.values())
+    week2_issues = []
+    if not week2_artifacts["tfidf"]:
+        week2_issues.append("TF-IDF vectorizer missing")
+    if not week2_artifacts["logistic_regression"]:
+        week2_issues.append("Logistic Regression missing")
+    if not week2_artifacts["linear_svm"]:
+        week2_issues.append("Linear SVM missing")
+    
+    rows.append(
+        {
+            "Model": "Week 2 Models (TF-IDF + LR/SVM)",
+            "Directory": "models/week2_models/",
+            "Ready": "Yes" if week2_ready else "No",
+            "Config": "N/A",
+            "Weights": "joblib files" if week2_ready else "Missing",
+            "Tokenizer": "N/A",
+            "Issues": ", ".join(week2_issues) if week2_issues else "None",
+        }
+    )
     return pd.DataFrame(rows)
 
 
@@ -323,6 +395,119 @@ def safe_metric(value: Any, percent: bool = True, decimals: int = 2) -> str:
     if percent:
         return f"{float(value):.{decimals}%}"
     return f"{float(value):.{decimals}f}"
+
+
+def _format_optional_metric(value: Any, percent: bool = True) -> str:
+    if value is None or pd.isna(value):
+        return "N/A"
+    if percent:
+        return f"{float(value):.2%}"
+    return f"{float(value):.2f}"
+
+
+def _directory_size_mb(path: Path) -> float | None:
+    if not path.exists():
+        return None
+    total_bytes = sum(file.stat().st_size for file in path.rglob("*") if file.is_file())
+    return total_bytes / (1024 * 1024) if total_bytes else None
+
+
+def _format_model_size(path: Path | None) -> str:
+    if path is None:
+        return "N/A"
+    size_mb = _directory_size_mb(path)
+    if size_mb is None:
+        return "N/A"
+    if size_mb >= 1024:
+        return f"{size_mb / 1024:.2f} GB"
+    return f"{size_mb:.1f} MB"
+
+
+def build_model_comparison_table() -> pd.DataFrame:
+    week2_df = get_week2_model_comparison()
+    week2_vs_week3_df = get_week2_vs_week3()
+    week4_ablation_df = get_week4_ablation_df()
+    rows: list[dict[str, Any]] = []
+
+    week2_descriptions = {
+        "LR + TF-IDF": "Classical baseline using TF-IDF n-grams with Logistic Regression.",
+        "SVM + TF-IDF": "Classical baseline using TF-IDF n-grams with Linear SVM.",
+    }
+    week2_labels = {
+        "LR + TF-IDF": "TF-IDF + Logistic Regression",
+        "SVM + TF-IDF": "TF-IDF + Linear SVM",
+    }
+    for source_name in ("LR + TF-IDF", "SVM + TF-IDF"):
+        if not week2_df.empty and "Model" in week2_df.columns:
+            match = week2_df[week2_df["Model"] == source_name]
+        else:
+            match = pd.DataFrame()
+        row = match.iloc[0].to_dict() if not match.empty else {}
+        rows.append(
+            {
+                "Model": week2_labels[source_name],
+                "Accuracy": row.get("Accuracy"),
+                "Precision": row.get("Precision (Dup)"),
+                "Recall": row.get("Recall (Dup)"),
+                "F1 Score": row.get("F1 (Dup)"),
+                "ROC AUC": None,
+                "Training Time": "N/A",
+                "Model Size": "N/A",
+                "Short Description": week2_descriptions[source_name],
+            }
+        )
+
+    week3_row: dict[str, Any] = {}
+    if not week2_vs_week3_df.empty and "Method" in week2_vs_week3_df.columns:
+        week3_match = week2_vs_week3_df[week2_vs_week3_df["Method"].str.contains("DistilBERT", case=False, na=False)]
+        if not week3_match.empty:
+            week3_row = week3_match.iloc[0].to_dict()
+
+    week4_row: dict[str, Any] = {}
+    if not week4_ablation_df.empty and "Configuration" in week4_ablation_df.columns:
+        week4_match = week4_ablation_df[week4_ablation_df["Configuration"].str.contains("Week 4", case=False, na=False)]
+        if not week4_match.empty:
+            week4_row = week4_match.iloc[-1].to_dict()
+
+    rows.append(
+        {
+            "Model": "DistilBERT (Week 3)",
+            "Accuracy": week3_row.get("Accuracy"),
+            "Precision": week3_row.get("Precision"),
+            "Recall": week3_row.get("Recall"),
+            "F1 Score": week3_row.get("F1 Score"),
+            "ROC AUC": None,
+            "Training Time": "N/A",
+            "Model Size": _format_model_size(PATHS.week3_model_dir),
+            "Short Description": "Fine-tuned DistilBERT sequence classifier used as the transformer baseline.",
+        }
+    )
+    rows.append(
+        {
+            "Model": "Improved DistilBERT (Week 4)",
+            "Accuracy": week4_row.get("Accuracy"),
+            "Precision": week4_row.get("Precision"),
+            "Recall": week4_row.get("Recall"),
+            "F1 Score": week4_row.get("F1 Score"),
+            "ROC AUC": week4_row.get("ROC-AUC"),
+            "Training Time": "N/A",
+            "Model Size": _format_model_size(PATHS.week4_model_dir),
+            "Short Description": "Week 4 DistilBERT variant with class weighting, tuned threshold, and error-analysis artifacts.",
+        }
+    )
+
+    comparison_df = pd.DataFrame(rows)
+    numeric_columns = ["Accuracy", "Precision", "Recall", "F1 Score", "ROC AUC"]
+    for column in numeric_columns:
+        comparison_df[column] = pd.to_numeric(comparison_df[column], errors="coerce")
+    return comparison_df
+
+
+def format_model_comparison_for_display(comparison_df: pd.DataFrame) -> pd.DataFrame:
+    display_df = comparison_df.copy()
+    for column in ["Accuracy", "Precision", "Recall", "F1 Score", "ROC AUC"]:
+        display_df[column] = display_df[column].map(lambda value: _format_optional_metric(value))
+    return display_df
 
 
 def render_footer() -> None:
@@ -346,17 +531,51 @@ def metric_card_row(metrics: dict[str, Any]) -> None:
     col4.metric("F1 Score", safe_metric(f1))
 
 
+def get_model_metrics_for(model_name: str) -> dict[str, Any]:
+    """Return accuracy, precision, recall, f1 metrics for any of the 4 models."""
+    if model_name == "TF-IDF + Logistic Regression (Week 2)":
+        df = get_week2_model_comparison()
+        if not df.empty and "Model" in df.columns:
+            row = df[df["Model"] == "LR + TF-IDF"]
+            if not row.empty:
+                r = row.iloc[0]
+                return {
+                    "accuracy": r.get("Accuracy"),
+                    "precision": r.get("Precision (Dup)"),
+                    "recall": r.get("Recall (Dup)"),
+                    "f1": r.get("F1 (Dup)"),
+                    "roc_auc": None,
+                }
+    elif model_name == "TF-IDF + Linear SVM (Week 2)":
+        df = get_week2_model_comparison()
+        if not df.empty and "Model" in df.columns:
+            row = df[df["Model"] == "SVM + TF-IDF"]
+            if not row.empty:
+                r = row.iloc[0]
+                return {
+                    "accuracy": r.get("Accuracy"),
+                    "precision": r.get("Precision (Dup)"),
+                    "recall": r.get("Recall (Dup)"),
+                    "f1": r.get("F1 (Dup)"),
+                    "roc_auc": None,
+                }
+    elif model_name == "DistilBERT (Week 3)":
+        return get_transformer_metrics()
+    elif model_name == "Improved DistilBERT (Week 4)":
+        return get_week4_metrics()
+    return {}
+
+
 def render_home_page() -> None:
+    selected_model = st.session_state.get("selected_model", "Improved DistilBERT (Week 4)")
+    is_tf = is_transformer_model(selected_model)
+    is_w2 = is_week2_model(selected_model)
+
     try:
         _, metadata, resolution = get_runtime_context()
     except Exception as exc:
-        st.title("Duplicate Question Detection System")
-        st.error(f"Model could not be loaded: {exc}")
-        st.info(
-            "Verify that either `models/week4_improved_model/` or `models/saved_transformer_model/` "
-            "contains Hugging Face `config.json` and model weights."
-        )
-        return
+        resolution = get_model_resolution()
+        metadata = None
 
     try:
         summary = get_dataset_summary()
@@ -364,49 +583,69 @@ def render_home_page() -> None:
         summary = {"rows": 0, "duplicate_ratio": 0.0}
         st.warning(f"Dataset summary is unavailable: {exc}")
 
-    week3_metrics = get_transformer_metrics()
-    week4_metrics = get_week4_metrics()
-    active_metrics = (
-        week4_metrics if metadata.model_version == "week4" and week4_metrics else week3_metrics
-    )
+    active_metrics = get_model_metrics_for(selected_model)
+
+    # Build model description based on type
+    if is_tf and metadata and not isinstance(metadata, dict):
+        model_desc = (
+            f"Active model: <strong>{metadata.model_label}</strong> | "
+            f"Decision threshold: <strong>{metadata.decision_threshold:.2f}</strong> | "
+            f"Device: <strong>{metadata.device}</strong>"
+        )
+    elif is_w2:
+        model_desc = (
+            f"Active model: <strong>{selected_model}</strong> | "
+            f"Decision threshold: <strong>0.50</strong> | "
+            f"Device: <strong>CPU</strong>"
+        )
+    else:
+        model_desc = f"Selected model: <strong>{selected_model}</strong>"
 
     st.markdown(
         f"""
         <div class="hero-card">
             <h1 style="margin-bottom:0.3rem;">Duplicate Question Detection System</h1>
             <p style="font-size:1.05rem; margin-bottom:0.6rem;">
-                Production-ready Week 5 Streamlit application for Quora duplicate question detection.
+                Production-ready application for Quora duplicate question detection.
             </p>
             <p class="small-note">
-                Active model: <strong>{metadata.model_label}</strong> |
-                Decision threshold: <strong>{metadata.decision_threshold:.2f}</strong> |
-                Device: <strong>{metadata.device}</strong>
+                {model_desc}
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    render_model_runtime_message(metadata)
-    metric_card_row(active_metrics)
+    # Show runtime message for transformer models
+    if is_tf and metadata and not isinstance(metadata, dict):
+        render_model_runtime_message(metadata)
 
+    # Show active metrics
+    if active_metrics and any(v is not None for v in [active_metrics.get("accuracy"), active_metrics.get("f1")]):
+        st.subheader(f"{selected_model} Performance")
+        metric_card_row(active_metrics)
+    else:
+        st.info(f"Metrics for **{selected_model}** are not available yet. Run the training notebooks first.")
+
+    week2_arts = check_week2_artifacts(PATHS)
+    week2_ready = all(week2_arts.values())
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Dataset Size", f"{summary['rows']:,}")
     col2.metric("Duplicate Ratio", safe_metric(summary["duplicate_ratio"]))
-    col3.metric("Week 4 Ready", "Yes" if resolution.week4.ready else "No")
-    col4.metric("Week 3 Ready", "Yes" if resolution.week3.ready else "No")
+    col3.metric("Week 3 (DistilBERT)", "Ready" if resolution.week3.ready else "Missing")
+    col4.metric("Week 4 (Improved)", "Ready" if resolution.week4.ready else "Missing")
 
-    st.subheader("What This App Includes")
+    st.subheader("Compare All Models")
     st.write(
-        "Landing page, project overview, dataset inspection, pipeline visualization, "
-        "single prediction, batch CSV prediction, downloads, performance dashboard, "
-        "error analysis, and Week 4 explainability assets when they exist."
+        "Use the sidebar to switch between models and see their performance metrics. "
+        "The **Model Comparison** page shows all models side by side. "
+        "All models support live prediction."
     )
 
     with st.container(border=True):
-        st.write("Use the sidebar to navigate through each Week 5 deliverable.")
-        if resolution.fallback_reason:
-            st.caption(f"Fallback condition: {resolution.fallback_reason}")
+        col1, col2 = st.columns(2)
+        col1.metric("Week 2 (LR/SVM)", "Ready" if week2_ready else "Run export script")
+        col2.metric("Live Prediction", "Supported for all 4 models")
 
 
 def render_project_overview_page() -> None:
@@ -511,56 +750,71 @@ def render_model_information_page() -> None:
     except Exception as exc:
         st.error(f"Model could not be loaded: {exc}")
         return
-    model_config = load_model_config(metadata.model_dir)
+    
+    if isinstance(metadata, dict):
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Active Model", metadata.get("model_label", "Unknown"))
+        col2.metric("Decision Threshold", f"{metadata.get('decision_threshold', 0.5):.2f}")
+        col3.metric("Model Type", "Classical ML (TF-IDF + Linear Model)")
+        
+        st.subheader("Architecture Summary")
+        st.dataframe(
+            pd.DataFrame([{
+                "Model Type": "TF-IDF + Logistic Regression / Linear SVM",
+                "Feature Extraction": "TF-IDF with ngram_range=(1,2), max_features=5000",
+                "Training Data": "Full Quora dataset (404,290 pairs)",
+                "Label": "is_duplicate (binary)",
+            }]),
+            use_container_width=True, hide_index=True,
+        )
+    else:
+        model_config = load_model_config(metadata.model_dir)
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Active Model", metadata.model_label)
+        col2.metric("Decision Threshold", f"{metadata.decision_threshold:.2f}")
+        col3.metric("Threshold Source", metadata.threshold_source)
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Active Model", metadata.model_label)
-    col2.metric("Decision Threshold", f"{metadata.decision_threshold:.2f}")
-    col3.metric("Threshold Source", metadata.threshold_source)
+        render_model_runtime_message(metadata)
 
-    render_model_runtime_message(metadata)
+        if model_config:
+            st.subheader("Architecture Summary")
+            config_subset = {
+                "Architecture": ", ".join(model_config.get("architectures") or []),
+                "Model Type": model_config.get("model_type"),
+                "Number of Labels": model_config.get("num_labels"),
+                "Vocabulary Size": model_config.get("vocab_size"),
+                "Hidden Size": model_config.get("dim", model_config.get("hidden_size")),
+            }
+            st.dataframe(pd.DataFrame([config_subset]), use_container_width=True, hide_index=True)
 
-    st.subheader("Resolution Logic")
-    st.markdown(
-        f"""
-        - **Week 4 ready:** `{resolution.week4.ready}`
-        - **Week 3 ready:** `{resolution.week3.ready}`
-        - **Selected model directory:** `{metadata.model_dir}`
-        - **Cache key:** `{metadata.cache_key}`
-        """
-    )
-
-    st.subheader("Artifact Inventory")
+    st.subheader("Artifact Readiness")
     st.dataframe(build_model_status_table(resolution), use_container_width=True, hide_index=True)
-
-    if model_config:
-        st.subheader("Config Snapshot")
-        config_subset = {
-            "architectures": model_config.get("architectures"),
-            "model_type": model_config.get("model_type"),
-            "num_labels": model_config.get("num_labels"),
-            "vocab_size": model_config.get("vocab_size"),
-            "hidden_size": model_config.get("dim", model_config.get("hidden_size")),
-            "dropout": model_config.get("seq_classif_dropout", model_config.get("dropout")),
-        }
-        st.json(config_subset)
-
-    st.subheader("Saved Artifacts")
-    artifact_files = sorted(path.name for path in metadata.model_dir.glob("*"))
-    st.write(artifact_files)
 
 
 def render_prediction_page() -> None:
     st.title("Prediction Page")
+
+    selected_model = st.session_state.get("selected_model", "Improved DistilBERT (Week 4)")
+    
     try:
         service, metadata, _ = get_runtime_context()
     except Exception as exc:
         st.error(f"Model could not be loaded: {exc}")
         return
 
+    if isinstance(metadata, dict):
+        model_label = metadata.get("model_label", "Unknown")
+        decision_threshold = metadata.get("decision_threshold", 0.5)
+        device = metadata.get("device", "cpu")
+    else:
+        model_label = metadata.model_label
+        decision_threshold = metadata.decision_threshold
+        device = metadata.device
+    
     st.caption(
-        f"Running live inference with {metadata.model_label} on {metadata.device}. "
-        f"Decision threshold: {metadata.decision_threshold:.2f}."
+        f"Running live inference with **{model_label}** on **{device}**. "
+        f"Decision threshold: **{decision_threshold:.2f}**."
     )
 
     with st.form("single_prediction_form"):
@@ -573,20 +827,28 @@ def render_prediction_page() -> None:
             st.error("Both question fields are required.")
             return
 
-        with st.spinner(f"Running inference with {metadata.model_label}..."):
+        with st.spinner(f"Running inference with {model_label}..."):
             try:
-                result = service.predict_single(question1, question2)
+                start_time = time.time()
+                if is_week2_model(selected_model):
+                    result = service.predict_single(question1, question2, selected_model)
+                else:
+                    result = service.predict_single(question1, question2)
+                result["inference_time"] = time.time() - start_time
             except Exception as exc:
                 st.error(f"Prediction failed: {exc}")
                 return
 
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric("Prediction", result["prediction"])
         col2.metric("Confidence", f"{result['confidence']:.2%}")
-        col3.metric("Threshold", f"{result['threshold']:.2f}")
+        col3.metric("Probability (Duplicate)", f"{result['prob_duplicate']:.2%}")
+        col4.metric("Threshold", f"{result['threshold']:.2f}")
+        
+        st.caption(f"Model: **{result['model_label']}** | ⏱️ Inference time: {result['inference_time']*1000:.1f} ms")
 
         st.success(
-            f"Model decision: **{result['prediction']}** using {result['model_label']}."
+            f"Model decision: **{result['prediction']}** using **{result['model_label']}**."
         )
         probability_figure = create_probability_figure(
             prob_duplicate=float(result["prob_duplicate"]),
@@ -594,8 +856,6 @@ def render_prediction_page() -> None:
         )
         st.pyplot(probability_figure, clear_figure=True)
 
-        with st.expander("Raw Prediction Details"):
-            st.json(result)
 
 
 def _detect_question_columns(df: pd.DataFrame) -> tuple[str, str] | None:
@@ -612,14 +872,24 @@ def _detect_question_columns(df: pd.DataFrame) -> tuple[str, str] | None:
 
 def render_batch_prediction_page() -> None:
     st.title("Batch CSV Prediction")
+
+    selected_model = st.session_state.get("selected_model", "Improved DistilBERT (Week 4)")
+
     try:
         service, metadata, _ = get_runtime_context()
     except Exception as exc:
         st.error(f"Model could not be loaded: {exc}")
         return
 
+    if isinstance(metadata, dict):
+        model_label = metadata.get("model_label", "Unknown")
+        decision_threshold = metadata.get("decision_threshold", 0.5)
+    else:
+        model_label = metadata.model_label
+        decision_threshold = metadata.decision_threshold
+
     st.caption(
-        f"Batch inference uses {metadata.model_label} with threshold {metadata.decision_threshold:.2f}."
+        f"Batch inference uses **{model_label}** with threshold **{decision_threshold:.2f}**."
     )
 
     template_df = pd.DataFrame(
@@ -686,8 +956,11 @@ def render_batch_prediction_page() -> None:
                     prepared_df.loc[valid_mask, question2_column],
                 )
             )
-            with st.spinner(f"Processing {len(question_pairs)} pairs with {metadata.model_label}..."):
-                valid_results_df = service.predict_batch(question_pairs)
+            with st.spinner(f"Processing {len(question_pairs)} pairs with {model_label}..."):
+                if is_week2_model(selected_model):
+                    valid_results_df = service.predict_batch(question_pairs, selected_model)
+                else:
+                    valid_results_df = service.predict_batch(question_pairs)
         except Exception as exc:
             st.error(f"Batch prediction failed: {exc}")
             return
@@ -712,6 +985,44 @@ def render_batch_prediction_page() -> None:
             file_name="duplicate_question_predictions.csv",
             mime="text/csv",
         )
+
+
+def render_model_comparison_page() -> None:
+    st.title("Model Comparison")
+    st.write("Roadmap-level comparison across the Week 2 classical baselines, Week 3 transformer, and Week 4 improved transformer.")
+
+    comparison_df = build_model_comparison_table()
+    display_df = format_model_comparison_for_display(comparison_df)
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+    metric_columns = ["Accuracy", "Precision", "Recall", "F1 Score", "ROC AUC"]
+    chart_df = comparison_df.set_index("Model")[metric_columns].dropna(axis=1, how="all")
+    if not chart_df.empty:
+        st.subheader("Metric Comparison")
+        st.bar_chart(chart_df)
+
+    week4_row = comparison_df[comparison_df["Model"] == "Improved DistilBERT (Week 4)"]
+    week3_row = comparison_df[comparison_df["Model"] == "DistilBERT (Week 3)"]
+    if not week4_row.empty and not week3_row.empty:
+        week4_f1 = week4_row.iloc[0]["F1 Score"]
+        week3_f1 = week3_row.iloc[0]["F1 Score"]
+        week4_accuracy = week4_row.iloc[0]["Accuracy"]
+        week3_accuracy = week3_row.iloc[0]["Accuracy"]
+        col1, col2 = st.columns(2)
+        if not pd.isna(week4_f1) and not pd.isna(week3_f1):
+            improvement = week4_f1 - week3_f1
+            col1.metric("Week 4 F1", safe_metric(week4_f1), delta=f"{improvement:+.2%}")
+        if not pd.isna(week4_accuracy) and not pd.isna(week3_accuracy):
+            accuracy_improvement = week4_accuracy - week3_accuracy
+            col2.metric("Week 4 Accuracy", safe_metric(week4_accuracy), delta=f"{accuracy_improvement:+.2%}")
+    
+    # Highlight best performing model
+    st.subheader("🏆 Best Performing Model")
+    if not comparison_df.empty:
+        best_row = comparison_df.loc[comparison_df["F1 Score"].idxmax()] if "F1 Score" in comparison_df.columns and comparison_df["F1 Score"].notna().any() else None
+        if best_row is not None and not pd.isna(best_row["F1 Score"]):
+            st.success(f"**{best_row['Model']}** achieved the highest F1 Score: **{best_row['F1 Score']:.4f}**")
+            st.caption(f"Accuracy: {best_row['Accuracy']:.4f} | Precision: {best_row['Precision']:.4f} | Recall: {best_row['Recall']:.4f}")
 
 
 def render_dashboard_page() -> None:
@@ -810,44 +1121,11 @@ def render_dashboard_page() -> None:
                 st.info("Week 2 vs Week 3 comparison file is not available.")
 
     with tab_compare:
-        rows: list[dict[str, object]] = []
-        if week3_metrics:
-            rows.append(
-                {
-                    "Model": "Week 3 DistilBERT",
-                    "Accuracy": week3_metrics.get("accuracy"),
-                    "Precision": week3_metrics.get("precision"),
-                    "Recall": week3_metrics.get("recall"),
-                    "F1": week3_metrics.get("f1"),
-                    "ROC-AUC": week3_metrics.get("roc_auc"),
-                }
-            )
-        if week4_metrics:
-            rows.append(
-                {
-                    "Model": "Week 4 Improved DistilBERT",
-                    "Accuracy": week4_metrics.get("accuracy"),
-                    "Precision": week4_metrics.get("precision"),
-                    "Recall": week4_metrics.get("recall"),
-                    "F1": week4_metrics.get("f1"),
-                    "ROC-AUC": week4_metrics.get("roc_auc"),
-                }
-            )
-
-        if not rows:
-            st.info("No evaluation artifacts are available to build a comparison table yet.")
-        else:
-            comparison_table = pd.DataFrame(rows).set_index("Model")
-            st.dataframe(comparison_table, use_container_width=True)
-            chart_df = comparison_table[["Accuracy", "Precision", "Recall", "F1"]].copy()
+        comparison_df = build_model_comparison_table()
+        st.dataframe(format_model_comparison_for_display(comparison_df), use_container_width=True, hide_index=True)
+        chart_df = comparison_df.set_index("Model")[["Accuracy", "Precision", "Recall", "F1 Score"]].dropna(axis=1, how="all")
+        if not chart_df.empty:
             st.bar_chart(chart_df)
-            if len(comparison_table) == 2:
-                delta_f1 = comparison_table.loc["Week 4 Improved DistilBERT", "F1"] - comparison_table.loc["Week 3 DistilBERT", "F1"]
-                delta_accuracy = comparison_table.loc["Week 4 Improved DistilBERT", "Accuracy"] - comparison_table.loc["Week 3 DistilBERT", "Accuracy"]
-                col1, col2 = st.columns(2)
-                col1.metric("F1 Improvement", safe_metric(comparison_table.loc["Week 4 Improved DistilBERT", "F1"]), delta=f"{delta_f1:+.2%}")
-                col2.metric("Accuracy Improvement", safe_metric(comparison_table.loc["Week 4 Improved DistilBERT", "Accuracy"]), delta=f"{delta_accuracy:+.2%}")
-
 
 def render_error_analysis_page() -> None:
     st.title("Error Analysis")
@@ -870,8 +1148,10 @@ def render_error_analysis_page() -> None:
             working.loc[(working[label_true] == 1) & (working[label_pred] == 0), "error_type"] = "False Negative"
 
         if "error_type" in working.columns:
-            normalized_error = working["error_type"].astype(str)
-            normalized_error = normalized_error.str.replace(" ✅", "", regex=False).str.replace(" ❌", "", regex=False)
+            normalized_error = working["error_type"].astype(str).str.replace(r"\s+", " ", regex=True).str.strip()
+            normalized_error = normalized_error.mask(normalized_error.str.contains("False Positive", na=False), "False Positive")
+            normalized_error = normalized_error.mask(normalized_error.str.contains("False Negative", na=False), "False Negative")
+            normalized_error = normalized_error.mask(normalized_error.str.contains("Correct", na=False), "Correct")
             working["error_type"] = normalized_error
 
         if "confidence" not in working.columns and {"prob_duplicate", "prob_non_duplicate"}.issubset(working.columns):
@@ -1004,22 +1284,6 @@ def render_explainability_page() -> None:
                 st.image(str(plot_path), caption=plot_path.name, use_container_width=True)
 
 
-def render_developer_page() -> None:
-    st.title("About Developer")
-    st.write(
-        "This Streamlit application packages the notebook-based NLP workflow into a reusable "
-        "project structure that supports both coursework presentation and production-style inference."
-    )
-    st.markdown(
-        """
-        - **App architecture:** reusable modules in `src/duplicate_question_app`
-        - **Inference support:** single and batch prediction with threshold-based decisions
-        - **Fallback behavior:** Week 4 model when available, Week 3 otherwise
-        - **Deployment support:** root `requirements.txt` and `.streamlit/config.toml`
-        """
-    )
-
-
 def sidebar_navigation() -> str:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
@@ -1030,26 +1294,56 @@ def sidebar_navigation() -> str:
             "Dataset Information",
             "NLP Pipeline Visualization",
             "Model Information",
+            "Model Comparison",
             "Prediction Page",
             "Batch CSV Prediction",
             "Performance Dashboard",
             "Error Analysis",
             "Explainability",
-            "About Developer",
         ],
     )
 
-    resolution = get_model_resolution()
     st.sidebar.markdown("---")
-    st.sidebar.caption(f"Week 4 model available: {resolution.week4.ready}")
-    st.sidebar.caption(f"Week 3 model available: {resolution.week3.ready}")
-    st.sidebar.caption(f"Week 4 plots detected: {len(get_week4_plot_paths())}")
+    st.sidebar.subheader("Model Selection")
+
+    prev_model = st.session_state.get("selected_model", None)
+    selected = st.sidebar.selectbox(
+        "Choose a model",
+        MODEL_CHOICES,
+        index=MODEL_CHOICES.index(prev_model) if prev_model in MODEL_CHOICES else 3,
+        key="selected_model_widget",
+    )
+
+    if selected != prev_model:
+        st.session_state["selected_model"] = selected
+        get_inference_service.clear()
+        st.rerun()
+
+    if "selected_model" not in st.session_state:
+        st.session_state["selected_model"] = "Improved DistilBERT (Week 4)"
+
+    resolution = get_model_resolution()
+
+    model_name = st.session_state["selected_model"]
+    is_tf = is_transformer_model(model_name)
+
     try:
         _, metadata, _ = get_runtime_context()
-        st.sidebar.caption(f"Active model: {metadata.model_label}")
-        st.sidebar.caption(f"Threshold: {metadata.decision_threshold:.2f}")
+        if isinstance(metadata, dict):
+            st.sidebar.caption(f"Active: {metadata.get('model_label', 'Unknown')}")
+            st.sidebar.caption(f"Threshold: {metadata.get('decision_threshold', 0.5):.2f}")
+        else:
+            st.sidebar.caption(f"Active: {metadata.model_label}")
+            st.sidebar.caption(f"Threshold: {metadata.decision_threshold:.2f}")
     except Exception as exc:
         st.sidebar.error(f"Model load failed: {exc}")
+
+    st.sidebar.markdown("---")
+    week2_artifacts = check_week2_artifacts(PATHS)
+    week2_ready = all(week2_artifacts.values())
+    st.sidebar.caption(f"Week 2 (LR/SVM): {'✅' if week2_ready else '❌'}")
+    st.sidebar.caption(f"Week 3 (DistilBERT): {'✅' if resolution.week3.ready else '❌'}")
+    st.sidebar.caption(f"Week 4 (Improved): {'✅' if resolution.week4.ready else '❌'}")
     return page
 
 
@@ -1066,6 +1360,8 @@ def main() -> None:
         render_pipeline_page()
     elif page == "Model Information":
         render_model_information_page()
+    elif page == "Model Comparison":
+        render_model_comparison_page()
     elif page == "Prediction Page":
         render_prediction_page()
     elif page == "Batch CSV Prediction":
@@ -1076,8 +1372,6 @@ def main() -> None:
         render_error_analysis_page()
     elif page == "Explainability":
         render_explainability_page()
-    else:
-        render_developer_page()
 
     render_footer()
 

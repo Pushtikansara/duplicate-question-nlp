@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import FancyBboxPatch
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -58,40 +59,145 @@ def create_roc_curve_figure(fpr: np.ndarray, tpr: np.ndarray, roc_auc: float) ->
 
 
 def create_pipeline_figure() -> plt.Figure:
-    fig, ax = plt.subplots(figsize=(12, 4))
+    fig, ax = plt.subplots(figsize=(16, 6))
     ax.axis("off")
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 6)
 
-    steps = [
-        ("Week 1", "Collect + clean\nQuora question pairs"),
-        ("Week 2", "TF-IDF / Word2Vec /\nSentence-BERT baselines"),
-        ("Week 3", "DistilBERT fine-tuning\nfor pair classification"),
-        ("Week 4", "Threshold tuning +\nerror analysis + weighting"),
-        ("Week 5", "Streamlit app +\ndashboard + batch inference"),
+    # Define pipeline stages with detailed descriptions
+    stages = [
+        {
+            "week": "Week 1",
+            "title": "Data Collection & Cleaning",
+            "desc": "Raw Quora question pairs\nDeduplication & cleaning\nEDA & preprocessing",
+            "color": "#3B82F6",
+            "icon": "📊",
+        },
+        {
+            "week": "Week 2",
+            "title": "Classical Baselines",
+            "desc": "TF-IDF (1,2)-gram features\nWord2Vec / Sentence-BERT\nLR & SVM classifiers",
+            "color": "#8B5CF6",
+            "icon": "🔬",
+        },
+        {
+            "week": "Week 3",
+            "title": "DistilBERT Fine-Tuning",
+            "desc": "Transformer pair encoding\nSequence classification head\nThreshold=0.50 baseline",
+            "color": "#EC4899",
+            "icon": "🧠",
+        },
+        {
+            "week": "Week 4",
+            "title": "Performance Improvement",
+            "desc": "Threshold tuning (best F1)\nClass weight balancing\nError analysis & ablation",
+            "color": "#F59E0B",
+            "icon": "⚡",
+        },
+        {
+            "week": "Week 5",
+            "title": "Deployment & Dashboard",
+            "desc": "Streamlit interactive app\nModel selection (4 models)\nBatch inference & visuals",
+            "color": "#10B981",
+            "icon": "🚀",
+        },
     ]
-    x_positions = np.linspace(0.1, 0.9, len(steps))
 
-    for index, ((title, text), x_pos) in enumerate(zip(steps, x_positions)):
-        ax.text(
-            x_pos,
-            0.55,
-            f"{title}\n\n{text}",
-            ha="center",
-            va="center",
-            fontsize=10,
-            bbox={
-                "boxstyle": "round,pad=0.6",
-                "facecolor": "#EFF6FF" if index < len(steps) - 1 else "#DBEAFE",
-                "edgecolor": "#2563EB",
-                "linewidth": 1.5,
-            },
+    n_stages = len(stages)
+    box_w = 2.5
+    box_h = 3.2
+    gap = (16 - n_stages * box_w) / (n_stages + 1)
+
+    for i, stage in enumerate(stages):
+        x_center = gap + i * (box_w + gap) + box_w / 2
+
+        # Draw main box with rounded corners
+        rect_bg = FancyBboxPatch(
+            (x_center - box_w / 2, 1.2), box_w, box_h,
+            boxstyle="round,pad=0.08,rounding_size=0.2",
+            facecolor="#F8FAFC", edgecolor=stage["color"],
+            linewidth=2.5, zorder=2,
         )
-        if index < len(steps) - 1:
+        ax.add_patch(rect_bg)
+
+        # Top accent bar with rounded top corners
+        accent = FancyBboxPatch(
+            (x_center - box_w / 2, 1.2 + box_h - 0.55), box_w, 0.55,
+            boxstyle="round,pad=0.08,rounding_size=0.2",
+            facecolor=stage["color"], alpha=0.15, zorder=3,
+            linewidth=0,
+        )
+        ax.add_patch(accent)
+
+        # Week label (top left corner of box)
+        ax.text(
+            x_center - box_w / 2 + 0.15, 1.2 + box_h - 0.4,
+            stage["week"],
+            fontsize=9, fontweight="bold",
+            color=stage["color"], ha="left", va="center", zorder=4,
+        )
+
+        # Icon
+        ax.text(
+            x_center + box_w / 2 - 0.25, 1.2 + box_h - 0.4,
+            stage["icon"], fontsize=14, ha="center", va="center", zorder=4,
+        )
+
+        # Title
+        ax.text(
+            x_center, 1.2 + box_h - 0.95,
+            stage["title"],
+            fontsize=10, fontweight="bold",
+            color="#1E293B", ha="center", va="center", zorder=4,
+        )
+
+        # Description
+        ax.text(
+            x_center, 1.2 + box_h / 2 - 0.2,
+            stage["desc"],
+            fontsize=8.5, color="#475569",
+            ha="center", va="center", zorder=4,
+            linespacing=1.5,
+        )
+
+        # Arrow to next stage
+        if i < n_stages - 1:
+            next_x = gap + (i + 1) * (box_w + gap) + box_w / 2
             ax.annotate(
                 "",
-                xy=(x_positions[index + 1] - 0.08, 0.55),
-                xytext=(x_pos + 0.08, 0.55),
-                arrowprops={"arrowstyle": "->", "lw": 2, "color": "#1D4ED8"},
+                xy=(next_x - box_w / 2 - 0.15, 2.8),
+                xytext=(x_center + box_w / 2 + 0.15, 2.8),
+                arrowprops={
+                    "arrowstyle": "->",
+                    "lw": 2.5,
+                    "color": "#94A3B8",
+                    "connectionstyle": "arc3,rad=0",
+                },
+                zorder=1,
             )
+
+    # Title at the top
+    ax.text(
+        8, 5.6, "NLP Pipeline — Duplicate Question Detection",
+        fontsize=14, fontweight="bold", color="#0F172A",
+        ha="center", va="center",
+    )
+
+    # Subtitle
+    ax.text(
+        8, 5.15, "From raw data collection to production-grade deployment across 5 weekly iterations",
+        fontsize=9, color="#64748B", ha="center", va="center",
+    )
+
+    # Bottom metrics summary
+    metrics_info = (
+        "📦 400k+ question pairs  |  🔤 4 model architectures  |  🎯 Best F1: 0.8996 (Week 4)  |  ⚡ Live inference in browser"
+    )
+    ax.text(
+        8, 0.5, metrics_info,
+        fontsize=8.5, color="#64748B", ha="center", va="center",
+        style="italic",
+    )
 
     fig.tight_layout()
     return fig

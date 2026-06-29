@@ -27,6 +27,12 @@ def _read_csv_if_exists(path: Path) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+def _read_parquet_if_exists(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_parquet(path)
+
+
 def _parse_tensor_label(value: Any) -> int:
     if isinstance(value, (int, np.integer)):
         return int(value)
@@ -104,6 +110,15 @@ def reconstruct_week3_test_frame(paths: AppPaths) -> pd.DataFrame:
 def load_week2_vs_week3_comparison(paths: AppPaths) -> pd.DataFrame:
     comparison_path = paths.transformer_results_dir / "week2_vs_week3_comparison.csv"
     return _read_csv_if_exists(comparison_path)
+
+
+def load_week2_model_comparison(paths: AppPaths) -> pd.DataFrame:
+    comparison_path = paths.baseline_results_dir / "week2_model_comparison.parquet"
+    df = _read_parquet_if_exists(comparison_path)
+    if df.empty:
+        return df
+
+    return df.reset_index().rename(columns={"index": "Model"})
 
 
 def load_transformer_predictions(paths: AppPaths) -> pd.DataFrame:
