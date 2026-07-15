@@ -3,15 +3,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import re
 from typing import Any
 
 import joblib
 import numpy as np
 import pandas as pd
+import time
 from scipy.sparse import hstack, spmatrix
 
 from duplicate_question_app.config import AppPaths
+from duplicate_question_app.preprocessing import normalize_question as _base_normalize
+# TF-IDF models were trained on original text without abbreviation expansion.
+normalize_question = lambda text: _base_normalize(text, expand_abbrevs=False)
 
 WEEK2_MODELS_DIR_NAME = "week2_models"
 
@@ -25,12 +28,10 @@ class Week2ModelMetadata:
     load_errors: tuple[str, ...]
     ready: bool
     is_transformer: bool = False
+    device: str = "cpu"
+    model_name: str = ""
+    latency_ms: float = 0.0
 
-
-def _normalize_question(text: str) -> str:
-    """Match the notebook's cleaning: lowercase, remove extra whitespace."""
-    text = re.sub(r"\s+", " ", str(text or "").strip())
-    return text
 
 
 def _get_week2_models_dir(paths: AppPaths) -> Path:
@@ -63,6 +64,12 @@ class Week2InferenceService:
         self._tfidf: Any | None = None
         self._lr_model: Any | None = None
         self._svm_model: Any | None = None
+        self.device = "cpu"
+        self.model_name = ""
+
+    @property
+    def threshold(self) -> float:
+        return 0.5
 
     def _load_tfidf(self) -> Any:
         if self._tfidf is None:
@@ -90,8 +97,8 @@ class Week2InferenceService:
 
     def _extract_features(self, question1: str, question2: str) -> spmatrix:
         """Extract TF-IDF features exactly as done in the notebook."""
-        q1 = _normalize_question(question1)
-        q2 = _normalize_question(question2)
+        q1 = normalize_question(question1)
+        q2 = normalize_question(question2)
         tfidf = self._load_tfidf()
         q1_vec = tfidf.transform([q1])
         q2_vec = tfidf.transform([q2])
@@ -106,11 +113,30 @@ class Week2InferenceService:
         q2_vec = tfidf.transform(q2_list)
         return hstack([q1_vec, q2_vec])
 
+    def predict_proba(self, question1: str, question2: str, model_name: str) -> tuple[float, float]:
+        """Return (prob_non_duplicate, prob_duplicate)."""
+        q1 = normalize_question(question1)
+        q2 = normalize_question(question2)
+        features = self._extract_features(q1, q2)
+
+        if model_name == "TF-IDF + Logistic Regression (Week 2)":
+            model = self._load_lr()
+            proba = model.predict_proba(features)[0]
+            return (float(proba[0]), float(proba[1]))
+        elif model_name == "TF-IDF + Linear SVM (Week 2)":
+            model = self._load_svm()
+            decision = model.decision_function(features)[0]
+            prob_dup = 1.0 / (1.0 + np.exp(-float(decision)))
+            return (1.0 - prob_dup, prob_dup)
+        else:
+            raise ValueError(f"Unknown Week 2 model: {model_name}")
+
     def predict_single(
         self, question1: str, question2: str, model_name: str
     ) -> dict[str, Any]:
-        q1 = _normalize_question(question1)
-        q2 = _normalize_question(question2)
+        start_time = time.time()
+        q1 = normalize_question(question1)
+        q2 = normalize_question(question2)
 
         if not q1 or not q2:
             raise ValueError("Both question inputs are required.")
@@ -137,6 +163,7 @@ class Week2InferenceService:
             raise ValueError(f"Unknown Week 2 model: {model_name}")
 
         confidence = max(prob_non_duplicate, prob_duplicate)
+        latency_ms = (time.time() - start_time) * 1000
 
         return {
             "question1": q1,
@@ -148,6 +175,11 @@ class Week2InferenceService:
             "confidence": confidence,
             "threshold": 0.5,
             "model_label": model_label,
+            "model_name": model_label,
+            "device": "cpu",
+            "latency_ms": latency_ms,
+            "reason": None,
+            "feature_breakdown": None,
         }
 
     def predict_batch(
@@ -157,8 +189,8 @@ class Week2InferenceService:
         if not pairs:
             return pd.DataFrame()
 
-        q1_list = [_normalize_question(p[0]) for p in pairs]
-        q2_list = [_normalize_question(p[1]) for p in pairs]
+        q1_list = [normalize_question(p[0]) for p in pairs]
+        q2_list = [normalize_question(p[1]) for p in pairs]
 
         # Validate all non-empty
         for i, (q1, q2) in enumerate(zip(q1_list, q2_list)):
@@ -200,6 +232,11 @@ class Week2InferenceService:
                     "confidence": float(confidences[i]),
                     "threshold": 0.5,
                     "model_label": model_label,
+                    "model_name": model_label,
+                    "device": "cpu",
+                    "latency_ms": 0.0,
+                    "reason": None,
+                    "feature_breakdown": None,
                 }
             )
 

@@ -15,9 +15,13 @@ from duplicate_question_app.artifacts import (
 from duplicate_question_app.config import (
     AppPaths,
     ModelDirectoryStatus,
+    ModelMetrics,
     ModelResolution,
+    MODEL_CHOICES,
     get_app_paths,
     inspect_model_dir,
+    is_new_embedding_model,
+    is_transformer_model,
     resolve_model_selection,
     resolve_preferred_model_dir,
 )
@@ -27,6 +31,11 @@ from duplicate_question_app.inference import (
     ModelMetadata,
     load_model_and_tokenizer,
 )
+from duplicate_question_app.week2_inference import (
+    Week2InferenceService,
+    check_week2_artifacts,
+    is_week2_model,
+)
 
 __all__ = [
     "AppPaths",
@@ -34,13 +43,20 @@ __all__ = [
     "DuplicateQuestionInferenceService",
     "ModelDirectoryStatus",
     "ModelMetadata",
+    "ModelMetrics",
     "ModelResolution",
+    "MODEL_CHOICES",
+    "Week2InferenceService",
     "available_week4_plots",
     "build_dataset_summary",
     "build_transformer_metrics",
     "build_week4_metrics",
+    "check_week2_artifacts",
     "get_app_paths",
     "inspect_model_dir",
+    "is_new_embedding_model",
+    "is_transformer_model",
+    "is_week2_model",
     "load_confusion_matrix_csv",
     "load_dataset_frame",
     "load_model_and_tokenizer",

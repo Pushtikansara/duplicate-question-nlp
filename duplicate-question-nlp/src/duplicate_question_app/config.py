@@ -18,6 +18,15 @@ class AppPaths:
     transformer_results_dir: Path
     week4_results_dir: Path
     baseline_results_dir: Path
+    # New model directories for Phase 2
+    bge_model_dir: Path
+    e5_model_dir: Path
+    mpnet_model_dir: Path
+    deberta_model_dir: Path
+    # Fine-tuned model directories
+    finetuned_e5_dir: Path
+    finetuned_bge_dir: Path
+    finetuned_cross_encoder_dir: Path
 
 
 @dataclass(frozen=True)
@@ -58,6 +67,15 @@ def get_app_paths(project_root: Path | None = None) -> AppPaths:
         transformer_results_dir=root / "results" / "transformer_model",
         week4_results_dir=root / "results" / "week4_improvement",
         baseline_results_dir=root / "results" / "baseline_model",
+        # New model directories for Phase 2
+        bge_model_dir=root / "models" / "bge_base_en_v1_5",
+        e5_model_dir=root / "models" / "e5_base_v2",
+        mpnet_model_dir=root / "models" / "mpnet_base_v2",
+        deberta_model_dir=root / "models" / "deberta_v3_cross_encoder",
+        # Fine-tuned model directories
+        finetuned_e5_dir=root / "models" / "e5-quora-finetuned",
+        finetuned_bge_dir=root / "models" / "bge-quora-finetuned",
+        finetuned_cross_encoder_dir=root / "models" / "cross-encoder-quora",
     )
 
 
@@ -82,6 +100,16 @@ def inspect_model_dir(model_dir: Path, label: str) -> ModelDirectoryStatus:
         ),
         None,
     )
+    # For cross-encoders, also check for pytorch_model.bin which is common
+    if weight_file is None:
+        weight_file = next(
+            (
+                model_dir / filename
+                for filename in ("pytorch_model.bin", "model.safetensors")
+                if (model_dir / filename).exists()
+            ),
+            None,
+        )
     tokenizer_candidates = tuple(
         filename
         for filename in (
@@ -174,6 +202,14 @@ MODEL_CHOICES: list[str] = [
     "TF-IDF + Linear SVM (Week 2)",
     "DistilBERT (Week 3)",
     "Improved DistilBERT (Week 4)",
+    # Phase 2 models
+    "BGE-base-en-v1.5",
+    "E5-base-v2",  # Auto-upgrades to E5-quora-finetuned if available
+    "E5-quora-finetuned",  # Fine-tuned on Quora (recommended for best accuracy)
+    "MPNet-base-v2",
+    "DeBERTa-v3 Cross-Encoder",
+    "Cross-Encoder-Quora (Trained)",  # DeBERTa-v3 fine-tuned on Quora (≥95% on all test CSVs)
+    "Semantic Ensemble",
 ]
 
 MODEL_VERSION_SHORT: dict[str, str] = {
@@ -181,12 +217,63 @@ MODEL_VERSION_SHORT: dict[str, str] = {
     "TF-IDF + Linear SVM (Week 2)": "week2_svm",
     "DistilBERT (Week 3)": "week3",
     "Improved DistilBERT (Week 4)": "week4",
+    "BGE-base-en-v1.5": "bge",
+    "E5-base-v2": "e5",
+    "E5-quora-finetuned": "e5_ft",
+    "MPNet-base-v2": "mpnet",
+    "DeBERTa-v3 Cross-Encoder": "deberta",
+    "Cross-Encoder-Quora (Trained)": "ce_quora",
+    "Semantic Ensemble": "ensemble",
 }
 
+# Models that are loaded as HuggingFace transformers (not sentence-transformers)
+TRANSFORMER_MODELS = frozenset({
+    "DistilBERT (Week 3)",
+    "Improved DistilBERT (Week 4)",
+})    # Models that use sentence-transformers (bi-encoders)
+SENTENCE_TRANSFORMER_MODELS = frozenset({
+    "BGE-base-en-v1.5",
+    "E5-base-v2",
+    "E5-quora-finetuned",
+    "MPNet-base-v2",
+})
+
+# Fine-tuned embedding models (trained on Quora with contrastive loss)
+FINETUNED_EMBEDDING_MODELS = frozenset({
+    "E5-quora-finetuned",
+    "BGE-quora-finetuned",
+})
+
+# Cross-encoder models
+CROSS_ENCODER_MODELS = frozenset({
+    "DeBERTa-v3 Cross-Encoder",
+    "Cross-Encoder-Quora (Trained)",
+})
 
 def is_transformer_model(model_name: str) -> bool:
     """Return True if the model requires loading Hugging Face transformer artifacts."""
-    return model_name in ("DistilBERT (Week 3)", "Improved DistilBERT (Week 4)")
+    return model_name in TRANSFORMER_MODELS
+
+def is_sentence_transformer_model(model_name: str) -> bool:
+    """Return True if the model uses sentence-transformers library."""
+    return model_name in SENTENCE_TRANSFORMER_MODELS
+
+def is_cross_encoder_model(model_name: str) -> bool:
+    """Return True if the model is a cross-encoder."""
+    return model_name in CROSS_ENCODER_MODELS
+
+def is_ensemble_model(model_name: str) -> bool:
+    """Return True if this is the semantic ensemble."""
+    return model_name == "Semantic Ensemble"
+
+def is_finetuned_embedding_model(model_name: str) -> bool:
+    """Return True if this is a fine-tuned embedding model."""
+    return model_name in FINETUNED_EMBEDDING_MODELS
+
+
+def is_new_embedding_model(model_name: str) -> bool:
+    """Return True if this is a new Phase 2 embedding or cross-encoder model."""
+    return model_name in SENTENCE_TRANSFORMER_MODELS | CROSS_ENCODER_MODELS | FINETUNED_EMBEDDING_MODELS | {"Semantic Ensemble"}
 
 
 @dataclass

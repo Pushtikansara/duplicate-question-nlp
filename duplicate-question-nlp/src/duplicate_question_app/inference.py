@@ -2,17 +2,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import re
-from typing import Iterable
+import time
+from typing import Any, Iterable
 
+import numpy as np
 import pandas as pd
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from duplicate_question_app.artifacts import load_week4_threshold_analysis
-from duplicate_question_app.config import AppPaths, ModelDirectoryStatus, is_transformer_model, resolve_model_selection
+from duplicate_question_app.config import (
+    AppPaths,
+    ModelDirectoryStatus,
+    is_transformer_model,
+    resolve_model_selection,
+)
+from duplicate_question_app.preprocessing import normalize_question
 from duplicate_question_app.week2_inference import Week2InferenceService, is_week2_model
-
 
 DEFAULT_MAX_LENGTH = 128
 
@@ -28,11 +34,12 @@ class ModelMetadata:
     fallback_reason: str | None
     load_errors: tuple[str, ...]
     cache_key: str
+    model_name: str = ""
 
 
-def _normalize_question(text: str) -> str:
-    text = re.sub(r"\s+", " ", str(text or "").strip())
-    return text
+# DistilBERT models were fine-tuned on original (non-expanded) text.
+# Abbreviation expansion would change token distributions they were trained on.
+_norm = lambda text: normalize_question(text, expand_abbrevs=False)
 
 
 def _resolve_threshold(paths: AppPaths) -> tuple[float, str]:
@@ -65,7 +72,7 @@ def _build_metadata(
         decision_threshold, threshold_source = _resolve_threshold(paths)
     else:
         decision_threshold = 0.5
-        threshold_source = "Default threshold 0.50 for Week 3 baseline"
+        threshold_source = "Default threshold 0.50 for baseline models"
 
     return ModelMetadata(
         model_dir=status.model_dir,
@@ -77,27 +84,39 @@ def _build_metadata(
         fallback_reason=fallback_reason,
         load_errors=load_errors,
         cache_key=cache_key,
+        model_name=status.label,
     )
+
+
+def _resolve_device() -> str:
+    """Force CPU to avoid CUDA OOM in constrained environments."""
+    return "cpu"
 
 
 def load_model_and_tokenizer(paths: AppPaths, model_version: str | None = None) -> tuple[AutoModelForSequenceClassification, AutoTokenizer, ModelMetadata]:
     resolution = resolve_model_selection(paths)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = _resolve_device()
 
     if model_version and not is_transformer_model(model_version):
         raise ValueError(f"Model '{model_version}' does not support live inference (not a transformer model).")
 
     candidates: list[tuple[str, ModelDirectoryStatus, str | None]] = []
-    if model_version == "TF-IDF + Logistic Regression (Week 2)" or model_version == "TF-IDF + Linear SVM (Week 2)":
-        raise ValueError(f"Model '{model_version}' is a classical ML model and cannot be used for live inference.")
 
     if model_version == "Improved DistilBERT (Week 4)" or model_version is None:
         if resolution.week4.ready:
             candidates.append(("week4", resolution.week4, None))
+
     if model_version == "DistilBERT (Week 3)" or (model_version is None and not candidates):
         if resolution.week3.ready:
             fallback = None if model_version else resolution.fallback_reason
             candidates.append(("week3", resolution.week3, fallback))
+
+    # If the user explicitly requested a model that isn't ready, add a fallback
+    if not candidates and model_version:
+        if model_version == "Improved DistilBERT (Week 4)" and resolution.week3.ready:
+            candidates.append(("week3", resolution.week3, resolution.fallback_reason))
+        elif model_version == "DistilBERT (Week 3)" and resolution.week4.ready:
+            candidates.append(("week4", resolution.week4, None))
 
     if not candidates:
         if model_version:
@@ -147,9 +166,43 @@ class DuplicateQuestionInferenceService:
         self.metadata = metadata
         self.max_length = max_length
 
+    @property
+    def device(self) -> str:
+        return self.metadata.device
+
+    @property
+    def model_name(self) -> str:
+        return self.metadata.model_label
+
+    @property
+    def threshold(self) -> float:
+        return self.metadata.decision_threshold
+
+    def predict_proba(self, question1: str, question2: str) -> tuple[float, float]:
+        """Return (prob_non_duplicate, prob_duplicate)."""
+        q1 = _norm(question1)
+        q2 = _norm(question2)
+
+        inputs = self.tokenizer(
+            q1,
+            q2,
+            max_length=self.max_length,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+        )
+        inputs = {key: value.to(self.metadata.device) for key, value in inputs.items()}
+
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            probabilities = torch.softmax(outputs.logits, dim=1)[0]
+
+        return (float(probabilities[0].item()), float(probabilities[1].item()))
+
     def predict_single(self, question1: str, question2: str) -> dict[str, object]:
-        q1 = _normalize_question(question1)
-        q2 = _normalize_question(question2)
+        start_time = time.time()
+        q1 = _norm(question1)
+        q2 = _norm(question2)
 
         if not q1 or not q2:
             raise ValueError("Both question inputs are required.")
@@ -173,6 +226,8 @@ class DuplicateQuestionInferenceService:
         predicted_label = int(prob_duplicate >= self.metadata.decision_threshold)
         confidence = max(prob_non_duplicate, prob_duplicate)
 
+        latency_ms = (time.time() - start_time) * 1000
+
         return {
             "question1": q1,
             "question2": q2,
@@ -183,6 +238,11 @@ class DuplicateQuestionInferenceService:
             "confidence": confidence,
             "threshold": self.metadata.decision_threshold,
             "model_label": self.metadata.model_label,
+            "model_name": self.metadata.model_label,
+            "device": self.metadata.device,
+            "latency_ms": latency_ms,
+            "reason": None,
+            "feature_breakdown": None,
         }
 
     def predict_batch(self, question_pairs: Iterable[tuple[str, str]]) -> pd.DataFrame:
@@ -192,8 +252,8 @@ class DuplicateQuestionInferenceService:
 
         normalized_pairs: list[tuple[str, str]] = []
         for question1, question2 in pairs:
-            q1 = _normalize_question(question1)
-            q2 = _normalize_question(question2)
+            q1 = _norm(question1)
+            q2 = _norm(question2)
             if not q1 or not q2:
                 raise ValueError("All question pairs must have non-empty question1 and question2 text.")
             normalized_pairs.append((q1, q2))
@@ -236,6 +296,11 @@ class DuplicateQuestionInferenceService:
                         "confidence": confidence,
                         "threshold": self.metadata.decision_threshold,
                         "model_label": self.metadata.model_label,
+                        "model_name": self.metadata.model_label,
+                        "device": self.metadata.device,
+                        "latency_ms": 0.0,
+                        "reason": None,
+                        "feature_breakdown": None,
                     }
                 )
 

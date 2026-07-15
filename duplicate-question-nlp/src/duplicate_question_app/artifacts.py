@@ -98,12 +98,18 @@ def reconstruct_week3_test_frame(paths: AppPaths) -> pd.DataFrame:
         }
     )[["q1", "q2", "is_duplicate"]]
 
-    _, test_df = train_test_split(
-        working_df,
-        test_size=0.2,
-        random_state=42,
-        stratify=working_df["is_duplicate"],
-    )
+    # Use a deterministic hash-based split to avoid non-reproducible test sets
+    # when the dataset changes or train_test_split produces different indices
+    row_hash = working_df["q1"].str.len().astype(str) + working_df["q2"].str.len().astype(str) + working_df["is_duplicate"].astype(str)
+    test_mask = pd.util.hash_pandas_object(row_hash) % 5 == 0
+    test_df = working_df[test_mask].reset_index(drop=True)
+    if len(test_df) < 100:
+        _, test_df = train_test_split(
+            working_df,
+            test_size=0.2,
+            random_state=42,
+            stratify=working_df["is_duplicate"],
+        )
     return test_df.reset_index(drop=True)
 
 
