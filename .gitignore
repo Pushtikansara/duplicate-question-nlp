@@ -30,10 +30,9 @@
 # Word2Vec / Gensim saved models
 *.wv
 *.kv
-/models/
 /saved_models/
 /checkpoints/
-models/
+models/*
 
 
 # ── NOTEBOOK OUTPUT (cell outputs bloat file size) ────────────────

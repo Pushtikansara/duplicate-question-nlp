@@ -44,25 +44,15 @@ Displayed fields include accuracy, precision, recall, F1 score, ROC AUC when ava
 ## Project Structure
 
 ```text
-duplicate-question-nlp/
-  app.py
-  requirements.txt
-  .streamlit/
-    config.toml
-  data/
-  models/
-  notebooks/
-  results/
-    baseline_model/
-    transformer_model/
-    week4_improvement/
-  src/
-    duplicate_question_app/
-      artifacts.py
-      config.py
-      inference.py
-      visuals.py
-  Submission/
+app/
+configs/
+docs/
+notebooks/
+src/duplicate_question_app/
+tests/
+tools/
+pyproject.toml
+README.md
 ```
 
 ## Required Artifacts
@@ -70,26 +60,23 @@ duplicate-question-nlp/
 The app reads project artifacts from repository-relative paths:
 
 - Dataset: `data/cleaned_quora.parquet` or `data/cleaned_quora.csv`
-- Week 2 comparison: `results/baseline_model/week2_model_comparison.parquet`
+- Week 2 comparison: `outputs/baseline_model/week2_model_comparison.parquet`
 - Week 3 model: `models/saved_transformer_model/`
-- Week 3 predictions: `results/transformer_model/transformer_test_predictions.csv`
-- Week 3 comparison: `results/transformer_model/week2_vs_week3_comparison.csv`
+- Week 3 predictions: `outputs/transformer_model/transformer_test_predictions.csv`
+- Week 3 comparison: `outputs/transformer_model/week2_vs_week3_comparison.csv`
 - Week 4 model: `models/week4_improved_model/`
-- Week 4 threshold tuning: `results/week4_improvement/threshold_analysis.csv`
-- Week 4 ablation: `results/week4_improvement/ablation_study.csv`
-- Week 4 predictions: `results/week4_improvement/predictions_week4.csv`
-- Week 4 figures: `results/week4_improvement/fig*.png`
+- Week 4 threshold tuning: `outputs/week4_improvement/threshold_analysis.csv`
+- Week 4 ablation: `outputs/week4_improvement/ablation_study.csv`
+- Week 4 predictions: `outputs/week4_improvement/predictions_week4.csv`
+- Week 4 figures: `outputs/week4_improvement/fig*.png`
 
 ## Run Locally
 
-From the folder that contains `app.py`:
+From the repository root:
 
 ```bash
-cd duplicate-question-nlp/duplicate-question-nlp
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run app.py
+pip install -e ".[dev]"
+streamlit run app/app.py
 ```
 
 ## Deployment Notes
@@ -97,13 +84,11 @@ streamlit run app.py
 For Streamlit Community Cloud, set the app entrypoint to:
 
 ```text
-duplicate-question-nlp/duplicate-question-nlp/app.py
+app/app.py
 ```
-
-Keep `requirements.txt` in the same folder as `app.py`.
 
 ## Troubleshooting
 
 - If the dataset page fails, verify that `data/cleaned_quora.parquet` or `data/cleaned_quora.csv` exists.
 - If prediction fails, verify that either Week 4 or Week 3 model artifacts include `config.json`, tokenizer files, and model weights.
-- If the dashboard or model comparison page has missing metrics, rerun the corresponding notebook to regenerate the exported files under `results/`.
+- If the dashboard or model comparison page has missing metrics, rerun the corresponding notebook to regenerate the exported files under `outputs/`.

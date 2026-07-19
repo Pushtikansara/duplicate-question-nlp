@@ -29,10 +29,6 @@ jobs:
       matrix:
         language: ["python"]
 
-    defaults:
-      run:
-        working-directory: duplicate-question-nlp
-
     steps:
       - uses: actions/checkout@v4
 
@@ -78,9 +74,6 @@ jobs:
   bandit:
     name: bandit
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: duplicate-question-nlp
 
     steps:
       - uses: actions/checkout@v4
