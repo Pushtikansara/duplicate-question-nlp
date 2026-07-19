@@ -30,8 +30,18 @@ def render() -> None:
 
     st.caption(f"Batch inference uses **{model_label}** with threshold **{decision_threshold:.2f}**.")
 
-    template_df = pd.DataFrame({"q1": ["How do I learn Python?", "What is the capital of France?"], "q2": ["How can I learn Python programming?", "Which city is the largest in France?"]})
-    st.download_button("Download CSV Template", data=template_df.to_csv(index=False).encode("utf-8"), file_name="duplicate_question_template.csv", mime="text/csv")
+    template_df = pd.DataFrame(
+        {
+            "q1": ["How do I learn Python?", "What is the capital of France?"],
+            "q2": ["How can I learn Python programming?", "Which city is the largest in France?"],
+        }
+    )
+    st.download_button(
+        "Download CSV Template",
+        data=template_df.to_csv(index=False).encode("utf-8"),
+        file_name="duplicate_question_template.csv",
+        mime="text/csv",
+    )
 
     uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
     if uploaded_file is None:
@@ -70,7 +80,13 @@ def render() -> None:
             st.error("No valid rows found.")
             return
         try:
-            question_pairs = list(zip(prepared_df.loc[valid_mask, question1_column], prepared_df.loc[valid_mask, question2_column]))
+            question_pairs = list(
+                zip(
+                    prepared_df.loc[valid_mask, question1_column],
+                    prepared_df.loc[valid_mask, question2_column],
+                    strict=False,
+                )
+            )
             with st.spinner(f"Processing {len(question_pairs)} pairs with {model_label}..."):
                 valid_results_df = run_batch_prediction(service, selected_model, question_pairs)
         except Exception as exc:
@@ -83,10 +99,19 @@ def render() -> None:
         merged_results.loc[valid_index, "batch_status"] = "Predicted"
         for column in valid_results_df.columns:
             merged_results[column] = pd.NA
-            merged_results.loc[valid_index, column] = valid_results_df[column].to_numpy() if hasattr(valid_results_df[column], "to_numpy") else valid_results_df[column].values
+            merged_results.loc[valid_index, column] = (
+                valid_results_df[column].to_numpy()
+                if hasattr(valid_results_df[column], "to_numpy")
+                else valid_results_df[column].values
+            )
 
         st.success(f"Generated predictions for {len(merged_results):,} question pairs.")
         st.dataframe(merged_results, use_container_width=True)
         summary_figure = create_batch_summary_figure(merged_results[merged_results["batch_status"] == "Predicted"])
         st.pyplot(summary_figure, clear_figure=True)
-        st.download_button("Download Prediction Results", data=merged_results.to_csv(index=False).encode("utf-8"), file_name="duplicate_question_predictions.csv", mime="text/csv")
+        st.download_button(
+            "Download Prediction Results",
+            data=merged_results.to_csv(index=False).encode("utf-8"),
+            file_name="duplicate_question_predictions.csv",
+            mime="text/csv",
+        )

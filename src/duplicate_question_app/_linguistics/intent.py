@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
 from enum import Enum
 
 
@@ -39,12 +38,12 @@ class IntentCategory(Enum):
 class IntentResult:
     primary_intent: IntentCategory
     confidence: float
-    all_scores: Dict[IntentCategory, float]
-    detected_patterns: List[str]
+    all_scores: dict[IntentCategory, float]
+    detected_patterns: list[str]
 
 
 # Pattern definitions for each intent category
-_INTENT_PATTERNS: Dict[IntentCategory, List[Tuple[str, float]]] = {
+_INTENT_PATTERNS: dict[IntentCategory, list[tuple[str, float]]] = {
     IntentCategory.DEFINITION: [
         (r"\bwhat\s+is\b", 1.0),
         (r"\bdefine\b", 0.9),
@@ -158,7 +157,7 @@ _INTENT_PATTERNS: Dict[IntentCategory, List[Tuple[str, float]]] = {
 
 
 # Patterns that indicate incompatibility between intents
-_INTENT_CONFLICTS: Dict[IntentCategory, Set[IntentCategory]] = {
+_INTENT_CONFLICTS: dict[IntentCategory, set[IntentCategory]] = {
     IntentCategory.DEFINITION: {IntentCategory.INSTALLATION, IntentCategory.TROUBLESHOOTING},
     IntentCategory.COMPARISON: {IntentCategory.INSTALLATION, IntentCategory.TUTORIAL},
     IntentCategory.INSTALLATION: {IntentCategory.DEFINITION, IntentCategory.COMPARISON, IntentCategory.TUTORIAL},
@@ -172,7 +171,7 @@ _INTENT_CONFLICTS: Dict[IntentCategory, Set[IntentCategory]] = {
 }
 
 
-def _compile_patterns() -> Dict[IntentCategory, List[Tuple[re.Pattern, float]]]:
+def _compile_patterns() -> dict[IntentCategory, list[tuple[re.Pattern, float]]]:
     compiled = {}
     for category, patterns in _INTENT_PATTERNS.items():
         compiled[category] = [(re.compile(pattern, re.IGNORECASE), weight) for pattern, weight in patterns]
@@ -185,8 +184,8 @@ _COMPILED_PATTERNS = _compile_patterns()
 def detect_intent(question: str) -> IntentResult:
     """Detect the primary intent of a question."""
     q_lower = question.lower()
-    scores: Dict[IntentCategory, float] = {}
-    detected_patterns: Dict[IntentCategory, List[str]] = {}
+    scores: dict[IntentCategory, float] = {}
+    detected_patterns: dict[IntentCategory, list[str]] = {}
 
     for category, patterns in _COMPILED_PATTERNS.items():
         category_score = 0.0
@@ -232,7 +231,7 @@ def intents_are_compatible(intent1: IntentCategory, intent2: IntentCategory) -> 
     return intent2 not in _INTENT_CONFLICTS.get(intent1, set())
 
 
-def intent_mismatch_penalty(q1: str, q2: str) -> Tuple[float, str]:
+def intent_mismatch_penalty(q1: str, q2: str) -> tuple[float, str]:
     """Compute penalty for intent mismatch between two questions."""
     intent1 = detect_intent(q1)
     intent2 = detect_intent(q2)
@@ -252,7 +251,7 @@ def intent_mismatch_penalty(q1: str, q2: str) -> Tuple[float, str]:
     return penalty, reason
 
 
-def get_intent_details(q1: str, q2: str) -> Dict:
+def get_intent_details(q1: str, q2: str) -> dict:
     """Get detailed intent analysis for two questions."""
     i1 = detect_intent(q1)
     i2 = detect_intent(q2)

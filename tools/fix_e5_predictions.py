@@ -11,7 +11,6 @@ Steps:
 
 from __future__ import annotations
 
-import csv
 import json
 import sys
 import time
@@ -19,21 +18,18 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.data_loader import get_quora_splits
+from duplicate_question_app.config import get_app_paths
 from duplicate_question_app.embedding_models import (
-    predict_batch_sentence_transformer,
-    get_sentence_transformer_model,
-    _get_sigmoid_params,
-    _get_threshold,
     _resolve_device,
+    get_sentence_transformer_model,
+    predict_batch_sentence_transformer,
 )
 from duplicate_question_app.preprocessing import normalize_question
-from duplicate_question_app.config import get_app_paths
 
 # Optimal thresholds (found via threshold sweep on CSV test sets)
 FINETUNED_RAW_THRESHOLD = 0.74
@@ -73,7 +69,7 @@ def load_csv_data(path: Path) -> tuple[list[tuple[str, str]], np.ndarray]:
         q1_col = [c for c in df.columns if "question1" in c.lower() or "q1" in c.lower()][0]
     if q2_col not in df.columns:
         q2_col = [c for c in df.columns if "question2" in c.lower() or "q2" in c.lower()][0]
-    pairs = list(zip(df[q1_col].astype(str), df[q2_col].astype(str)))
+    pairs = list(zip(df[q1_col].astype(str), df[q2_col].astype(str), strict=False))
     labels = df[label_col].values
     return pairs, labels
 
@@ -81,22 +77,19 @@ def load_csv_data(path: Path) -> tuple[list[tuple[str, str]], np.ndarray]:
 def predict_with_e5_lr(model_name: str, pairs: list[tuple[str, str]], batch_size: int = 256):
     """Predict using E5 frozen model + Logistic Regression head."""
     from duplicate_question_app.classifier_head import batch_predict_with_lr
+
     return batch_predict_with_lr(model_name, pairs, threshold=0.5, batch_size=batch_size)
 
 
-def predict_with_finetuned_raw(
-    pairs: list[tuple[str, str]], batch_size: int = 64
-) -> tuple[np.ndarray, np.ndarray]:
+def predict_with_finetuned_raw(pairs: list[tuple[str, str]], batch_size: int = 64) -> tuple[np.ndarray, np.ndarray]:
     """Use fine-tuned E5 with raw cosine similarity (no sigmoid)."""
     model = get_sentence_transformer_model("E5-quora-finetuned")
     q1s = [normalize_question(p[0], expand_abbrevs=True) for p in pairs]
     q2s = [normalize_question(p[1], expand_abbrevs=True) for p in pairs]
     q1_enc = [f"query: {q}" for q in q1s]
     q2_enc = [f"passage: {q}" for q in q2s]
-    emb1 = model.encode(q1_enc, normalize_embeddings=True,
-                        batch_size=batch_size, show_progress_bar=False)
-    emb2 = model.encode(q2_enc, normalize_embeddings=True,
-                        batch_size=batch_size, show_progress_bar=False)
+    emb1 = model.encode(q1_enc, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
+    emb2 = model.encode(q2_enc, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
     similarities = (emb1 * emb2).sum(axis=1)
     threshold = 0.74
     preds = (similarities >= threshold).astype(int)
@@ -108,15 +101,14 @@ def evaluate_model(name: str, y_true: np.ndarray, y_pred: np.ndarray, y_prob: np
     f1 = f1_score(y_true, y_pred, zero_division=0)
     cm = confusion_matrix(y_true, y_pred)
     tn, fp, fn, tp = cm.ravel()
-    print(f"  {name:40s}  Acc={acc:.4f}  F1={f1:.4f}  "
-          f"TN={tn} FP={fp} FN={fn} TP={tp}")
+    print(f"  {name:40s}  Acc={acc:.4f}  F1={f1:.4f}  TN={tn} FP={fp} FN={fn} TP={tp}")
     return {"accuracy": float(acc), "f1": float(f1), "cm": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)}}
 
 
 def evaluate_all_on_csv(csv_path: Path) -> dict:
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"  Dataset: {csv_path.name}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     try:
         pairs, y_true = load_csv_data(csv_path)
     except Exception as e:
@@ -126,7 +118,7 @@ def evaluate_all_on_csv(csv_path: Path) -> dict:
     results = {}
 
     # 1. Frozen E5 (with fixed sigmoid)
-    print(f"\n  --- Frozen E5 ---")
+    print("\n  --- Frozen E5 ---")
     try:
         preds = predict_batch_sentence_transformer("E5-base-v2", pairs, batch_size=64)
         y_prob = np.array([p["prob_duplicate"] for p in preds])
@@ -136,7 +128,7 @@ def evaluate_all_on_csv(csv_path: Path) -> dict:
         print(f"  ERROR: {e}")
 
     # 2. Frozen E5 + LR head
-    print(f"\n  --- Frozen E5 + LR ---")
+    print("\n  --- Frozen E5 + LR ---")
     try:
         preds = predict_with_e5_lr("E5-base-v2", pairs)
         y_prob = np.array([p["prob_duplicate"] for p in preds])
@@ -146,7 +138,7 @@ def evaluate_all_on_csv(csv_path: Path) -> dict:
         print(f"  ERROR: {e}")
 
     # 3. Fine-tuned E5 (raw cosine)
-    print(f"\n  --- Fine-tuned E5 ---")
+    print("\n  --- Fine-tuned E5 ---")
     try:
         sims, y_pred = predict_with_finetuned_raw(pairs)
         results["E5-quora-finetuned"] = evaluate_model("E5-quora-finetuned (raw cos)", y_true, y_pred, sims)
@@ -154,7 +146,7 @@ def evaluate_all_on_csv(csv_path: Path) -> dict:
         print(f"  ERROR: {e}")
 
     # 4. Fine-tuned E5 + sigmoid
-    print(f"\n  --- Fine-tuned E5 (with sigmoid) ---")
+    print("\n  --- Fine-tuned E5 (with sigmoid) ---")
     try:
         preds = predict_batch_sentence_transformer("E5-quora-finetuned", pairs, batch_size=64)
         y_prob = np.array([p["prob_duplicate"] for p in preds])
@@ -184,7 +176,7 @@ def generate_corrected_predictions(csv_path: Path, output_path: Path, model_name
     if q2_col not in df.columns:
         q2_col = [c for c in df.columns if "question2" in c.lower() or "q2" in c.lower()][0]
 
-    pairs = list(zip(df[q1_col].astype(str), df[q2_col].astype(str)))
+    pairs = list(zip(df[q1_col].astype(str), df[q2_col].astype(str), strict=False))
     y_true = df[label_col].values if label_col else None
 
     print(f"  Generating predictions for {csv_path.name} using {model_name}...")
@@ -194,7 +186,7 @@ def generate_corrected_predictions(csv_path: Path, output_path: Path, model_name
     sims, y_pred = predict_with_finetuned_raw(pairs)
 
     elapsed = time.time() - start
-    print(f"  Done in {elapsed:.1f}s ({len(pairs)/elapsed:.0f} pairs/sec)")
+    print(f"  Done in {elapsed:.1f}s ({len(pairs) / elapsed:.0f} pairs/sec)")
 
     probs = sims  # Raw cosine similarity
 
@@ -203,17 +195,19 @@ def generate_corrected_predictions(csv_path: Path, output_path: Path, model_name
         f1 = f1_score(y_true, y_pred, zero_division=0)
         print(f"  Accuracy: {acc:.4f}  F1: {f1:.4f}")
 
-    results_df = pd.DataFrame({
-        "question1": df[q1_col],
-        "question2": df[q2_col],
-        "is_duplicate": y_true if y_true is not None else "",
-        "predicted_label": y_pred,
-        "prediction": ["Duplicate" if p == 1 else "Non-Duplicate" for p in y_pred],
-        "prob_duplicate": probs,
-        "confidence": [max(p, 1-p) for p in probs],
-        "threshold": FINETUNED_RAW_THRESHOLD,
-        "model": model_name + "+raw_cosine",
-    })
+    results_df = pd.DataFrame(
+        {
+            "question1": df[q1_col],
+            "question2": df[q2_col],
+            "is_duplicate": y_true if y_true is not None else "",
+            "predicted_label": y_pred,
+            "prediction": ["Duplicate" if p == 1 else "Non-Duplicate" for p in y_pred],
+            "prob_duplicate": probs,
+            "confidence": [max(p, 1 - p) for p in probs],
+            "threshold": FINETUNED_RAW_THRESHOLD,
+            "model": model_name + "+raw_cosine",
+        }
+    )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     results_df.to_csv(output_path, index=False)
@@ -232,6 +226,7 @@ def run_training(use_gpu: bool = True):
     print("  Training Fine-tuned E5 Model (full training)")
     print("=" * 80)
     from scripts.train_e5_quora import train_with_contrastive_loss
+
     output = train_with_contrastive_loss(
         model_name="intfloat/e5-base-v2",
         output_name="e5-quora-finetuned",
@@ -316,15 +311,17 @@ def main():
                     print(f"  {csv_name}: E5+LR Acc={acc:.4f}")
                     out = RESULTS_DIR / "fixed_predictions" / f"fixed_{csv_name}"
                     out.parent.mkdir(parents=True, exist_ok=True)
-                    pd.DataFrame({
-                        "question1": [p[0] for p in pairs],
-                        "question2": [p[1] for p in pairs],
-                        "is_duplicate": y_true,
-                        "predicted_label": y_pred,
-                        "prediction": ["Duplicate" if p == 1 else "Non-Duplicate" for p in y_pred],
-                        "prob_duplicate": sims,
-                        "model": "E5-base-v2+LR",
-                    }).to_csv(out, index=False)
+                    pd.DataFrame(
+                        {
+                            "question1": [p[0] for p in pairs],
+                            "question2": [p[1] for p in pairs],
+                            "is_duplicate": y_true,
+                            "predicted_label": y_pred,
+                            "prediction": ["Duplicate" if p == 1 else "Non-Duplicate" for p in y_pred],
+                            "prob_duplicate": sims,
+                            "model": "E5-base-v2+LR",
+                        }
+                    ).to_csv(out, index=False)
                 except Exception as e:
                     print(f"  ERROR on {csv_name}: {e}")
 

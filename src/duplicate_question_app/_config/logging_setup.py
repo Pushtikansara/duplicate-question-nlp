@@ -5,10 +5,8 @@ import logging.handlers
 import os
 import sys
 from pathlib import Path
-from typing import Any
 
-from duplicate_question_app._config.loader import get_config, ENV_PREFIX, get_env
-
+from duplicate_question_app._config.loader import ENV_PREFIX, get_config
 
 _module_loggers: dict[str, logging.Logger] = {}
 
@@ -24,7 +22,7 @@ def configure_logging(config_dir: Path | None = None, project_root: Path | None 
     level = getattr(logging, level_name, logging.INFO)
     fmt = log_config.get("format", "%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     datefmt = log_config.get("datefmt", "%Y-%m-%d %H:%M:%S")
-    formatter = logging.Formatter(fmt, datefmt=datefmt)
+    logging.Formatter(fmt, datefmt=datefmt)
 
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
@@ -42,10 +40,12 @@ def configure_logging(config_dir: Path | None = None, project_root: Path | None 
         console_level = getattr(logging, console_level_name, logging.INFO)
         ch = logging.StreamHandler(sys.stdout)
         ch.setLevel(console_level)
-        ch.setFormatter(logging.Formatter(
-            console_cfg.get("format", fmt),
-            datefmt=datefmt,
-        ))
+        ch.setFormatter(
+            logging.Formatter(
+                console_cfg.get("format", fmt),
+                datefmt=datefmt,
+            )
+        )
         root_logger.addHandler(ch)
 
     # File handler
@@ -59,13 +59,17 @@ def configure_logging(config_dir: Path | None = None, project_root: Path | None 
         max_bytes = file_cfg.get("max_bytes", 10485760)
         backup_count = file_cfg.get("backup_count", 5)
         fh = logging.handlers.RotatingFileHandler(
-            file_path, maxBytes=max_bytes, backupCount=backup_count,
+            file_path,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
         )
         fh.setLevel(file_level)
-        fh.setFormatter(logging.Formatter(
-            file_cfg.get("format", fmt),
-            datefmt=datefmt,
-        ))
+        fh.setFormatter(
+            logging.Formatter(
+                file_cfg.get("format", fmt),
+                datefmt=datefmt,
+            )
+        )
         root_logger.addHandler(fh)
 
     # Module-specific levels

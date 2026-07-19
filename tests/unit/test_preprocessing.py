@@ -97,6 +97,7 @@ class TestPreprocessing:
 
     def test_preprocessing_imports_from_stub(self):
         from duplicate_question_app.preprocessing import normalize_question as nq
+
         assert nq is normalize_question
 
     def test_preprocessing_error_on_invalid_input(self):

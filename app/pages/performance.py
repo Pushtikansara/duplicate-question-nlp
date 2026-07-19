@@ -4,7 +4,13 @@ import streamlit as st
 
 from app.components.metric_cards import metric_card_row
 from app.services.builder import build_model_comparison_table, format_model_comparison_for_display
-from app.services.data import get_transformer_metrics, get_week4_metrics, get_week4_threshold_df, get_week4_ablation_df, get_week2_vs_week3
+from app.services.data import (
+    get_transformer_metrics,
+    get_week2_vs_week3,
+    get_week4_ablation_df,
+    get_week4_metrics,
+    get_week4_threshold_df,
+)
 from duplicate_question_app.visuals import create_confusion_matrix_figure, create_roc_curve_figure
 
 
@@ -29,7 +35,10 @@ def render() -> None:
                 roc_curve_data = week4_metrics.get("roc_curve")
                 roc_auc = week4_metrics.get("roc_auc")
                 if roc_curve_data and roc_auc is not None:
-                    st.pyplot(create_roc_curve_figure(roc_curve_data["fpr"], roc_curve_data["tpr"], roc_auc), clear_figure=True)
+                    st.pyplot(
+                        create_roc_curve_figure(roc_curve_data["fpr"], roc_curve_data["tpr"], roc_auc),
+                        clear_figure=True,
+                    )
                 else:
                     st.info("ROC data is not available.")
             threshold_df = get_week4_threshold_df()
@@ -60,7 +69,10 @@ def render() -> None:
                 roc_curve_data = week3_metrics.get("roc_curve")
                 roc_auc = week3_metrics.get("roc_auc")
                 if roc_curve_data and roc_auc is not None:
-                    st.pyplot(create_roc_curve_figure(roc_curve_data["fpr"], roc_curve_data["tpr"], roc_auc), clear_figure=True)
+                    st.pyplot(
+                        create_roc_curve_figure(roc_curve_data["fpr"], roc_curve_data["tpr"], roc_auc),
+                        clear_figure=True,
+                    )
                 else:
                     st.info("ROC data is not available.")
             comparison_df = get_week2_vs_week3()
@@ -68,7 +80,9 @@ def render() -> None:
             if not comparison_df.empty:
                 st.dataframe(comparison_df, use_container_width=True)
                 if "Method" in comparison_df.columns:
-                    chart_cols = [col for col in ["Accuracy", "Precision", "Recall", "F1 Score"] if col in comparison_df.columns]
+                    chart_cols = [
+                        col for col in ["Accuracy", "Precision", "Recall", "F1 Score"] if col in comparison_df.columns
+                    ]
                     if chart_cols:
                         st.bar_chart(comparison_df.set_index("Method")[chart_cols])
             else:
@@ -77,6 +91,8 @@ def render() -> None:
     with tab_compare:
         comparison_df = build_model_comparison_table()
         st.dataframe(format_model_comparison_for_display(comparison_df), use_container_width=True, hide_index=True)
-        chart_df = comparison_df.set_index("Model")[["Accuracy", "Precision", "Recall", "F1 Score"]].dropna(axis=1, how="all")
+        chart_df = comparison_df.set_index("Model")[["Accuracy", "Precision", "Recall", "F1 Score"]].dropna(
+            axis=1, how="all"
+        )
         if not chart_df.empty:
             st.bar_chart(chart_df)

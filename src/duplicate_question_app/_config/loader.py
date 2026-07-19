@@ -6,7 +6,6 @@ from typing import Any
 
 import yaml
 
-
 ENV_PREFIX = "DQD_"
 
 _config_cache: dict[str, dict[str, Any]] | None = None
@@ -104,8 +103,14 @@ def load_all_configs(
         config_dir = _find_config_dir(project_root)
 
     config_names = [
-        "app", "paths", "models", "inference",
-        "training", "evaluation", "dataset", "logging",
+        "app",
+        "paths",
+        "models",
+        "inference",
+        "training",
+        "evaluation",
+        "dataset",
+        "logging",
     ]
 
     merged: dict[str, dict[str, Any]] = {}

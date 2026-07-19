@@ -15,19 +15,16 @@ import time
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
+    brier_score_loss,
     classification_report,
     confusion_matrix,
     f1_score,
+    log_loss,
     precision_score,
     recall_score,
     roc_auc_score,
-    brier_score_loss,
-    log_loss,
-    roc_curve,
-    auc,
 )
 
 # Add src to path
@@ -36,10 +33,9 @@ sys.path.insert(0, str(SRC_DIR))
 
 from duplicate_question_app.data_loader import get_quora_splits
 from duplicate_question_app.embedding_models import (
-    predict_batch_sentence_transformer,
     get_ensemble_prediction,
+    predict_batch_sentence_transformer,
 )
-
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "outputs" / "embedding_models"
 EMBEDDING_MODELS = ["E5-base-v2", "BGE-base-en-v1.5", "MPNet-base-v2"]
@@ -92,9 +88,7 @@ def evaluate_predictions(
             "fn": int(fn),
             "tp": int(tp),
         },
-        "classification_report": classification_report(
-            y_true, y_pred, target_names=["Non-Duplicate", "Duplicate"]
-        ),
+        "classification_report": classification_report(y_true, y_pred, target_names=["Non-Duplicate", "Duplicate"]),
     }
     return metrics
 
@@ -110,7 +104,7 @@ def run_evaluation() -> None:
     # Load data
     print("\n[1/3] Loading Quora data splits...")
     _, _, test_df = get_quora_splits()
-    pairs = list(zip(test_df["q1"], test_df["q2"]))
+    pairs = list(zip(test_df["q1"], test_df["q2"], strict=False))
     y_true = test_df["label"].values
     print(f"  Test pairs: {len(pairs):,}")
     print(f"  Duplicate rate: {y_true.mean():.3f}")
@@ -122,9 +116,7 @@ def run_evaluation() -> None:
         print(f"\n[2/3] Evaluating {model_name}...")
         try:
             start = time.time()
-            predictions = predict_batch_sentence_transformer(
-                model_name, pairs, batch_size=64
-            )
+            predictions = predict_batch_sentence_transformer(model_name, pairs, batch_size=64)
             elapsed = time.time() - start
 
             y_prob = np.array([p["prob_duplicate"] for p in predictions])
@@ -153,12 +145,12 @@ def run_evaluation() -> None:
             all_results[model_name] = {"model": model_name, "error": str(e)}
 
     # Evaluate ensemble
-    print(f"\n[2/3] Evaluating Ensemble...")
+    print("\n[2/3] Evaluating Ensemble...")
     try:
         ensemble_probs = []
         ensemble_preds = []
         start = time.time()
-        for i, (q1, q2) in enumerate(zip(test_df["q1"], test_df["q2"])):
+        for _i, (q1, q2) in enumerate(zip(test_df["q1"], test_df["q2"], strict=False)):
             result = get_ensemble_prediction(q1, q2)
             ensemble_probs.append(result.get("prob_duplicate", 0.5))
             ensemble_preds.append(result.get("predicted_label", 0))
@@ -196,8 +188,10 @@ def run_evaluation() -> None:
         reverse=True,
     )
     for rank, (name, m) in enumerate(ranked, 1):
-        print(f"  {rank}. {name:35s} F1={m['f1']:.4f}  Acc={m['accuracy']:.4f}  "
-              f"ROC={m['roc_auc']:.4f}  ECE={m['ece']:.4f}")
+        print(
+            f"  {rank}. {name:35s} F1={m['f1']:.4f}  Acc={m['accuracy']:.4f}  "
+            f"ROC={m['roc_auc']:.4f}  ECE={m['ece']:.4f}"
+        )
 
 
 if __name__ == "__main__":

@@ -7,14 +7,16 @@ the best calibration method for each model group.
 
 from __future__ import annotations
 
-import numpy as np
-from typing import Any
 from dataclasses import dataclass, field
+from typing import Any
+
+import numpy as np
 
 # Try sklearn; gracefully degrade if not available
 try:
-    from sklearn.isotonic import IsotonicRegression
-    from sklearn.linear_model import LogisticRegression
+    from sklearn.isotonic import IsotonicRegression  # noqa: F401
+    from sklearn.linear_model import LogisticRegression  # noqa: F401
+
     _SKLEARN_AVAILABLE = True
 except ImportError:
     _SKLEARN_AVAILABLE = False
@@ -23,10 +25,11 @@ except ImportError:
 @dataclass
 class CalibrationResult:
     """Result of applying a calibration method."""
+
     calibrated_probs: np.ndarray
     method: str
-    ece_before: float       # Expected Calibration Error before calibration
-    ece_after: float        # Expected Calibration Error after calibration
+    ece_before: float  # Expected Calibration Error before calibration
+    ece_after: float  # Expected Calibration Error after calibration
     parameters: dict[str, Any] = field(default_factory=dict)
 
 
@@ -74,8 +77,7 @@ def _optimal_temperature(logits: np.ndarray, labels: np.ndarray) -> float:
         calibrated = temperature_scale(logits, temp)
         # Negative log-likelihood
         eps = 1e-12
-        nll = -np.mean(labels * np.log(calibrated[:, 1] + eps) +
-                       (1 - labels) * np.log(calibrated[:, 0] + eps))
+        nll = -np.mean(labels * np.log(calibrated[:, 1] + eps) + (1 - labels) * np.log(calibrated[:, 0] + eps))
         if nll < best_nll:
             best_nll = nll
             best_temp = temp
@@ -106,9 +108,7 @@ def calibrate_duplicate_probs(
         eps = 1e-8
         p = np.clip(prob_duplicate, eps, 1.0 - eps)
         logit = np.log(p / (1.0 - p))
-        calibrated = temperature_scale(
-            np.array([[0.0, logit]]), temperature
-        )[0, 1]
+        calibrated = temperature_scale(np.array([[0.0, logit]]), temperature)[0, 1]
         return float(calibrated)
 
     if method == "platt":

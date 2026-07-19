@@ -5,16 +5,15 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 import yaml
 
+from duplicate_question_app._config.loader import clear_config_cache
 from duplicate_question_app._config.logging_setup import (
     _basic_fallback,
     _module_loggers,
     configure_logging,
     get_logger,
 )
-from duplicate_question_app._config.loader import clear_config_cache
 
 
 class TestLoggingSetup:
@@ -50,7 +49,7 @@ class TestLoggingSetup:
         assert l1 is not l2
 
     def test_get_logger_sets_basic_config_if_no_handlers(self):
-        prev_handlers = list(_module_loggers.items())
+        list(_module_loggers.items())
         _module_loggers.clear()
         root = logging.getLogger()
 
@@ -143,6 +142,7 @@ class TestLoggingSetup:
 
     def test_configure_logging_env_override(self):
         import os
+
         os.environ["DQD_LOG_LEVEL"] = "ERROR"
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir)

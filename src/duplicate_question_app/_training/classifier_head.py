@@ -19,7 +19,6 @@ which is much more expressive than cosine similarity (just a single scalar).
 
 from __future__ import annotations
 
-import json
 import time
 from pathlib import Path
 from typing import Any
@@ -34,8 +33,8 @@ from duplicate_question_app._config.logging_setup import get_logger
 from duplicate_question_app.config import get_app_paths, get_config
 from duplicate_question_app.data_loader import get_quora_splits
 from duplicate_question_app.embedding_models import (
-    get_sentence_transformer_model,
     _resolve_device,
+    get_sentence_transformer_model,
 )
 from duplicate_question_app.preprocessing import normalize_question
 
@@ -70,8 +69,7 @@ LR_MODELS = _build_lr_models()
 class EmbeddingMLP(nn.Module):
     """MLP classifier trained on concatenated embedding features."""
 
-    def __init__(self, input_dim: int = 3072, hidden_dim: int = 256,
-                 hidden_dim2: int = 64, dropout: float = 0.2):
+    def __init__(self, input_dim: int = 3072, hidden_dim: int = 256, hidden_dim2: int = 64, dropout: float = 0.2):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
@@ -92,20 +90,21 @@ def _load_lr_head(model_name: str) -> LogisticRegression:
     key = model_name
     if key not in LR_MODELS:
         available = list(LR_MODELS.keys())
-        raise ValueError(
-            f"No LR head for '{model_name}'. Available: {available}"
-        )
+        raise ValueError(f"No LR head for '{model_name}'. Available: {available}")
     return joblib.load(LR_MODELS[key])
 
 
 def build_features(emb1: np.ndarray, emb2: np.ndarray) -> np.ndarray:
     """Build feature vectors from pairs of normalized embeddings."""
-    return np.concatenate([
-        emb1,
-        emb2,
-        np.abs(emb1 - emb2),
-        emb1 * emb2,
-    ], axis=1)
+    return np.concatenate(
+        [
+            emb1,
+            emb2,
+            np.abs(emb1 - emb2),
+            emb1 * emb2,
+        ],
+        axis=1,
+    )
 
 
 def predict_with_lr(
@@ -167,10 +166,8 @@ def batch_predict_with_lr(
     q2_enc = [f"passage: {q}" if is_e5 else q for q in q2s]
 
     encoder = get_sentence_transformer_model(model_name)
-    emb1 = encoder.encode(q1_enc, normalize_embeddings=True,
-                          batch_size=batch_size, show_progress_bar=False)
-    emb2 = encoder.encode(q2_enc, normalize_embeddings=True,
-                          batch_size=batch_size, show_progress_bar=False)
+    emb1 = encoder.encode(q1_enc, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
+    emb2 = encoder.encode(q2_enc, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
 
     features = build_features(emb1, emb2)
     clf = _load_lr_head(model_name)
@@ -216,16 +213,14 @@ def batch_predict_ensemble(
         List of prediction dicts.
     """
     if model_names is None:
-        model_names = ["E5-base-v2", "BAAI/bge-base-en-v1.5",
-                       "sentence-transformers/all-mpnet-base-v2"]
+        model_names = ["E5-base-v2", "BAAI/bge-base-en-v1.5", "sentence-transformers/all-mpnet-base-v2"]
     if weights is None:
         weights = [0.3, 0.35, 0.35]
     weights = np.array(weights) / sum(weights)
 
     all_probs = []
     for name in model_names:
-        preds = batch_predict_with_lr(name, pairs, threshold=threshold,
-                                       batch_size=batch_size)
+        preds = batch_predict_with_lr(name, pairs, threshold=threshold, batch_size=batch_size)
         all_probs.append(np.array([p["prob_duplicate"] for p in preds]))
 
     avg_probs = np.average(all_probs, axis=0, weights=weights)
@@ -253,15 +248,12 @@ def batch_predict_ensemble(
     ]
 
 
-def extract_embeddings(
-    model_name: str, texts: list[str], batch_size: int = 128
-) -> np.ndarray:
+def extract_embeddings(model_name: str, texts: list[str], batch_size: int = 128) -> np.ndarray:
     """Extract normalized embeddings from a sentence transformer model."""
     model = get_sentence_transformer_model(model_name)
     is_e5 = "e5" in model_name.lower()
     encoded = [f"query: {t}" if is_e5 else t for t in texts]
-    return model.encode(encoded, normalize_embeddings=True,
-                        batch_size=batch_size, show_progress_bar=True)
+    return model.encode(encoded, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=True)
 
 
 def train_mlp_head(
@@ -360,12 +352,19 @@ def train_mlp_head(
             val_preds = model(val_X.to(device)).cpu().numpy()
         val_pred_labels = (val_preds >= 0.5).astype(int)
 
-        from sklearn.metrics import f1_score, accuracy_score
+        from sklearn.metrics import accuracy_score, f1_score
+
         val_f1 = f1_score(val_y.numpy(), val_pred_labels, zero_division=0)
         val_acc = accuracy_score(val_y.numpy(), val_pred_labels)
 
-        _logger.info("Epoch %2d/%d  Loss: %.4f  Val Acc: %.4f Val F1: %.4f",
-                     epoch + 1, epochs, np.mean(train_losses), val_acc, val_f1)
+        _logger.info(
+            "Epoch %2d/%d  Loss: %.4f  Val Acc: %.4f Val F1: %.4f",
+            epoch + 1,
+            epochs,
+            np.mean(train_losses),
+            val_acc,
+            val_f1,
+        )
 
         # Early stopping
         if val_f1 > best_val_f1:
@@ -477,10 +476,8 @@ def batch_predict_with_mlp(
     q2_enc = [f"passage: {q}" if is_e5 else q for q in q2s]
 
     encoder = get_sentence_transformer_model(model_name)
-    emb1 = encoder.encode(q1_enc, normalize_embeddings=True,
-                          batch_size=batch_size, show_progress_bar=False)
-    emb2 = encoder.encode(q2_enc, normalize_embeddings=True,
-                          batch_size=batch_size, show_progress_bar=False)
+    emb1 = encoder.encode(q1_enc, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
+    emb2 = encoder.encode(q2_enc, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
 
     # Build features
     features = build_features(emb1, emb2)
@@ -516,6 +513,10 @@ def batch_predict_with_mlp(
 
 if __name__ == "__main__":
     # Training script
+    from duplicate_question_app.config import get_app_paths
+
+    _paths = get_app_paths()
+    MODEL_DIR = _paths.models_dir
     weights_path = MODEL_DIR / "e5_mlp_head.pt"
     _logger.info("=" * 60)
     _logger.info("Training MLP head on E5 embeddings")

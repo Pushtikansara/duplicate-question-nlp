@@ -1,6 +1,8 @@
 """Inference module for Week 2 classical ML models (TF-IDF + LR / TF-IDF + SVM)."""
+
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -8,13 +10,16 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-import time
 from scipy.sparse import hstack, spmatrix
 
 from duplicate_question_app.config import AppPaths
 from duplicate_question_app.preprocessing import normalize_question as _base_normalize
+
+
 # TF-IDF models were trained on original text without abbreviation expansion.
-normalize_question = lambda text: _base_normalize(text, expand_abbrevs=False)
+def normalize_question(text):
+    return _base_normalize(text, expand_abbrevs=False)
+
 
 WEEK2_MODELS_DIR_NAME = "week2_models"
 
@@ -31,7 +36,6 @@ class Week2ModelMetadata:
     device: str = "cpu"
     model_name: str = ""
     latency_ms: float = 0.0
-
 
 
 def _get_week2_models_dir(paths: AppPaths) -> Path:
@@ -104,9 +108,7 @@ class Week2InferenceService:
         q2_vec = tfidf.transform([q2])
         return hstack([q1_vec, q2_vec])
 
-    def _extract_features_batch(
-        self, q1_list: list[str], q2_list: list[str]
-    ) -> spmatrix:
+    def _extract_features_batch(self, q1_list: list[str], q2_list: list[str]) -> spmatrix:
         """Extract TF-IDF features for a batch of question pairs."""
         tfidf = self._load_tfidf()
         q1_vec = tfidf.transform(q1_list)
@@ -131,9 +133,7 @@ class Week2InferenceService:
         else:
             raise ValueError(f"Unknown Week 2 model: {model_name}")
 
-    def predict_single(
-        self, question1: str, question2: str, model_name: str
-    ) -> dict[str, Any]:
+    def predict_single(self, question1: str, question2: str, model_name: str) -> dict[str, Any]:
         start_time = time.time()
         q1 = normalize_question(question1)
         q2 = normalize_question(question2)
@@ -182,9 +182,7 @@ class Week2InferenceService:
             "feature_breakdown": None,
         }
 
-    def predict_batch(
-        self, question_pairs: list[tuple[str, str]], model_name: str
-    ) -> pd.DataFrame:
+    def predict_batch(self, question_pairs: list[tuple[str, str]], model_name: str) -> pd.DataFrame:
         pairs = list(question_pairs)
         if not pairs:
             return pd.DataFrame()
@@ -193,11 +191,9 @@ class Week2InferenceService:
         q2_list = [normalize_question(p[1]) for p in pairs]
 
         # Validate all non-empty
-        for i, (q1, q2) in enumerate(zip(q1_list, q2_list)):
+        for i, (q1, q2) in enumerate(zip(q1_list, q2_list, strict=False)):
             if not q1 or not q2:
-                raise ValueError(
-                    f"Question pair at index {i} has empty text."
-                )
+                raise ValueError(f"Question pair at index {i} has empty text.")
 
         features = self._extract_features_batch(q1_list, q2_list)
 
@@ -220,7 +216,7 @@ class Week2InferenceService:
         confidences = np.maximum(prob_non_dup_arr, prob_dup_arr)
 
         results: list[dict[str, Any]] = []
-        for i, (q1, q2) in enumerate(zip(q1_list, q2_list)):
+        for i, (q1, q2) in enumerate(zip(q1_list, q2_list, strict=False)):
             results.append(
                 {
                     "question1": q1,

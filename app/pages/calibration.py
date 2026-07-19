@@ -3,8 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from duplicate_question_app.config import MODEL_CHOICES
 from duplicate_question_app.confidence_calibration import calibrate_model_prediction, get_model_calibration_params
+from duplicate_question_app.config import MODEL_CHOICES
 
 
 def render() -> None:
@@ -22,11 +22,13 @@ def render() -> None:
         if model_name == "Semantic Ensemble":
             continue
         cp = get_model_calibration_params(model_name)
-        params_data.append({
-            "Model": model_name,
-            "Method": cp["method"].title(),
-            "Temperature": cp["temperature"],
-        })
+        params_data.append(
+            {
+                "Model": model_name,
+                "Method": cp["method"].title(),
+                "Temperature": cp["temperature"],
+            }
+        )
     st.dataframe(pd.DataFrame(params_data), use_container_width=True, hide_index=True)
 
     st.subheader("Interactive Calibration Demo")

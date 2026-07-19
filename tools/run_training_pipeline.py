@@ -19,10 +19,10 @@ Usage:
 
 from __future__ import annotations
 
-import sys
-import time
 import argparse
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -37,10 +37,11 @@ def run_mining():
     print("\n" + "=" * 60)
     print("  STEP 1/4: Hard Negative Mining")
     print("=" * 60)
-    
+
     from duplicate_question_app.hard_negative_mining import main as mine_main
+
     mine_main()
-    
+
     print("\n✅ Hard negative mining complete!\n")
 
 
@@ -49,7 +50,7 @@ def run_train_e5(use_gpu: bool = False, fast: bool = False):
     print("\n" + "=" * 60)
     print("  STEP 2/4: Fine-tune E5 Embedding Model")
     print("=" * 60)
-    
+
     # Run training script as subprocess for clean execution
     script = TOOLS_DIR / "train_e5_quora.py"
     cmd = [sys.executable, str(script)]
@@ -57,14 +58,14 @@ def run_train_e5(use_gpu: bool = False, fast: bool = False):
         cmd.append("--use-gpu")
     if fast:
         cmd.extend(["--epochs", "2", "--max-samples", "100000", "--batch-size", "128"])
-    
+
     print(f"  Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=False)
-    
+
     if result.returncode != 0:
         print(f"\n❌ E5 training failed with exit code {result.returncode}")
     else:
-        print(f"\n✅ E5 fine-tuning complete!\n")
+        print("\n✅ E5 fine-tuning complete!\n")
 
 
 def run_train_cross_encoder(use_gpu: bool = False, fast: bool = False):
@@ -72,21 +73,21 @@ def run_train_cross_encoder(use_gpu: bool = False, fast: bool = False):
     print("\n" + "=" * 60)
     print("  STEP 3/4: Fine-tune Cross-Encoder (DeBERTa-v3)")
     print("=" * 60)
-    
+
     script = TOOLS_DIR / "train_cross_encoder.py"
     cmd = [sys.executable, str(script)]
     if use_gpu:
         cmd.append("--use-gpu")
     if fast:
         cmd.extend(["--epochs", "2", "--max-samples", "50000", "--batch-size", "16"])
-    
+
     print(f"  Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=False)
-    
+
     if result.returncode != 0:
         print(f"\n❌ Cross-encoder training failed with exit code {result.returncode}")
     else:
-        print(f"\n✅ Cross-encoder training complete!\n")
+        print("\n✅ Cross-encoder training complete!\n")
 
 
 def run_evaluation():
@@ -94,36 +95,30 @@ def run_evaluation():
     print("\n" + "=" * 60)
     print("  STEP 4/4: Enhanced Evaluation")
     print("=" * 60)
-    
+
     script = TOOLS_DIR / "enhanced_evaluation.py"
     cmd = [sys.executable, str(script)]
-    
+
     print(f"  Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=False)
-    
+
     if result.returncode != 0:
         print(f"\n❌ Evaluation failed with exit code {result.returncode}")
     else:
-        print(f"\n✅ Evaluation complete!\n")
+        print("\n✅ Evaluation complete!\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Duplicate Question Detection — Training Pipeline"
-    )
+    parser = argparse.ArgumentParser(description="Duplicate Question Detection — Training Pipeline")
     parser.add_argument(
-        "--step", type=str, default="all",
+        "--step",
+        type=str,
+        default="all",
         choices=["all", "mine", "train-e5", "train-cross-encoder", "evaluate"],
-        help="Pipeline step to run (default: all)"
+        help="Pipeline step to run (default: all)",
     )
-    parser.add_argument(
-        "--use-gpu", action="store_true",
-        help="Use GPU for training (much faster)"
-    )
-    parser.add_argument(
-        "--fast", action="store_true",
-        help="Fast mode: fewer samples, fewer epochs for quick testing"
-    )
+    parser.add_argument("--use-gpu", action="store_true", help="Use GPU for training (much faster)")
+    parser.add_argument("--fast", action="store_true", help="Fast mode: fewer samples, fewer epochs for quick testing")
     args = parser.parse_args()
 
     total_start = time.time()

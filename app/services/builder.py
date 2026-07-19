@@ -5,15 +5,14 @@ from typing import Any
 
 import pandas as pd
 
-from app.utils.constants import PATHS, PROJECT_ROOT
 from app.services.data import (
+    get_transformer_metrics,
     get_week2_model_comparison,
     get_week2_vs_week3,
     get_week4_ablation_df,
-    get_transformer_metrics,
     get_week4_metrics,
 )
-from duplicate_question_app.config import resolve_model_selection
+from app.utils.constants import PATHS, PROJECT_ROOT
 from duplicate_question_app.week2_inference import check_week2_artifacts
 
 
@@ -38,15 +37,17 @@ def _format_model_size(path: Path | None) -> str:
 def build_model_status_table(resolution: Any) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for status in (resolution.week4, resolution.week3):
-        rows.append({
-            "Model": status.label,
-            "Directory": str(status.model_dir.relative_to(PROJECT_ROOT)),
-            "Ready": "Yes" if status.ready else "No",
-            "Config": "Yes" if status.has_config else "No",
-            "Weights": status.weight_file.name if status.weight_file else "Missing",
-            "Tokenizer": ", ".join(status.tokenizer_files) if status.tokenizer_files else "Missing",
-            "Issues": ", ".join(status.issues) if status.issues else "None",
-        })
+        rows.append(
+            {
+                "Model": status.label,
+                "Directory": str(status.model_dir.relative_to(PROJECT_ROOT)),
+                "Ready": "Yes" if status.ready else "No",
+                "Config": "Yes" if status.has_config else "No",
+                "Weights": status.weight_file.name if status.weight_file else "Missing",
+                "Tokenizer": ", ".join(status.tokenizer_files) if status.tokenizer_files else "Missing",
+                "Issues": ", ".join(status.issues) if status.issues else "None",
+            }
+        )
     week2_artifacts = check_week2_artifacts(PATHS)
     week2_ready = all(week2_artifacts.values())
     week2_issues = []
@@ -56,15 +57,17 @@ def build_model_status_table(resolution: Any) -> pd.DataFrame:
         week2_issues.append("Logistic Regression missing")
     if not week2_artifacts["linear_svm"]:
         week2_issues.append("Linear SVM missing")
-    rows.append({
-        "Model": "Week 2 Models (TF-IDF + LR/SVM)",
-        "Directory": "models/week2_models/",
-        "Ready": "Yes" if week2_ready else "No",
-        "Config": "N/A",
-        "Weights": "joblib files" if week2_ready else "Missing",
-        "Tokenizer": "N/A",
-        "Issues": ", ".join(week2_issues) if week2_issues else "None",
-    })
+    rows.append(
+        {
+            "Model": "Week 2 Models (TF-IDF + LR/SVM)",
+            "Directory": "models/week2_models/",
+            "Ready": "Yes" if week2_ready else "No",
+            "Config": "N/A",
+            "Weights": "joblib files" if week2_ready else "Missing",
+            "Tokenizer": "N/A",
+            "Issues": ", ".join(week2_issues) if week2_issues else "None",
+        }
+    )
     for m_name, m_dir in [
         ("BGE-base-en-v1.5", PATHS.bge_model_dir),
         ("E5-base-v2", PATHS.e5_model_dir),
@@ -73,15 +76,17 @@ def build_model_status_table(resolution: Any) -> pd.DataFrame:
         ("Cross-Encoder-Quora (Trained)", PATHS.finetuned_cross_encoder_dir),
     ]:
         exists = m_dir.exists() and (m_dir / "config.json").exists()
-        rows.append({
-            "Model": m_name,
-            "Directory": str(m_dir.relative_to(PROJECT_ROOT)) if m_dir.exists() else str(m_dir),
-            "Ready": "Yes (via HuggingFace)" if not exists else "Yes (local)",
-            "Config": "N/A (HF)",
-            "Weights": "N/A (HF)",
-            "Tokenizer": "N/A (HF)",
-            "Issues": "Will download from HuggingFace on first use" if not exists else "None",
-        })
+        rows.append(
+            {
+                "Model": m_name,
+                "Directory": str(m_dir.relative_to(PROJECT_ROOT)) if m_dir.exists() else str(m_dir),
+                "Ready": "Yes (via HuggingFace)" if not exists else "Yes (local)",
+                "Config": "N/A (HF)",
+                "Weights": "N/A (HF)",
+                "Tokenizer": "N/A (HF)",
+                "Issues": "Will download from HuggingFace on first use" if not exists else "None",
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -105,17 +110,19 @@ def build_model_comparison_table() -> pd.DataFrame:
         else:
             match = pd.DataFrame()
         row = match.iloc[0].to_dict() if not match.empty else {}
-        rows.append({
-            "Model": week2_labels[source_name],
-            "Accuracy": row.get("Accuracy"),
-            "Precision": row.get("Precision (Dup)"),
-            "Recall": row.get("Recall (Dup)"),
-            "F1 Score": row.get("F1 (Dup)"),
-            "ROC AUC": None,
-            "Training Time": "N/A",
-            "Model Size": "N/A",
-            "Short Description": week2_descriptions[source_name],
-        })
+        rows.append(
+            {
+                "Model": week2_labels[source_name],
+                "Accuracy": row.get("Accuracy"),
+                "Precision": row.get("Precision (Dup)"),
+                "Recall": row.get("Recall (Dup)"),
+                "F1 Score": row.get("F1 (Dup)"),
+                "ROC AUC": None,
+                "Training Time": "N/A",
+                "Model Size": "N/A",
+                "Short Description": week2_descriptions[source_name],
+            }
+        )
 
     week3_row: dict[str, Any] = {}
     if not week2_vs_week3_df.empty and "Method" in week2_vs_week3_df.columns:
@@ -129,28 +136,32 @@ def build_model_comparison_table() -> pd.DataFrame:
         if not week4_match.empty:
             week4_row = week4_match.iloc[-1].to_dict()
 
-    rows.append({
-        "Model": "DistilBERT (Week 3)",
-        "Accuracy": week3_row.get("Accuracy"),
-        "Precision": week3_row.get("Precision"),
-        "Recall": week3_row.get("Recall"),
-        "F1 Score": week3_row.get("F1 Score"),
-        "ROC AUC": None,
-        "Training Time": "N/A",
-        "Model Size": _format_model_size(PATHS.week3_model_dir),
-        "Short Description": "Fine-tuned DistilBERT sequence classifier used as the transformer baseline.",
-    })
-    rows.append({
-        "Model": "Improved DistilBERT (Week 4)",
-        "Accuracy": week4_row.get("Accuracy"),
-        "Precision": week4_row.get("Precision"),
-        "Recall": week4_row.get("Recall"),
-        "F1 Score": week4_row.get("F1 Score"),
-        "ROC AUC": week4_row.get("ROC-AUC"),
-        "Training Time": "N/A",
-        "Model Size": _format_model_size(PATHS.week4_model_dir),
-        "Short Description": "Week 4 DistilBERT variant with class weighting, tuned threshold, and error-analysis artifacts.",
-    })
+    rows.append(
+        {
+            "Model": "DistilBERT (Week 3)",
+            "Accuracy": week3_row.get("Accuracy"),
+            "Precision": week3_row.get("Precision"),
+            "Recall": week3_row.get("Recall"),
+            "F1 Score": week3_row.get("F1 Score"),
+            "ROC AUC": None,
+            "Training Time": "N/A",
+            "Model Size": _format_model_size(PATHS.week3_model_dir),
+            "Short Description": "Fine-tuned DistilBERT sequence classifier used as the transformer baseline.",
+        }
+    )
+    rows.append(
+        {
+            "Model": "Improved DistilBERT (Week 4)",
+            "Accuracy": week4_row.get("Accuracy"),
+            "Precision": week4_row.get("Precision"),
+            "Recall": week4_row.get("Recall"),
+            "F1 Score": week4_row.get("F1 Score"),
+            "ROC AUC": week4_row.get("ROC-AUC"),
+            "Training Time": "N/A",
+            "Model Size": _format_model_size(PATHS.week4_model_dir),
+            "Short Description": "Week 4 DistilBERT variant with class weighting, tuned threshold, and error-analysis artifacts.",
+        }
+    )
 
     phase2_models = [
         ("BGE-base-en-v1.5", "BGE embedding model for semantic similarity."),
@@ -160,17 +171,19 @@ def build_model_comparison_table() -> pd.DataFrame:
         ("Semantic Ensemble", "Averaged predictions from all models."),
     ]
     for name, desc in phase2_models:
-        rows.append({
-            "Model": name,
-            "Accuracy": None,
-            "Precision": None,
-            "Recall": None,
-            "F1 Score": None,
-            "ROC AUC": None,
-            "Training Time": "N/A",
-            "Model Size": "Varies",
-            "Short Description": desc,
-        })
+        rows.append(
+            {
+                "Model": name,
+                "Accuracy": None,
+                "Precision": None,
+                "Recall": None,
+                "F1 Score": None,
+                "ROC AUC": None,
+                "Training Time": "N/A",
+                "Model Size": "Varies",
+                "Short Description": desc,
+            }
+        )
 
     comparison_df = pd.DataFrame(rows)
     numeric_columns = ["Accuracy", "Precision", "Recall", "F1 Score", "ROC AUC"]
@@ -201,14 +214,26 @@ def get_model_metrics_for(model_name: str) -> dict[str, Any]:
             row = df[df["Model"] == "LR + TF-IDF"]
             if not row.empty:
                 r = row.iloc[0]
-                return {"accuracy": r.get("Accuracy"), "precision": r.get("Precision (Dup)"), "recall": r.get("Recall (Dup)"), "f1": r.get("F1 (Dup)"), "roc_auc": None}
+                return {
+                    "accuracy": r.get("Accuracy"),
+                    "precision": r.get("Precision (Dup)"),
+                    "recall": r.get("Recall (Dup)"),
+                    "f1": r.get("F1 (Dup)"),
+                    "roc_auc": None,
+                }
     elif model_name == "TF-IDF + Linear SVM (Week 2)":
         df = get_week2_model_comparison()
         if not df.empty and "Model" in df.columns:
             row = df[df["Model"] == "SVM + TF-IDF"]
             if not row.empty:
                 r = row.iloc[0]
-                return {"accuracy": r.get("Accuracy"), "precision": r.get("Precision (Dup)"), "recall": r.get("Recall (Dup)"), "f1": r.get("F1 (Dup)"), "roc_auc": None}
+                return {
+                    "accuracy": r.get("Accuracy"),
+                    "precision": r.get("Precision (Dup)"),
+                    "recall": r.get("Recall (Dup)"),
+                    "f1": r.get("F1 (Dup)"),
+                    "roc_auc": None,
+                }
     elif model_name == "DistilBERT (Week 3)":
         return get_transformer_metrics()
     elif model_name == "Improved DistilBERT (Week 4)":

@@ -17,14 +17,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
-
+from duplicate_question_app.agreement_engine import analyze_agreement, collect_all_votes
 from duplicate_question_app.config import AppPaths, get_app_paths
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
-from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
-from duplicate_question_app.embedding_models import predict_with_sentence_transformer
-from duplicate_question_app.agreement_engine import collect_all_votes, ModelVote, analyze_agreement
-
 
 # Common synonyms used for detection (lowercase)
 _SYNONYM_PAIRS: list[tuple[str, str]] = [
@@ -52,8 +46,28 @@ def _count_lexical_overlap(q1: str, q2: str) -> float:
     t1 = set(q1.lower().split())
     t2 = set(q2.lower().split())
     # Remove very common words
-    stop_words = {"the", "a", "an", "is", "are", "was", "were", "to", "of", "in",
-                  "for", "on", "at", "by", "with", "from", "and", "or", "it", "i"}
+    stop_words = {
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "at",
+        "by",
+        "with",
+        "from",
+        "and",
+        "or",
+        "it",
+        "i",
+    }
     t1 = t1 - stop_words
     t2 = t2 - stop_words
     if not t1 or not t2:
@@ -111,9 +125,10 @@ def _detect_semantic_depth(q1: str, q2: str) -> float:
 @dataclass
 class AdaptiveWeights:
     """Dynamic weights assigned to each model group based on input features."""
-    lexical_weight: float = 0.15        # TF-IDF models
-    transformer_weight: float = 0.25    # DistilBERT models
-    embedding_weight: float = 0.35      # BGE, E5, MPNet
+
+    lexical_weight: float = 0.15  # TF-IDF models
+    transformer_weight: float = 0.25  # DistilBERT models
+    embedding_weight: float = 0.35  # BGE, E5, MPNet
     cross_encoder_weight: float = 0.25  # DeBERTa
     semantic_depth: float = 0.0
     lexical_overlap: float = 0.0
@@ -192,6 +207,7 @@ def get_adaptive_ensemble_prediction(
     """
     if paths is None:
         from pathlib import Path
+
         paths = get_app_paths(Path(__file__).resolve().parents[2])
 
     start_time = time.time()
@@ -208,22 +224,35 @@ def get_adaptive_ensemble_prediction(
     # Lexical models (Week 2)
     for v in votes:
         if "Week 2" in v.model_name and v.error is None:
-            model_weights[v.model_name] = weights.lexical_weight / max(1, sum(1 for v2 in votes if "Week 2" in v2.model_name and v2.error is None))
+            model_weights[v.model_name] = weights.lexical_weight / max(
+                1, sum(1 for v2 in votes if "Week 2" in v2.model_name and v2.error is None)
+            )
 
     # Transformer models (Week 3, Week 4)
     for v in votes:
         if "DistilBERT" in v.model_name and v.error is None:
-            model_weights[v.model_name] = weights.transformer_weight / max(1, sum(1 for v2 in votes if "DistilBERT" in v2.model_name and v2.error is None))
+            model_weights[v.model_name] = weights.transformer_weight / max(
+                1, sum(1 for v2 in votes if "DistilBERT" in v2.model_name and v2.error is None)
+            )
 
     # Embedding models (BGE, E5, MPNet)
     for v in votes:
         if v.model_name in ("BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2") and v.error is None:
-            model_weights[v.model_name] = weights.embedding_weight / max(1, sum(1 for v2 in votes if v2.model_name in ("BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2") and v2.error is None))
+            model_weights[v.model_name] = weights.embedding_weight / max(
+                1,
+                sum(
+                    1
+                    for v2 in votes
+                    if v2.model_name in ("BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2") and v2.error is None
+                ),
+            )
 
     # Cross-encoder (DeBERTa)
     for v in votes:
         if "DeBERTa" in v.model_name and v.error is None:
-            model_weights[v.model_name] = weights.cross_encoder_weight / max(1, sum(1 for v2 in votes if "DeBERTa" in v2.model_name and v2.error is None))
+            model_weights[v.model_name] = weights.cross_encoder_weight / max(
+                1, sum(1 for v2 in votes if "DeBERTa" in v2.model_name and v2.error is None)
+            )
 
     # Compute weighted probability
     weighted_probs: list[float] = []
@@ -272,10 +301,10 @@ def get_adaptive_ensemble_prediction(
         "device": "cpu",
         "latency_ms": (time.time() - start_time) * 1000,
         "reason": f"Adaptive ensemble weighting {len(model_weights)} models "
-                  f"(lexical={weights.lexical_weight:.1%}, "
-                  f"transformer={weights.transformer_weight:.1%}, "
-                  f"embedding={weights.embedding_weight:.1%}, "
-                  f"cross-encoder={weights.cross_encoder_weight:.1%})",
+        f"(lexical={weights.lexical_weight:.1%}, "
+        f"transformer={weights.transformer_weight:.1%}, "
+        f"embedding={weights.embedding_weight:.1%}, "
+        f"cross-encoder={weights.cross_encoder_weight:.1%})",
         "feature_breakdown": model_contributions,
         "adaptive_weights": {
             "lexical_weight": weights.lexical_weight,

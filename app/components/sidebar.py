@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 import streamlit as st
 
 from app.services.runtime import get_model_resolution, get_runtime_context
@@ -12,21 +10,46 @@ from duplicate_question_app.week2_inference import check_week2_artifacts
 
 def sidebar_navigation() -> str:
     st.sidebar.title("🔬 DQD System")
-    st.sidebar.markdown("<div style='margin:-0.5rem 0 0.5rem 0;color:#64748B;font-size:0.78rem;'>Duplicate Question Detection</div>", unsafe_allow_html=True)
+    st.sidebar.markdown(
+        "<div style='margin:-0.5rem 0 0.5rem 0;color:#64748B;font-size:0.78rem;'>Duplicate Question Detection</div>",
+        unsafe_allow_html=True,
+    )
 
     st.sidebar.markdown("### 📌 Main")
     main_pages = ["⏎ Home", "Prediction Page", "Batch CSV Prediction", "Model Comparison", "Performance Dashboard"]
     st.sidebar.markdown("### 🔬 Research")
-    research_pages = ["Research: Model Agreement", "Research: Decision Trace", "Research: Calibration", "Research: Error Explorer"]
+    research_pages = [
+        "Research: Model Agreement",
+        "Research: Decision Trace",
+        "Research: Calibration",
+        "Research: Error Explorer",
+    ]
     st.sidebar.markdown("### 🧪 Phase 3: False Positive Reduction")
     phase3_pages = [
-        "Entity Detection", "Intent Detection", "Negation Detection", "Contradiction Detection",
-        "Lexical Penalty", "Adaptive Ensemble V2", "Advanced Calibration", "Error Logger",
-        "Agreement Dashboard", "Advanced Explainability", "Performance Optimizer",
-        "Evaluation Suite", "Hard Test Generator"
+        "Entity Detection",
+        "Intent Detection",
+        "Negation Detection",
+        "Contradiction Detection",
+        "Lexical Penalty",
+        "Adaptive Ensemble V2",
+        "Advanced Calibration",
+        "Error Logger",
+        "Agreement Dashboard",
+        "Advanced Explainability",
+        "Performance Optimizer",
+        "Evaluation Suite",
+        "Hard Test Generator",
     ]
     st.sidebar.markdown("### 🛠️ Developer")
-    dev_pages = ["Model Manager", "Project Overview", "Dataset Information", "Pipeline", "Model Info", "Error Analysis", "Explainability"]
+    dev_pages = [
+        "Model Manager",
+        "Project Overview",
+        "Dataset Information",
+        "Pipeline",
+        "Model Info",
+        "Error Analysis",
+        "Explainability",
+    ]
 
     all_pages = main_pages + research_pages + phase3_pages + dev_pages
 
@@ -40,15 +63,18 @@ def sidebar_navigation() -> str:
     st.sidebar.markdown("### 🤖 Model")
     prev_model = st.session_state.get("selected_model", None)
     model_sel = st.sidebar.selectbox(
-        "Select model", MODEL_CHOICES,
+        "Select model",
+        MODEL_CHOICES,
         index=MODEL_CHOICES.index(prev_model) if prev_model in MODEL_CHOICES else 3,
-        key="selected_model_widget", label_visibility="collapsed",
+        key="selected_model_widget",
+        label_visibility="collapsed",
     )
 
     if model_sel != prev_model:
         st.session_state["selected_model"] = model_sel
         _model_cache.clear()
         import duplicate_question_app.embedding_models as em
+
         em._sentence_transformer_cache.clear()
         st.rerun()
 
@@ -69,7 +95,9 @@ def sidebar_navigation() -> str:
         st.sidebar.caption(f"Active: {model_name[:30]}")
 
     week2_ready = all(check_week2_artifacts(PATHS).values())
-    st.sidebar.caption(f"W2: {'✅' if week2_ready else '❌'}  W3: {'✅' if resolution.week3.ready else '❌'}  W4: {'✅' if resolution.week4.ready else '❌'}")
+    st.sidebar.caption(
+        f"W2: {'✅' if week2_ready else '❌'}  W3: {'✅' if resolution.week3.ready else '❌'}  W4: {'✅' if resolution.week4.ready else '❌'}"
+    )
 
     page_map: dict[str, str] = {
         "⏎ Home": "Landing Page",

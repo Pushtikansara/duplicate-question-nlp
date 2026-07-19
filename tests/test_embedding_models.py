@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import numpy as np
-
 # Add src to path
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
@@ -88,8 +86,15 @@ def test_result_dict_structure():
 
 def test_result_dict_non_duplicate():
     result = _result_dict(
-        q1="q1", q2="q2", pred_label=0, prob_dup=0.3, prob_non=0.7,
-        threshold=0.5, model_name="BGE", device="cuda", latency_ms=5.0,
+        q1="q1",
+        q2="q2",
+        pred_label=0,
+        prob_dup=0.3,
+        prob_non=0.7,
+        threshold=0.5,
+        model_name="BGE",
+        device="cuda",
+        latency_ms=5.0,
     )
     assert result["predicted_label"] == 0
     assert result["prediction"] == "Non-Duplicate"
@@ -99,21 +104,35 @@ def test_result_dict_non_duplicate():
 def test_result_dict_confidence_max():
     """Confidence should always be max(prob_dup, prob_non)."""
     result = _result_dict(
-        q1="a", q2="b", pred_label=1, prob_dup=0.9, prob_non=0.1,
-        threshold=0.5, model_name="M", device="cpu", latency_ms=0,
+        q1="a",
+        q2="b",
+        pred_label=1,
+        prob_dup=0.9,
+        prob_non=0.1,
+        threshold=0.5,
+        model_name="M",
+        device="cpu",
+        latency_ms=0,
     )
     assert result["confidence"] == 0.9
 
     result = _result_dict(
-        q1="a", q2="b", pred_label=0, prob_dup=0.2, prob_non=0.8,
-        threshold=0.5, model_name="M", device="cpu", latency_ms=0,
+        q1="a",
+        q2="b",
+        pred_label=0,
+        prob_dup=0.2,
+        prob_non=0.8,
+        threshold=0.5,
+        model_name="M",
+        device="cpu",
+        latency_ms=0,
     )
     assert result["confidence"] == 0.8
 
 
 def test_reproducible_predictions():
     """Test that predict_batch_sentence_transformer gives deterministic results.
-    
+
     This is an integration test — requires model weights and GPU/CPU.
     We'll skip if model not available.
     """
@@ -121,6 +140,7 @@ def test_reproducible_predictions():
         from duplicate_question_app.embedding_models import (
             predict_batch_sentence_transformer,
         )
+
         pairs = [
             ("How to learn Python?", "How can I learn Python programming?"),
             ("What is the capital of France?", "What is the largest city in Germany?"),
@@ -135,4 +155,5 @@ def test_reproducible_predictions():
     except Exception as e:
         # Skip if model not available (e.g., no internet/download)
         import pytest
+
         pytest.skip(f"Model unavailable: {e}")

@@ -353,4 +353,3 @@ const material = new THREE.ShaderMaterial({
 - Use `PMREMGenerator` for environment map processing: do not load HDR directly as a texture.
 - Use `SRGBColorSpace` on textures and `outputColorSpace` on renderer for correct color rendering.
 - Use `EquirectangularReflectionMapping` for environment maps on scene.background for skydomes.
-

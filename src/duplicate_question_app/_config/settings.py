@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import hashlib
 import os
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from duplicate_question_app._config.loader import (
     ENV_PREFIX,
-    get_config as _loader_get_config,
-    load_all_configs,
 )
+from duplicate_question_app._config.loader import get_config as _loader_get_config
 
 # Re-export for consumer convenience
 get_config = _loader_get_config
@@ -232,9 +230,7 @@ def resolve_model_selection(paths: AppPaths) -> ModelResolution:
     fallback_reason: str | None = None
     if not week4.ready:
         if week4.issues:
-            fallback_reason = (
-                "Week 4 artifacts are incomplete: " + ", ".join(week4.issues) + "."
-            )
+            fallback_reason = "Week 4 artifacts are incomplete: " + ", ".join(week4.issues) + "."
         else:
             fallback_reason = "Week 4 artifacts are unavailable."
 
@@ -264,6 +260,7 @@ def resolve_preferred_model_dir(paths: AppPaths) -> Path:
 # ---------------------------------------------------------------------------
 # Model registry — loaded from YAML with env override support
 # ---------------------------------------------------------------------------
+
 
 def _load_model_choices() -> list[str]:
     cfg = get_config("models")
@@ -343,27 +340,35 @@ _LEGACY_MODEL_VERSION_SHORT: dict[str, str] = {
     "Semantic Ensemble": "ensemble",
 }
 
-_LEGACY_TRANSFORMER_MODELS = frozenset({
-    "DistilBERT (Week 3)",
-    "Improved DistilBERT (Week 4)",
-})
+_LEGACY_TRANSFORMER_MODELS = frozenset(
+    {
+        "DistilBERT (Week 3)",
+        "Improved DistilBERT (Week 4)",
+    }
+)
 
-_LEGACY_SENTENCE_TRANSFORMER_MODELS = frozenset({
-    "BGE-base-en-v1.5",
-    "E5-base-v2",
-    "E5-quora-finetuned",
-    "MPNet-base-v2",
-})
+_LEGACY_SENTENCE_TRANSFORMER_MODELS = frozenset(
+    {
+        "BGE-base-en-v1.5",
+        "E5-base-v2",
+        "E5-quora-finetuned",
+        "MPNet-base-v2",
+    }
+)
 
-_LEGACY_FINETUNED_EMBEDDING_MODELS = frozenset({
-    "E5-quora-finetuned",
-    "BGE-quora-finetuned",
-})
+_LEGACY_FINETUNED_EMBEDDING_MODELS = frozenset(
+    {
+        "E5-quora-finetuned",
+        "BGE-quora-finetuned",
+    }
+)
 
-_LEGACY_CROSS_ENCODER_MODELS = frozenset({
-    "DeBERTa-v3 Cross-Encoder",
-    "Cross-Encoder-Quora (Trained)",
-})
+_LEGACY_CROSS_ENCODER_MODELS = frozenset(
+    {
+        "DeBERTa-v3 Cross-Encoder",
+        "Cross-Encoder-Quora (Trained)",
+    }
+)
 
 # Module-level constants populated lazily from config
 MODEL_CHOICES: list[str] = _LEGACY_MODEL_CHOICES
@@ -430,7 +435,9 @@ def is_finetuned_embedding_model(model_name: str) -> bool:
 
 
 def is_new_embedding_model(model_name: str) -> bool:
-    return model_name in SENTENCE_TRANSFORMER_MODELS | CROSS_ENCODER_MODELS | FINETUNED_EMBEDDING_MODELS | {"Semantic Ensemble"}
+    return model_name in SENTENCE_TRANSFORMER_MODELS | CROSS_ENCODER_MODELS | FINETUNED_EMBEDDING_MODELS | {
+        "Semantic Ensemble"
+    }
 
 
 @dataclass

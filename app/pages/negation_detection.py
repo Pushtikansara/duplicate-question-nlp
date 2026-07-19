@@ -38,14 +38,36 @@ def render() -> None:
         tab1, tab2 = st.tabs(["Q1 Negations", "Q2 Negations"])
         with tab1:
             if q1_negs:
-                df = pd.DataFrame([{"Text": n.text, "Type": n.negation_type, "Scope": n.scope.value, "Confidence": f"{n.confidence:.0%}", "Target": n.target or "—"} for n in q1_negs])
+                df = pd.DataFrame(
+                    [
+                        {
+                            "Text": n.text,
+                            "Type": n.negation_type,
+                            "Scope": n.scope.value,
+                            "Confidence": f"{n.confidence:.0%}",
+                            "Target": n.target or "—",
+                        }
+                        for n in q1_negs
+                    ]
+                )
                 st.dataframe(df, use_container_width=True, hide_index=True)
             else:
                 st.info("No negations detected in Question 1")
 
         with tab2:
             if q2_negs:
-                df = pd.DataFrame([{"Text": n.text, "Type": n.negation_type, "Scope": n.scope.value, "Confidence": f"{n.confidence:.0%}", "Target": n.target or "—"} for n in q2_negs])
+                df = pd.DataFrame(
+                    [
+                        {
+                            "Text": n.text,
+                            "Type": n.negation_type,
+                            "Scope": n.scope.value,
+                            "Confidence": f"{n.confidence:.0%}",
+                            "Target": n.target or "—",
+                        }
+                        for n in q2_negs
+                    ]
+                )
                 st.dataframe(df, use_container_width=True, hide_index=True)
             else:
                 st.info("No negations detected in Question 2")

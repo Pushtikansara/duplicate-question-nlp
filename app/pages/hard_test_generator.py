@@ -5,8 +5,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from app.utils.constants import PATHS
-from duplicate_question_app.hard_test_generator import generate_hard_dataset, save_dataset, print_dataset_stats
+from duplicate_question_app.hard_test_generator import generate_hard_dataset, print_dataset_stats, save_dataset
 
 
 def render() -> None:

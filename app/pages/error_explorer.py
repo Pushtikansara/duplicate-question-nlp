@@ -31,8 +31,9 @@ def render() -> None:
             try:
                 report = get_agreement_report(q1, q2, PATHS)
                 errors = categorize_error(q1, q2, report.predicted_label, true_label, report.prob_mean)
-                hardness = classify_hardness(report.prob_mean, report.confidence_mean,
-                                            report.agreement_score, report.predicted_label, true_label)
+                hardness = classify_hardness(
+                    report.prob_mean, report.confidence_mean, report.agreement_score, report.predicted_label, true_label
+                )
             except Exception as exc:
                 st.error(f"Analysis failed: {exc}")
                 return
@@ -52,7 +53,13 @@ def render() -> None:
                     st.caption(f"   Details: {err.details}")
 
         st.subheader("Model Votes")
-        vote_data = [{"Model": v.model_name, "Prob": f"{v.prob_duplicate:.4f}",
-                      "Vote": "Duplicate" if v.predicted_label == 1 else "Non-Duplicate"}
-                     for v in report.votes if v.error is None]
+        vote_data = [
+            {
+                "Model": v.model_name,
+                "Prob": f"{v.prob_duplicate:.4f}",
+                "Vote": "Duplicate" if v.predicted_label == 1 else "Non-Duplicate",
+            }
+            for v in report.votes
+            if v.error is None
+        ]
         st.dataframe(pd.DataFrame(vote_data), use_container_width=True, hide_index=True)

@@ -8,22 +8,22 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Set, Optional
 from enum import Enum
 
 # Try to import cross-encoder for NLI-based contradiction detection
 try:
     from sentence_transformers import CrossEncoder
+
     _CROSSENCODER_AVAILABLE = True
 except ImportError:
     _CROSSENCODER_AVAILABLE = False
 
 
 class ContradictionType(Enum):
-    DIRECT_NEGATION = "direct_negation"           # "Can I install X?" vs "Can I uninstall X?"
-    OPPOSITE_ACTION = "opposite_action"           # "Enable X" vs "Disable X"
-    OPPOSITE_INTENT = "opposite_intent"           # "How to install" vs "How to uninstall"
-    MUTUALLY_EXCLUSIVE = "mutually_exclusive"     # "Is X free?" vs "How much does X cost?"
+    DIRECT_NEGATION = "direct_negation"  # "Can I install X?" vs "Can I uninstall X?"
+    OPPOSITE_ACTION = "opposite_action"  # "Enable X" vs "Disable X"
+    OPPOSITE_INTENT = "opposite_intent"  # "How to install" vs "How to uninstall"
+    MUTUALLY_EXCLUSIVE = "mutually_exclusive"  # "Is X free?" vs "How much does X cost?"
     TEMPORAL_CONTRADICTION = "temporal_contradiction"  # "Before X" vs "After X"
     CONDITIONAL_CONTRADICTION = "conditional_contradiction"  # "If X then Y" vs "If X then not Y"
 
@@ -31,15 +31,16 @@ class ContradictionType(Enum):
 @dataclass
 class ContradictionResult:
     """Result of contradiction detection between two questions."""
+
     has_contradiction: bool
     contradiction_score: float  # 0-1, higher = more contradictory
-    contradiction_types: List[ContradictionType]
+    contradiction_types: list[ContradictionType]
     details: str
-    nli_scores: Optional[Dict[str, float]] = None  # contradiction, neutral, entailment
+    nli_scores: dict[str, float] | None = None  # contradiction, neutral, entailment
 
 
 # Opposite action verb pairs
-_OPPOSITE_VERBS: Dict[str, str] = {
+_OPPOSITE_VERBS: dict[str, str] = {
     "install": "uninstall",
     "enable": "disable",
     "activate": "deactivate",
@@ -59,7 +60,6 @@ _OPPOSITE_VERBS: Dict[str, str] = {
     "push": "pull",
     "commit": "revert",
     "apply": "revert",
-    "enable": "disable",
     "allow": "deny",
     "grant": "revoke",
     "include": "exclude",
@@ -91,7 +91,6 @@ _OPPOSITE_VERBS: Dict[str, str] = {
     "login": "logout",
     "signin": "signout",
     "register": "unregister",
-    "subscribe": "unsubscribe",
     "follow": "unfollow",
     "like": "dislike",
     "upvote": "downvote",
@@ -106,7 +105,7 @@ _OPPOSITE_VERBS: Dict[str, str] = {
 
 
 # Opposite adjective pairs
-_OPPOSITE_ADJECTIVES: Dict[str, str] = {
+_OPPOSITE_ADJECTIVES: dict[str, str] = {
     "free": "paid",
     "open": "closed",
     "public": "private",
@@ -160,8 +159,11 @@ _OPPOSITE_ADJECTIVES: Dict[str, str] = {
 
 
 # Mutually exclusive concepts
-_MUTUALLY_EXCLUSIVE: List[Tuple[Set[str], Set[str]]] = [
-    ({"free", "gratis", "no cost", "zero cost"}, {"paid", "cost", "price", "buy", "purchase", "subscription", "license fee"}),
+_MUTUALLY_EXCLUSIVE: list[tuple[set[str], set[str]]] = [
+    (
+        {"free", "gratis", "no cost", "zero cost"},
+        {"paid", "cost", "price", "buy", "purchase", "subscription", "license fee"},
+    ),
     ({"open source", "oss", "free software"}, {"proprietary", "closed source", "commercial license"}),
     ({"python 2", "py2"}, {"python 3", "py3"}),
     ({"windows", "win32", "win64"}, {"linux", "unix", "macos", "mac os", "osx"}),
@@ -179,7 +181,7 @@ _MUTUALLY_EXCLUSIVE: List[Tuple[Set[str], Set[str]]] = [
 
 
 # Temporal contradiction patterns
-_TEMPORAL_PATTERNS: List[Tuple[str, str]] = [
+_TEMPORAL_PATTERNS: list[tuple[str, str]] = [
     (r"\bbefore\b", r"\bafter\b"),
     (r"\bearlier\b", r"\blater\b"),
     (r"\bprevious\b", r"\bnext\b"),
@@ -218,7 +220,7 @@ def _normalize_for_comparison(text: str) -> str:
     return text.strip()
 
 
-def _find_opposite_verbs(text1: str, text2: str) -> List[str]:
+def _find_opposite_verbs(text1: str, text2: str) -> list[str]:
     """Find opposite verb pairs between two texts."""
     opposites = []
     words1 = set(text1.split())
@@ -233,7 +235,7 @@ def _find_opposite_verbs(text1: str, text2: str) -> List[str]:
     return opposites
 
 
-def _find_opposite_adjectives(text1: str, text2: str) -> List[str]:
+def _find_opposite_adjectives(text1: str, text2: str) -> list[str]:
     """Find opposite adjective pairs between two texts."""
     opposites = []
     words1 = set(text1.split())
@@ -248,7 +250,7 @@ def _find_opposite_adjectives(text1: str, text2: str) -> List[str]:
     return opposites
 
 
-def _check_mutually_exclusive(text1: str, text2: str) -> List[str]:
+def _check_mutually_exclusive(text1: str, text2: str) -> list[str]:
     """Check for mutually exclusive concepts."""
     conflicts = []
     words1 = set(text1.split())
@@ -263,7 +265,7 @@ def _check_mutually_exclusive(text1: str, text2: str) -> List[str]:
     return conflicts
 
 
-def _check_temporal_contradiction(text1: str, text2: str) -> List[str]:
+def _check_temporal_contradiction(text1: str, text2: str) -> list[str]:
     """Check for temporal contradictions."""
     conflicts = []
     for pattern1, pattern2 in _TEMPORAL_PATTERNS:
@@ -274,7 +276,7 @@ def _check_temporal_contradiction(text1: str, text2: str) -> List[str]:
     return conflicts
 
 
-def _check_direct_negation(text1: str, text2: str) -> List[str]:
+def _check_direct_negation(text1: str, text2: str) -> list[str]:
     """Check for direct negation patterns (install vs uninstall, etc.)."""
     conflicts = []
 
@@ -303,7 +305,7 @@ def _check_direct_negation(text1: str, text2: str) -> List[str]:
     return conflicts
 
 
-def detect_contradiction_patterns(q1: str, q2: str) -> Tuple[float, List[ContradictionType], List[str]]:
+def detect_contradiction_patterns(q1: str, q2: str) -> tuple[float, list[ContradictionType], list[str]]:
     """Detect contradictions using pattern matching."""
     t1 = _normalize_for_comparison(q1)
     t2 = _normalize_for_comparison(q2)
@@ -360,7 +362,7 @@ def detect_contradiction_patterns(q1: str, q2: str) -> Tuple[float, List[Contrad
     return score, list(set(contradiction_types)), all_conflicts
 
 
-def detect_contradiction_nli(q1: str, q2: str) -> Optional[Dict[str, float]]:
+def detect_contradiction_nli(q1: str, q2: str) -> dict[str, float] | None:
     """Use NLI cross-encoder to detect contradiction."""
     model = _get_nli_model()
     if model is None:
@@ -418,7 +420,7 @@ def detect_contradiction(q1: str, q2: str) -> ContradictionResult:
     )
 
 
-def get_contradiction_penalty(q1: str, q2: str) -> Tuple[float, str]:
+def get_contradiction_penalty(q1: str, q2: str) -> tuple[float, str]:
     """Get contradiction penalty for ensemble."""
     result = detect_contradiction(q1, q2)
     if result.has_contradiction:

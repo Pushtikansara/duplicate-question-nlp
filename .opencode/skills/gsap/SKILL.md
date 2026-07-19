@@ -310,4 +310,3 @@ function toggleLayout() {
 - Use CSS `will-change: transform` on elements animated by GSAP to prepare the browser for compositing.
 - Use `clearProps: "all"` when resetting elements after animation: `gsap.set(".element", { clearProps: "all" })`.
 - Use `delay` and `position` parameters for fine-grained timeline control instead of nested timeouts.
-

@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import time
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
 
 from duplicate_question_app._config.logging_setup import get_logger
-from duplicate_question_app.config import is_cross_encoder_model, get_app_paths, is_finetuned_embedding_model, get_config
+from duplicate_question_app.config import (
+    get_app_paths,
+    get_config,
+    is_cross_encoder_model,
+    is_finetuned_embedding_model,
+)
 
 _logger = get_logger(__name__)
 from duplicate_question_app.preprocessing import normalize_question
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts, is_week2_model
 
 _sentence_transformer_cache: dict[str, Any] = {}
 PATHS = None
@@ -24,6 +28,7 @@ def get_paths(project_root=None):
     global PATHS
     if PATHS is None:
         from pathlib import Path
+
         if project_root is None:
             project_root = Path(__file__).resolve().parents[2]
         PATHS = get_app_paths(project_root)
@@ -52,9 +57,12 @@ def resolve_best_available_e5_model(model_name: str) -> str:
     # Check for fine-tuned model
     paths = get_paths()
     ft_path = paths.finetuned_e5_dir
-    if ft_path.exists() and (ft_path / "model.safetensors").exists():
-        if model_name in ("E5-base-v2", "E5-base-v2+LR", "E5-base-v2+MLP"):
-            return "E5-quora-finetuned"
+    if (
+        ft_path.exists()
+        and (ft_path / "model.safetensors").exists()
+        and model_name in ("E5-base-v2", "E5-base-v2+LR", "E5-base-v2+MLP")
+    ):
+        return "E5-quora-finetuned"
     # Check for LR head
     lr_path = paths.models_dir / "e5_base_v2_lr_head.pkl"
     if lr_path.exists():
@@ -72,7 +80,8 @@ def get_sentence_transformer_model(model_name: str) -> Any:
     """
     global _sentence_transformer_cache
     if model_name not in _sentence_transformer_cache:
-        from sentence_transformers import SentenceTransformer, CrossEncoder
+        from sentence_transformers import CrossEncoder, SentenceTransformer
+
         device = _resolve_device()
 
         hubs = get_config("models").get("hub_names", {})
@@ -87,8 +96,7 @@ def get_sentence_transformer_model(model_name: str) -> Any:
                 model_path_obj = Path(model_key)
                 if not model_path_obj.exists() or not (model_path_obj / "config.json").exists():
                     raise FileNotFoundError(
-                        f"Trained cross-encoder not found at {model_key}. "
-                        f"Run scripts/train_cross_encoder.py first."
+                        f"Trained cross-encoder not found at {model_key}. Run scripts/train_cross_encoder.py first."
                     )
             _sentence_transformer_cache[model_name] = CrossEncoder(model_key, device=device)
         elif is_finetuned_embedding_model(model_name):
@@ -100,8 +108,7 @@ def get_sentence_transformer_model(model_name: str) -> Any:
             }.get(model_name)
             if not model_key or not Path(model_key).exists():
                 raise FileNotFoundError(
-                    f"Fine-tuned model '{model_name}' not found at {model_key}. "
-                    f"Run scripts/train_e5_quora.py first."
+                    f"Fine-tuned model '{model_name}' not found at {model_key}. Run scripts/train_e5_quora.py first."
                 )
             _logger.info("Loading fine-tuned model from %s", model_key)
             _sentence_transformer_cache[model_name] = SentenceTransformer(model_key, device=device)
@@ -171,9 +178,17 @@ def _get_threshold(model_name: str) -> float:
         return default
 
 
-def _result_dict(q1: str, q2: str, pred_label: int, prob_dup: float,
-                 prob_non: float, threshold: float, model_name: str,
-                 device: str, latency_ms: float) -> dict[str, Any]:
+def _result_dict(
+    q1: str,
+    q2: str,
+    pred_label: int,
+    prob_dup: float,
+    prob_non: float,
+    threshold: float,
+    model_name: str,
+    device: str,
+    latency_ms: float,
+) -> dict[str, Any]:
     return {
         "question1": q1,
         "question2": q2,
@@ -229,9 +244,7 @@ def predict_with_sentence_transformer(model_name: str, q1: str, q2: str) -> dict
         model = get_sentence_transformer_model(model_name)
         # Determine if E5-style prefix is needed
         # Fine-tuned models that were trained with prefixes still need them
-        use_e5_prefix = ("e5" in model_name.lower() and not is_ft) or (
-            is_ft and "e5" in model_name.lower()
-        )
+        use_e5_prefix = ("e5" in model_name.lower() and not is_ft) or (is_ft and "e5" in model_name.lower())
         q1_enc = f"query: {q1_norm}" if use_e5_prefix else q1_norm
         q2_enc = f"passage: {q2_norm}" if use_e5_prefix else q2_norm
 
@@ -246,12 +259,14 @@ def predict_with_sentence_transformer(model_name: str, q1: str, q2: str) -> dict
     pred_label = int(prob_duplicate >= threshold)
     latency_ms = (time.time() - start) * 1000
 
-    return _result_dict(q1_norm, q2_norm, pred_label, prob_duplicate,
-                        prob_non, threshold, model_name, _resolve_device(), latency_ms)
+    return _result_dict(
+        q1_norm, q2_norm, pred_label, prob_duplicate, prob_non, threshold, model_name, _resolve_device(), latency_ms
+    )
 
 
-def predict_batch_sentence_transformer(model_name: str, pairs: list[tuple[str, str]],
-                                       batch_size: int = 64) -> list[dict[str, Any]]:
+def predict_batch_sentence_transformer(
+    model_name: str, pairs: list[tuple[str, str]], batch_size: int = 64
+) -> list[dict[str, Any]]:
     """Batched prediction using GPU-accelerated encoding.
 
     Supports both bi-encoders (batch encoding + cosine similarity) and
@@ -279,8 +294,9 @@ def predict_batch_sentence_transformer(model_name: str, pairs: list[tuple[str, s
 
     # Cross-encoder batch path
     if is_cross_encoder_model(model_name):
-        all_scores = model.predict(list(zip(q1s, q2s)), batch_size=batch_size,
-                                   apply_softmax=True, show_progress_bar=False)
+        all_scores = model.predict(
+            list(zip(q1s, q2s, strict=False)), batch_size=batch_size, apply_softmax=True, show_progress_bar=False
+        )
         encode_time_ms = (time.time() - start) * 1000
         results = []
         for i in range(n):
@@ -298,25 +314,21 @@ def predict_batch_sentence_transformer(model_name: str, pairs: list[tuple[str, s
                 prob_dup = max(0.0, min(1.0, (float(scores[0]) + 1) / 2))
             pred_label = int(prob_dup >= threshold)
             results.append(
-                _result_dict(q1s[i], q2s[i], pred_label, prob_dup,
-                             1.0 - prob_dup, threshold, model_name, device,
-                             encode_time_ms)
+                _result_dict(
+                    q1s[i], q2s[i], pred_label, prob_dup, 1.0 - prob_dup, threshold, model_name, device, encode_time_ms
+                )
             )
         return results
 
     # Bi-encoder batch path
     is_ft = is_finetuned_embedding_model(model_name)
-    use_e5_prefix = ("e5" in model_name.lower() and not is_ft) or (
-        is_ft and "e5" in model_name.lower()
-    )
+    use_e5_prefix = ("e5" in model_name.lower() and not is_ft) or (is_ft and "e5" in model_name.lower())
     q1_encoded = [f"query: {q}" if use_e5_prefix else q for q in q1s]
     q2_encoded = [f"passage: {q}" if use_e5_prefix else q for q in q2s]
 
     # Batch encode all questions (GPU accelerated)
-    emb1 = model.encode(q1_encoded, normalize_embeddings=True,
-                        batch_size=batch_size, show_progress_bar=False)
-    emb2 = model.encode(q2_encoded, normalize_embeddings=True,
-                        batch_size=batch_size, show_progress_bar=False)
+    emb1 = model.encode(q1_encoded, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
+    emb2 = model.encode(q2_encoded, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
 
     # Vectorized cosine similarity
     similarities = (emb1 * emb2).sum(axis=1)
@@ -329,9 +341,17 @@ def predict_batch_sentence_transformer(model_name: str, pairs: list[tuple[str, s
     encode_time_ms = (time.time() - start) * 1000
 
     return [
-        _result_dict(q1s[i], q2s[i], int(preds[i]), float(probs[i]),
-                     float(prob_nons[i]), threshold, model_name, device,
-                     encode_time_ms)
+        _result_dict(
+            q1s[i],
+            q2s[i],
+            int(preds[i]),
+            float(probs[i]),
+            float(prob_nons[i]),
+            threshold,
+            model_name,
+            device,
+            encode_time_ms,
+        )
         for i in range(n)
     ]
 
@@ -346,10 +366,12 @@ def get_ensemble_prediction(q1: str, q2: str, paths=None) -> dict[str, Any]:
     if paths is None:
         paths = get_paths()
     from duplicate_question_app.intelligent_ensemble import get_adaptive_ensemble_prediction
+
     return get_adaptive_ensemble_prediction(q1, q2, paths)
 
 
 # Convenience functions for checking model availability
+
 
 def is_finetuned_model_available(model_name: str, paths=None) -> bool:
     """Check if a fine-tuned model is available on disk."""

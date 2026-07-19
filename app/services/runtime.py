@@ -9,13 +9,12 @@ import streamlit as st
 from app.utils.constants import PATHS, _model_cache
 from duplicate_question_app.config import (
     get_config,
-    is_transformer_model,
     is_ensemble_model,
     is_new_embedding_model,
     resolve_model_selection,
 )
-from duplicate_question_app.week2_inference import Week2InferenceService, is_week2_model, check_week2_artifacts
 from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
+from duplicate_question_app.week2_inference import Week2InferenceService, is_week2_model
 
 
 def get_model_resolution():

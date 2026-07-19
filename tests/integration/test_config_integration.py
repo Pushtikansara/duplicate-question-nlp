@@ -85,6 +85,7 @@ class TestConfigIntegration:
     @pytest.mark.integration
     def test_multiple_get_config_calls_consistent(self):
         from duplicate_question_app._config.loader import get_config
+
         clear_config_cache()
         c1 = get_config("app")
         c2 = get_config("app")

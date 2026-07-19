@@ -8,29 +8,29 @@ insights into model consensus and semantic reliability.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
 from duplicate_question_app.config import (
     AppPaths,
-    MODEL_CHOICES,
     get_app_paths,
 )
+from duplicate_question_app.embedding_models import predict_with_sentence_transformer
 from duplicate_question_app.inference import (
     DuplicateQuestionInferenceService,
     load_model_and_tokenizer,
 )
 from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
-from duplicate_question_app.embedding_models import predict_with_sentence_transformer
 
 
 @dataclass
 class ModelVote:
     """A single model's prediction on a question pair."""
+
     model_name: str
-    predicted_label: int          # 0 = non-duplicate, 1 = duplicate
+    predicted_label: int  # 0 = non-duplicate, 1 = duplicate
     prob_duplicate: float
     confidence: float
     threshold: float
@@ -41,13 +41,14 @@ class ModelVote:
 @dataclass
 class AgreementReport:
     """Full model agreement analysis for a single prediction."""
+
     question1: str
     question2: str
     votes: list[ModelVote]
     majority_label: int
-    majority_ratio: float          # fraction of models agreeing with majority
+    majority_ratio: float  # fraction of models agreeing with majority
     unanimous: bool
-    agreement_score: float         # 0.0 (total disagreement) to 1.0 (unanimous)
+    agreement_score: float  # 0.0 (total disagreement) to 1.0 (unanimous)
     confidence_mean: float
     confidence_variance: float
     prob_mean: float
@@ -56,10 +57,10 @@ class AgreementReport:
     num_models_available: int
     models_agreeing: list[str]
     models_disagreeing: list[str]
-    is_borderline: bool            # True if mean prob is near 0.5
-    predicted_label: int           # final prediction (majority vote)
-    prediction: str                # "Duplicate" or "Non-Duplicate"
-    ensemble_prob: float           # trimmed mean probability
+    is_borderline: bool  # True if mean prob is near 0.5
+    predicted_label: int  # final prediction (majority vote)
+    prediction: str  # "Duplicate" or "Non-Duplicate"
+    ensemble_prob: float  # trimmed mean probability
     latency_ms: float
 
 
@@ -80,17 +81,28 @@ def collect_all_votes(
                 _, prob_dup = w2.predict_proba(q1, q2, m)
                 lat = (time.time() - t0) * 1000
                 confidence = max(prob_dup, 1.0 - prob_dup)
-                votes.append(ModelVote(
-                    model_name=m,
-                    predicted_label=1 if prob_dup >= 0.5 else 0,
-                    prob_duplicate=prob_dup,
-                    confidence=confidence,
-                    threshold=0.5,
-                    latency_ms=lat,
-                ))
+                votes.append(
+                    ModelVote(
+                        model_name=m,
+                        predicted_label=1 if prob_dup >= 0.5 else 0,
+                        prob_duplicate=prob_dup,
+                        confidence=confidence,
+                        threshold=0.5,
+                        latency_ms=lat,
+                    )
+                )
             except Exception as e:
-                votes.append(ModelVote(model_name=m, predicted_label=0, prob_duplicate=0.0,
-                                       confidence=0.0, threshold=0.5, latency_ms=0.0, error=str(e)))
+                votes.append(
+                    ModelVote(
+                        model_name=m,
+                        predicted_label=0,
+                        prob_duplicate=0.0,
+                        confidence=0.0,
+                        threshold=0.5,
+                        latency_ms=0.0,
+                        error=str(e),
+                    )
+                )
 
     # Week 3 / Week 4 transformer models
     for m in ["DistilBERT (Week 3)", "Improved DistilBERT (Week 4)"]:
@@ -101,17 +113,28 @@ def collect_all_votes(
             _, prob_dup = svc.predict_proba(q1, q2)
             lat = (time.time() - t0) * 1000
             confidence = max(prob_dup, 1.0 - prob_dup)
-            votes.append(ModelVote(
-                model_name=m,
-                predicted_label=1 if prob_dup >= meta.decision_threshold else 0,
-                prob_duplicate=prob_dup,
-                confidence=confidence,
-                threshold=meta.decision_threshold,
-                latency_ms=lat,
-            ))
+            votes.append(
+                ModelVote(
+                    model_name=m,
+                    predicted_label=1 if prob_dup >= meta.decision_threshold else 0,
+                    prob_duplicate=prob_dup,
+                    confidence=confidence,
+                    threshold=meta.decision_threshold,
+                    latency_ms=lat,
+                )
+            )
         except Exception as e:
-            votes.append(ModelVote(model_name=m, predicted_label=0, prob_duplicate=0.0,
-                                   confidence=0.0, threshold=0.5, latency_ms=0.0, error=str(e)))
+            votes.append(
+                ModelVote(
+                    model_name=m,
+                    predicted_label=0,
+                    prob_duplicate=0.0,
+                    confidence=0.0,
+                    threshold=0.5,
+                    latency_ms=0.0,
+                    error=str(e),
+                )
+            )
 
     # Phase 2 embedding / cross-encoder models
     for m in ["BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2", "DeBERTa-v3 Cross-Encoder"]:
@@ -121,17 +144,28 @@ def collect_all_votes(
             lat = (time.time() - t0) * 1000
             prob_dup = result["prob_duplicate"]
             confidence = result["confidence"]
-            votes.append(ModelVote(
-                model_name=m,
-                predicted_label=result["predicted_label"],
-                prob_duplicate=prob_dup,
-                confidence=confidence,
-                threshold=result["threshold"],
-                latency_ms=lat,
-            ))
+            votes.append(
+                ModelVote(
+                    model_name=m,
+                    predicted_label=result["predicted_label"],
+                    prob_duplicate=prob_dup,
+                    confidence=confidence,
+                    threshold=result["threshold"],
+                    latency_ms=lat,
+                )
+            )
         except Exception as e:
-            votes.append(ModelVote(model_name=m, predicted_label=0, prob_duplicate=0.0,
-                                   confidence=0.0, threshold=0.5, latency_ms=0.0, error=str(e)))
+            votes.append(
+                ModelVote(
+                    model_name=m,
+                    predicted_label=0,
+                    prob_duplicate=0.0,
+                    confidence=0.0,
+                    threshold=0.5,
+                    latency_ms=0.0,
+                    error=str(e),
+                )
+            )
 
     return votes
 
@@ -141,14 +175,26 @@ def analyze_agreement(votes: list[ModelVote], q1: str, q2: str) -> AgreementRepo
     valid_votes = [v for v in votes if v.error is None]
     if not valid_votes:
         return AgreementReport(
-            question1=q1, question2=q2, votes=votes,
-            majority_label=0, majority_ratio=0.0, unanimous=False,
-            agreement_score=0.0, confidence_mean=0.0, confidence_variance=0.0,
-            prob_mean=0.0, prob_std=0.0, num_models_voted=0,
+            question1=q1,
+            question2=q2,
+            votes=votes,
+            majority_label=0,
+            majority_ratio=0.0,
+            unanimous=False,
+            agreement_score=0.0,
+            confidence_mean=0.0,
+            confidence_variance=0.0,
+            prob_mean=0.0,
+            prob_std=0.0,
+            num_models_voted=0,
             num_models_available=len(votes),
-            models_agreeing=[], models_disagreeing=[],
-            is_borderline=False, predicted_label=0, prediction="Non-Duplicate",
-            ensemble_prob=0.0, latency_ms=0.0,
+            models_agreeing=[],
+            models_disagreeing=[],
+            is_borderline=False,
+            predicted_label=0,
+            prediction="Non-Duplicate",
+            ensemble_prob=0.0,
+            latency_ms=0.0,
         )
 
     probs = np.array([v.prob_duplicate for v in valid_votes])
@@ -226,6 +272,7 @@ def get_agreement_report(
     """
     if paths is None:
         from pathlib import Path
+
         paths = get_app_paths(Path(__file__).resolve().parents[2])
     votes = collect_all_votes(q1, q2, paths)
     return analyze_agreement(votes, q1, q2)

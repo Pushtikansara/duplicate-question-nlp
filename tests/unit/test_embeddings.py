@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
-import numpy as np
-import pytest
-
+from duplicate_question_app._config.loader import clear_config_cache
 from duplicate_question_app._models.embeddings import (
     _get_sigmoid_params,
     _get_threshold,
     _resolve_device,
     _result_dict,
 )
-from duplicate_question_app._config.loader import clear_config_cache
 
 
 class TestEmbeddingModels:
@@ -51,6 +46,7 @@ class TestEmbeddingModels:
 
     def test_resolve_device_with_env(self):
         import os
+
         os.environ["DQD_AUTO_DEVICE"] = "false"
         clear_config_cache()
         device = _resolve_device()
@@ -106,8 +102,15 @@ class TestEmbeddingModels:
 
     def test_result_dict_non_duplicate(self):
         result = _result_dict(
-            q1="q1", q2="q2", pred_label=0, prob_dup=0.3, prob_non=0.7,
-            threshold=0.5, model_name="BGE", device="cuda", latency_ms=5.0,
+            q1="q1",
+            q2="q2",
+            pred_label=0,
+            prob_dup=0.3,
+            prob_non=0.7,
+            threshold=0.5,
+            model_name="BGE",
+            device="cuda",
+            latency_ms=5.0,
         )
         assert result["predicted_label"] == 0
         assert result["prediction"] == "Non-Duplicate"
@@ -115,20 +118,41 @@ class TestEmbeddingModels:
 
     def test_result_dict_confidence_max(self):
         r1 = _result_dict(
-            q1="a", q2="b", pred_label=1, prob_dup=0.9, prob_non=0.1,
-            threshold=0.5, model_name="M", device="cpu", latency_ms=0,
+            q1="a",
+            q2="b",
+            pred_label=1,
+            prob_dup=0.9,
+            prob_non=0.1,
+            threshold=0.5,
+            model_name="M",
+            device="cpu",
+            latency_ms=0,
         )
         assert r1["confidence"] == 0.9
         r2 = _result_dict(
-            q1="a", q2="b", pred_label=0, prob_dup=0.2, prob_non=0.8,
-            threshold=0.5, model_name="M", device="cpu", latency_ms=0,
+            q1="a",
+            q2="b",
+            pred_label=0,
+            prob_dup=0.2,
+            prob_non=0.8,
+            threshold=0.5,
+            model_name="M",
+            device="cpu",
+            latency_ms=0,
         )
         assert r2["confidence"] == 0.8
 
     def test_result_dict_all_fields_present(self):
         result = _result_dict(
-            q1="a", q2="b", pred_label=1, prob_dup=0.75, prob_non=0.25,
-            threshold=0.5, model_name="Test", device="cpu", latency_ms=1.0,
+            q1="a",
+            q2="b",
+            pred_label=1,
+            prob_dup=0.75,
+            prob_non=0.25,
+            threshold=0.5,
+            model_name="Test",
+            device="cpu",
+            latency_ms=1.0,
         )
         assert "question1" in result
         assert "question2" in result
@@ -137,6 +161,7 @@ class TestEmbeddingModels:
 
     def test_predict_batch_imports(self):
         from duplicate_question_app._models.embeddings import predict_batch_sentence_transformer
+
         assert callable(predict_batch_sentence_transformer)
 
     def test_sigmoid_all_models_return_values(self):

@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -24,8 +23,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from duplicate_question_app._config.logging_setup import get_logger
 from duplicate_question_app.data_loader import get_quora_splits
-from duplicate_question_app.preprocessing import normalize_question
 from duplicate_question_app.embedding_models import get_sentence_transformer_model
+from duplicate_question_app.preprocessing import normalize_question
 
 _logger = get_logger(__name__)
 
@@ -56,7 +55,7 @@ def mine_hard_negatives_embedding(
 
     # Only non-duplicate pairs
     non_dup = source_df[source_df["label"] == 0].copy()
-    _logger.info("Mining from %s non-duplicate pairs in %s set", f"{len(non_dup):,}", 'val' if use_val_set else 'train')
+    _logger.info("Mining from %s non-duplicate pairs in %s set", f"{len(non_dup):,}", "val" if use_val_set else "train")
 
     if len(non_dup) == 0:
         return pd.DataFrame()
@@ -70,11 +69,9 @@ def mine_hard_negatives_embedding(
 
     # Encode all questions
     _logger.info("Encoding question 1s...")
-    emb1 = model.encode(q1s, normalize_embeddings=True,
-                        batch_size=batch_size, show_progress_bar=True)
+    emb1 = model.encode(q1s, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=True)
     _logger.info("Encoding question 2s...")
-    emb2 = model.encode(q2s, normalize_embeddings=True,
-                        batch_size=batch_size, show_progress_bar=True)
+    emb2 = model.encode(q2s, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=True)
 
     # Compute cosine similarities
     similarities = (emb1 * emb2).sum(axis=1)
@@ -86,7 +83,11 @@ def mine_hard_negatives_embedding(
     hard_negatives["mining_method"] = "embedding"
 
     _logger.info("Found %s hard negatives", f"{len(hard_negatives):,}")
-    _logger.info("  Similarity range: %s - %s", f"{hard_negatives['similarity'].min():.4f}", f"{hard_negatives['similarity'].max():.4f}")
+    _logger.info(
+        "  Similarity range: %s - %s",
+        f"{hard_negatives['similarity'].min():.4f}",
+        f"{hard_negatives['similarity'].max():.4f}",
+    )
     _logger.info("  Mean similarity: %s", f"{hard_negatives['similarity'].mean():.4f}")
 
     return hard_negatives.reset_index(drop=True)
@@ -123,8 +124,7 @@ def mine_hard_negatives_lexical(
 
     # Build TF-IDF vectorizer on all unique questions
     all_questions = list(set(q1s + q2s))
-    vectorizer = TfidfVectorizer(ngram_range=ngram_range, max_features=max_features,
-                                  sublinear_tf=True)
+    vectorizer = TfidfVectorizer(ngram_range=ngram_range, max_features=max_features, sublinear_tf=True)
     vectorizer.fit(all_questions)
     _logger.info("  TF-IDF vocabulary size: %s", len(vectorizer.get_feature_names_out()))
 
@@ -135,10 +135,7 @@ def mine_hard_negatives_lexical(
         end = min(i + batch_size, len(q1s))
         q1_vecs = vectorizer.transform(q1s[i:end])
         q2_vecs = vectorizer.transform(q2s[i:end])
-        batch_sims = np.array([
-            cosine_similarity(q1_vecs[j:j+1], q2_vecs[j:j+1])[0, 0]
-            for j in range(end - i)
-        ])
+        batch_sims = np.array([cosine_similarity(q1_vecs[j : j + 1], q2_vecs[j : j + 1])[0, 0] for j in range(end - i)])
         similarities.extend(batch_sims)
 
     non_dup["similarity"] = similarities
@@ -147,7 +144,11 @@ def mine_hard_negatives_lexical(
     hard_negatives["mining_method"] = "lexical"
 
     _logger.info("Found %s lexical hard negatives", f"{len(hard_negatives):,}")
-    _logger.info("  Similarity range: %s - %s", f"{hard_negatives['similarity'].min():.4f}", f"{hard_negatives['similarity'].max():.4f}")
+    _logger.info(
+        "  Similarity range: %s - %s",
+        f"{hard_negatives['similarity'].min():.4f}",
+        f"{hard_negatives['similarity'].max():.4f}",
+    )
 
     return hard_negatives.reset_index(drop=True)
 
@@ -176,9 +177,7 @@ def mine_hard_negatives_combined(
     _logger.info("=" * 60)
 
     # Mine from both methods
-    emb_negatives = mine_hard_negatives_embedding(
-        model_name=embedding_model, top_k=top_k, use_val_set=False
-    )
+    emb_negatives = mine_hard_negatives_embedding(model_name=embedding_model, top_k=top_k, use_val_set=False)
     lex_negatives = mine_hard_negatives_lexical(top_k=top_k)
 
     if emb_negatives.empty and lex_negatives.empty:
@@ -189,13 +188,13 @@ def mine_hard_negatives_combined(
 
     # Normalize similarities to [0, 1] for fair combination
     if not emb_negatives.empty:
-        combined.loc[combined["mining_method"] == "embedding", "norm_sim"] = (
-            combined.loc[combined["mining_method"] == "embedding", "similarity"]
-        )
+        combined.loc[combined["mining_method"] == "embedding", "norm_sim"] = combined.loc[
+            combined["mining_method"] == "embedding", "similarity"
+        ]
     if not lex_negatives.empty:
-        combined.loc[combined["mining_method"] == "lexical", "norm_sim"] = (
-            combined.loc[combined["mining_method"] == "lexical", "similarity"]
-        )
+        combined.loc[combined["mining_method"] == "lexical", "norm_sim"] = combined.loc[
+            combined["mining_method"] == "lexical", "similarity"
+        ]
 
     # Compute combined score
     combined["combined_score"] = combined["norm_sim"].fillna(0)
@@ -210,8 +209,8 @@ def mine_hard_negatives_combined(
     combined = combined.sort_values("combined_score", ascending=False).head(top_k)
 
     _logger.info("Combined: %s unique hard negatives", f"{len(combined):,}")
-    _logger.info("  From embedding mining: %s", (combined['mining_method'] == 'embedding').sum())
-    _logger.info("  From lexical mining: %s", (combined['mining_method'] == 'lexical').sum())
+    _logger.info("  From embedding mining: %s", (combined["mining_method"] == "embedding").sum())
+    _logger.info("  From lexical mining: %s", (combined["mining_method"] == "lexical").sum())
 
     return combined.reset_index(drop=True)
 
@@ -248,15 +247,14 @@ def augment_training_data_with_hard_negatives(
     # Sample to achieve target duplicate ratio
     if duplicate_ratio is not None:
         n_dup = int(len(hn) * duplicate_ratio)
-        n_non = len(hn) - n_dup
+        len(hn) - n_dup
 
         # Hard negatives are all non-duplicate (label=0)
         # We also need some duplicate pairs to maintain balance
         # Sample duplicates from training
-        dup_pairs = train_df[train_df["label"] == 1].sample(
-            min(n_dup, (train_df["label"] == 1).sum()),
-            random_state=42
-        ).copy()
+        dup_pairs = (
+            train_df[train_df["label"] == 1].sample(min(n_dup, (train_df["label"] == 1).sum()), random_state=42).copy()
+        )
         dup_pairs["weight"] = 1.5  # Slightly higher weight for duplicates
 
         augmented = pd.concat([train_df, hn, dup_pairs], ignore_index=True)
@@ -321,15 +319,13 @@ def main() -> None:
     save_hard_negatives(hard_negs, hard_neg_dir)
 
     # Stage 3: Augment training data
-    augmented = augment_training_data_with_hard_negatives(
-        hard_negs, duplicate_ratio=0.5, hard_negative_weight=3.0
-    )
+    augmented = augment_training_data_with_hard_negatives(hard_negs, duplicate_ratio=0.5, hard_negative_weight=3.0)
 
     # Save augmented dataset
     augmented_path = PROJECT_ROOT / "data" / "augmented_quora.parquet"
     augmented[["q1", "q2", "label", "weight"]].to_parquet(augmented_path, index=False)
     _logger.info("Saved augmented dataset to %s", augmented_path)
-    _logger.info("  Shape: %s", augmented[['q1', 'q2', 'label', 'weight']].shape)
+    _logger.info("  Shape: %s", augmented[["q1", "q2", "label", "weight"]].shape)
 
 
 if __name__ == "__main__":

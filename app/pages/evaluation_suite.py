@@ -6,7 +6,9 @@ import pandas as pd
 import streamlit as st
 
 from duplicate_question_app.evaluation import (
-    generate_evaluation_report, compare_models, generate_model_comparison_plots
+    compare_models,
+    generate_evaluation_report,
+    generate_model_comparison_plots,
 )
 
 
@@ -31,13 +33,11 @@ def render() -> None:
             with st.spinner("Generating evaluation report..."):
                 try:
                     df = pd.read_csv(uploaded)
-                    summary = generate_evaluation_report(
-                        df, Path(output_dir), model_name=model_name
-                    )
+                    summary = generate_evaluation_report(df, Path(output_dir), model_name=model_name)
                     st.success("Report generated!")
                     st.json(summary)
 
-                    for name, path in summary['plots'].items():
+                    for name, path in summary["plots"].items():
                         if Path(path).exists():
                             st.image(path, caption=name)
                 except Exception as exc:
@@ -52,9 +52,9 @@ def render() -> None:
 
         if uploaded_files and st.button("Compare Models"):
             try:
-                names = [n.strip() for n in model_names.split(',')]
+                names = [n.strip() for n in model_names.split(",")]
                 predictions_dict = {}
-                for name, file in zip(names, uploaded_files):
+                for name, file in zip(names, uploaded_files, strict=False):
                     predictions_dict[name] = pd.read_csv(file)
 
                 comparison_df = compare_models(predictions_dict)

@@ -5,7 +5,8 @@ import streamlit as st
 
 from app.utils.constants import PATHS
 from duplicate_question_app.agreement_dashboard import (
-    analyze_model_agreement, compute_model_leaderboard, generate_agreement_summary
+    analyze_model_agreement,
+    generate_agreement_summary,
 )
 
 
@@ -34,10 +35,10 @@ def render() -> None:
 
         st.subheader("Agreement Summary")
         for key, value in summary.items():
-            if key != 'interpretation':
+            if key != "interpretation":
                 st.caption(f"{key}: {value}")
-        if 'interpretation' in summary:
-            st.info(summary['interpretation'])
+        if "interpretation" in summary:
+            st.info(summary["interpretation"])
 
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Agreement %", f"{dashboard.agreement_percentage:.0%}")

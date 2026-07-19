@@ -10,19 +10,21 @@ Features:
 
 from __future__ import annotations
 
-import time
 import hashlib
 import threading
+import time
 from collections import OrderedDict
+from collections.abc import Callable
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
-from functools import lru_cache, wraps
-from typing import Dict, List, Tuple, Optional, Any, Callable, Set
-from contextlib import contextmanager
+from functools import wraps
+from typing import Any
 
 import numpy as np
 
 try:
-    from sentence_transformers import SentenceTransformer, CrossEncoder
+    from sentence_transformers import CrossEncoder, SentenceTransformer
+
     _ST_AVAILABLE = True
 except ImportError:
     _ST_AVAILABLE = False
@@ -31,6 +33,7 @@ except ImportError:
 @dataclass
 class CacheStats:
     """Cache performance statistics."""
+
     hits: int = 0
     misses: int = 0
     evictions: int = 0
@@ -52,7 +55,7 @@ class LRUCache:
         self._lock = threading.RLock()
         self._stats = CacheStats(max_size=max_size)
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         with self._lock:
             if key in self._cache:
                 self._cache.move_to_end(key)
@@ -92,7 +95,7 @@ class EmbeddingCache:
 
     def __init__(self, max_size: int = 5000):
         self._cache = LRUCache(max_size)
-        self._model_cache: Dict[str, Any] = {}
+        self._model_cache: dict[str, Any] = {}
         self._model_lock = threading.RLock()
 
     def _make_key(self, model_name: str, text: str, normalize: bool = True) -> str:
@@ -105,7 +108,7 @@ class EmbeddingCache:
         model_name: str,
         text: str,
         normalize: bool = True,
-    ) -> Optional[np.ndarray]:
+    ) -> np.ndarray | None:
         """Get cached embedding if available."""
         key = self._make_key(model_name, text, normalize)
         return self._cache.get(key)
@@ -128,16 +131,16 @@ class EmbeddingCache:
             if model_name not in self._model_cache:
                 if not _ST_AVAILABLE:
                     raise RuntimeError("sentence-transformers not installed")
-                if 'cross-encoder' in model_name.lower() or 'nli' in model_name.lower():
-                    self._model_cache[model_name] = CrossEncoder(model_name, device='cpu')
+                if "cross-encoder" in model_name.lower() or "nli" in model_name.lower():
+                    self._model_cache[model_name] = CrossEncoder(model_name, device="cpu")
                 else:
-                    self._model_cache[model_name] = SentenceTransformer(model_name, device='cpu')
+                    self._model_cache[model_name] = SentenceTransformer(model_name, device="cpu")
             return self._model_cache[model_name]
 
     def encode_batch(
         self,
         model_name: str,
-        texts: List[str],
+        texts: list[str],
         normalize: bool = True,
         batch_size: int = 32,
     ) -> np.ndarray:
@@ -168,7 +171,7 @@ class EmbeddingCache:
             )
 
             # Cache and fill in
-            for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings):
+            for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings, strict=False):
                 self.put_embedding(model_name, text, emb, normalize)
                 embeddings[idx] = emb
 
@@ -187,7 +190,7 @@ class PreprocessingCache:
     def __init__(self, max_size: int = 10000):
         self._cache = LRUCache(max_size)
 
-    def get(self, text: str, **kwargs) -> Optional[str]:
+    def get(self, text: str, **kwargs) -> str | None:
         """Get cached preprocessing result."""
         key = self._make_key(text, kwargs)
         return self._cache.get(key)
@@ -197,10 +200,10 @@ class PreprocessingCache:
         key = self._make_key(text, kwargs)
         self._cache.put(key, result)
 
-    def _make_key(self, text: str, kwargs: Dict) -> str:
+    def _make_key(self, text: str, kwargs: dict) -> str:
         """Create cache key from text and preprocessing options."""
         # Hash text + options
-        options_str = ''.join(f"{k}={v}" for k, v in sorted(kwargs.items()))
+        options_str = "".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
         content = f"{text}|{options_str}"
         return hashlib.md5(content.encode()).hexdigest()
 
@@ -212,8 +215,8 @@ class ModelLoader:
     """Optimized model loading with lazy initialization."""
 
     def __init__(self):
-        self._models: Dict[str, Any] = {}
-        self._load_times: Dict[str, float] = {}
+        self._models: dict[str, Any] = {}
+        self._load_times: dict[str, float] = {}
         self._lock = threading.RLock()
 
     def get_model(
@@ -229,7 +232,7 @@ class ModelLoader:
                 self._load_times[model_name] = time.time() - start
             return self._models[model_name]
 
-    def preload(self, model_configs: Dict[str, Callable]) -> None:
+    def preload(self, model_configs: dict[str, Callable]) -> None:
         """Preload multiple models in background."""
         for name, loader in model_configs.items():
             if name not in self._models:
@@ -251,16 +254,16 @@ class BatchProcessor:
 
     def __init__(
         self,
-        process_fn: Callable[[List[Tuple[str, str]]], List[Any]],
+        process_fn: Callable[[list[tuple[str, str]]], list[Any]],
         max_batch_size: int = 32,
         max_wait_ms: int = 50,
     ):
         self.process_fn = process_fn
         self.max_batch_size = max_batch_size
         self.max_wait_ms = max_wait_ms
-        self._queue: List[Tuple[Tuple[str, str], threading.Event, List]] = []
+        self._queue: list[tuple[tuple[str, str], threading.Event, list]] = []
         self._lock = threading.Lock()
-        self._worker_thread: Optional[threading.Thread] = None
+        self._worker_thread: threading.Thread | None = None
         self._running = False
 
     def start(self) -> None:
@@ -278,7 +281,7 @@ class BatchProcessor:
     def process(self, q1: str, q2: str) -> Any:
         """Submit request for batch processing."""
         event = threading.Event()
-        result_holder: List[Any] = [None]
+        result_holder: list[Any] = [None]
 
         with self._lock:
             self._queue.append(((q1, q2), event, result_holder))
@@ -294,14 +297,14 @@ class BatchProcessor:
             batch = []
             with self._lock:
                 if self._queue:
-                    batch = self._queue[:self.max_batch_size]
-                    self._queue = self._queue[self.max_batch_size:]
+                    batch = self._queue[: self.max_batch_size]
+                    self._queue = self._queue[self.max_batch_size :]
 
             if batch:
                 pairs = [item[0] for item in batch]
                 try:
                     results = self.process_fn(pairs)
-                    for (_, event, holder), result in zip(batch, results):
+                    for (_, event, holder), result in zip(batch, results, strict=False):
                         holder[0] = result
                         event.set()
                 except Exception as e:
@@ -316,7 +319,7 @@ class BatchProcessor:
 _embedding_cache = EmbeddingCache(max_size=10000)
 _preprocessing_cache = PreprocessingCache(max_size=10000)
 _model_loader = ModelLoader()
-_batch_processors: Dict[str, BatchProcessor] = {}
+_batch_processors: dict[str, BatchProcessor] = {}
 
 
 def get_embedding_cache() -> EmbeddingCache:
@@ -338,6 +341,7 @@ def cached_normalize(text: str, **kwargs) -> str:
         return cached
 
     from duplicate_question_app.preprocessing import normalize_question
+
     result = normalize_question(text, **kwargs)
     _preprocessing_cache.put(text, result, **kwargs)
     return result
@@ -345,6 +349,7 @@ def cached_normalize(text: str, **kwargs) -> str:
 
 def memoize(maxsize: int = 128):
     """Memoization decorator with LRU cache."""
+
     def decorator(func: Callable) -> Callable:
         cache = LRUCache(maxsize)
 
@@ -360,6 +365,7 @@ def memoize(maxsize: int = 128):
 
         wrapper.cache = cache
         return wrapper
+
     return decorator
 
 
@@ -384,7 +390,7 @@ class InferenceOptimizer:
         q1: str,
         q2: str,
         model_name: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Optimized single prediction with all caching."""
         start = time.perf_counter()
 
@@ -395,7 +401,7 @@ class InferenceOptimizer:
         preprocess_time = time.perf_counter() - start
 
         # Get model
-        if 'cross-encoder' in model_name.lower() or 'nli' in model_name.lower():
+        if "cross-encoder" in model_name.lower() or "nli" in model_name.lower():
             model = self.embedding_cache.get_model(model_name)
             scores = model.predict([(q1_norm, q2_norm)], apply_softmax=True)[0]
             # Convert NLI scores to duplicate probability
@@ -416,27 +422,27 @@ class InferenceOptimizer:
         inference_time = time.perf_counter() - start - preprocess_time
 
         return {
-            'question1': q1_norm,
-            'question2': q2_norm,
-            'prob_duplicate': prob_dup,
-            'prob_non_duplicate': 1.0 - prob_dup,
-            'predicted_label': 1 if prob_dup >= 0.5 else 0,
-            'prediction': 'Duplicate' if prob_dup >= 0.5 else 'Non-Duplicate',
-            'confidence': max(prob_dup, 1.0 - prob_dup),
-            'threshold': 0.5,
-            'latency_ms': (time.perf_counter() - start) * 1000,
-            'preprocess_ms': preprocess_time * 1000,
-            'inference_ms': inference_time * 1000,
+            "question1": q1_norm,
+            "question2": q2_norm,
+            "prob_duplicate": prob_dup,
+            "prob_non_duplicate": 1.0 - prob_dup,
+            "predicted_label": 1 if prob_dup >= 0.5 else 0,
+            "prediction": "Duplicate" if prob_dup >= 0.5 else "Non-Duplicate",
+            "confidence": max(prob_dup, 1.0 - prob_dup),
+            "threshold": 0.5,
+            "latency_ms": (time.perf_counter() - start) * 1000,
+            "preprocess_ms": preprocess_time * 1000,
+            "inference_ms": inference_time * 1000,
         }
 
     def _calibrate_prob(self, model_name: str, prob: float) -> float:
         """Apply model-specific calibration."""
         name = model_name.lower()
-        if 'e5' in name:
+        if "e5" in name:
             steepness, midpoint = 18.0, 0.72
-        elif 'bge' in name:
+        elif "bge" in name:
             steepness, midpoint = 14.0, 0.60
-        elif 'mpnet' in name:
+        elif "mpnet" in name:
             steepness, midpoint = 14.0, 0.58
         else:
             steepness, midpoint = 15.0, 0.50
@@ -444,10 +450,10 @@ class InferenceOptimizer:
 
     def predict_batch_optimized(
         self,
-        pairs: List[Tuple[str, str]],
+        pairs: list[tuple[str, str]],
         model_name: str,
         batch_size: int = 32,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Optimized batch prediction."""
         start = time.perf_counter()
 
@@ -458,16 +464,14 @@ class InferenceOptimizer:
         preprocess_time = time.perf_counter() - start
 
         # Get model
-        model = self.embedding_cache.get_model(model_name)
+        self.embedding_cache.get_model(model_name)
 
         # Batch encode all texts
         all_texts = q1_list + q2_list
-        embeddings = self.embedding_cache.encode_batch(
-            model_name, all_texts, batch_size=batch_size
-        )
+        embeddings = self.embedding_cache.encode_batch(model_name, all_texts, batch_size=batch_size)
 
-        q1_embs = embeddings[:len(pairs)]
-        q2_embs = embeddings[len(pairs):]
+        q1_embs = embeddings[: len(pairs)]
+        q2_embs = embeddings[len(pairs) :]
 
         # Compute similarities
         similarities = np.sum(q1_embs * q2_embs, axis=1)
@@ -476,34 +480,36 @@ class InferenceOptimizer:
         inference_time = time.perf_counter() - start - preprocess_time
 
         results = []
-        for i, (q1, q2) in enumerate(zip(q1_list, q2_list)):
+        for i, (q1, q2) in enumerate(zip(q1_list, q2_list, strict=False)):
             prob_dup = float(probs[i])
-            results.append({
-                'question1': q1,
-                'question2': q2,
-                'prob_duplicate': prob_dup,
-                'prob_non_duplicate': 1.0 - prob_dup,
-                'predicted_label': 1 if prob_dup >= 0.5 else 0,
-                'prediction': 'Duplicate' if prob_dup >= 0.5 else 'Non-Duplicate',
-                'confidence': max(prob_dup, 1.0 - prob_dup),
-                'threshold': 0.5,
-            })
+            results.append(
+                {
+                    "question1": q1,
+                    "question2": q2,
+                    "prob_duplicate": prob_dup,
+                    "prob_non_duplicate": 1.0 - prob_dup,
+                    "predicted_label": 1 if prob_dup >= 0.5 else 0,
+                    "prediction": "Duplicate" if prob_dup >= 0.5 else "Non-Duplicate",
+                    "confidence": max(prob_dup, 1.0 - prob_dup),
+                    "threshold": 0.5,
+                }
+            )
 
         total_time = (time.perf_counter() - start) * 1000
         for r in results:
-            r['latency_ms'] = total_time / len(results)
-            r['preprocess_ms'] = (preprocess_time * 1000) / len(results)
-            r['inference_ms'] = (inference_time * 1000) / len(results)
+            r["latency_ms"] = total_time / len(results)
+            r["preprocess_ms"] = (preprocess_time * 1000) / len(results)
+            r["inference_ms"] = (inference_time * 1000) / len(results)
 
         return results
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics."""
         return {
-            'embedding_cache': self.embedding_cache.stats().__dict__,
-            'preprocessing_cache': self.preprocessing_cache.stats().__dict__,
-            'loaded_models': list(self.model_loader._models.keys()),
-            'model_load_times': self.model_loader._load_times,
+            "embedding_cache": self.embedding_cache.stats().__dict__,
+            "preprocessing_cache": self.preprocessing_cache.stats().__dict__,
+            "loaded_models": list(self.model_loader._models.keys()),
+            "model_load_times": self.model_loader._load_times,
         }
 
 
@@ -516,33 +522,31 @@ def clear_all_caches():
 
 
 def warmup_caches(
-    sample_pairs: List[Tuple[str, str]],
-    model_names: List[str],
+    sample_pairs: list[tuple[str, str]],
+    model_names: list[str],
 ) -> None:
     """Warm up caches with sample data."""
     optimizer = InferenceOptimizer()
 
     # Preload models
     for model_name in model_names:
-        if 'cross-encoder' in model_name.lower() or 'nli' in model_name.lower():
-            _model_loader.get_model(model_name, lambda m=model_name: CrossEncoder(m, device='cpu'))
+        if "cross-encoder" in model_name.lower() or "nli" in model_name.lower():
+            _model_loader.get_model(model_name, lambda m=model_name: CrossEncoder(m, device="cpu"))
         else:
-            _model_loader.get_model(model_name, lambda m=model_name: SentenceTransformer(m, device='cpu'))
+            _model_loader.get_model(model_name, lambda m=model_name: SentenceTransformer(m, device="cpu"))
 
     # Run sample predictions to populate caches
     for q1, q2 in sample_pairs[:10]:
         for model_name in model_names:
-            try:
+            with suppress(Exception):
                 optimizer.predict_single_optimized(q1, q2, model_name)
-            except Exception:
-                pass
 
 
 def benchmark_inference(
-    pairs: List[Tuple[str, str]],
-    model_names: List[str],
+    pairs: list[tuple[str, str]],
+    model_names: list[str],
     iterations: int = 3,
-) -> Dict[str, Dict[str, float]]:
+) -> dict[str, dict[str, float]]:
     """Benchmark inference performance."""
     optimizer = InferenceOptimizer()
     results = {}
@@ -556,11 +560,11 @@ def benchmark_inference(
             times.append(time.perf_counter() - start)
 
         results[model_name] = {
-            'mean_ms': np.mean(times) * 1000,
-            'std_ms': np.std(times) * 1000,
-            'min_ms': np.min(times) * 1000,
-            'max_ms': np.max(times) * 1000,
-            'per_pair_ms': np.mean(times) * 1000 / len(pairs),
+            "mean_ms": np.mean(times) * 1000,
+            "std_ms": np.std(times) * 1000,
+            "min_ms": np.min(times) * 1000,
+            "max_ms": np.max(times) * 1000,
+            "per_pair_ms": np.mean(times) * 1000 / len(pairs),
         }
 
     return results

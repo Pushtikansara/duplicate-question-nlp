@@ -3,7 +3,13 @@ from __future__ import annotations
 import streamlit as st
 
 from app.components.metric_cards import metric_card_row
-from app.services.data import get_week4_metrics, get_week4_plot_paths, get_week4_threshold_df, get_week4_ablation_df, get_week4_predictions_df
+from app.services.data import (
+    get_week4_ablation_df,
+    get_week4_metrics,
+    get_week4_plot_paths,
+    get_week4_predictions_df,
+    get_week4_threshold_df,
+)
 
 
 def render() -> None:
@@ -18,7 +24,9 @@ def render() -> None:
         st.info("Week 4 exported artifacts are not fully available yet.")
         return
 
-    tab_overview, tab_threshold, tab_ablation, tab_predictions, tab_visuals = st.tabs(["Overview", "Threshold Tuning", "Ablation", "Predictions", "Visuals"])
+    tab_overview, tab_threshold, tab_ablation, tab_predictions, tab_visuals = st.tabs(
+        ["Overview", "Threshold Tuning", "Ablation", "Predictions", "Visuals"]
+    )
     with tab_overview:
         if week4_metrics:
             metric_card_row(week4_metrics)
@@ -33,7 +41,9 @@ def render() -> None:
         else:
             if {"Threshold", "F1"}.issubset(week4_threshold_df.columns):
                 best_f1 = float(week4_threshold_df["F1"].max())
-                best_threshold = float(week4_threshold_df.loc[week4_threshold_df["F1"] == best_f1, "Threshold"].astype(float).max())
+                best_threshold = float(
+                    week4_threshold_df.loc[week4_threshold_df["F1"] == best_f1, "Threshold"].astype(float).max()
+                )
                 col1, col2 = st.columns(2)
                 col1.metric("Selected Threshold", f"{best_threshold:.2f}")
                 col2.metric("Best F1", f"{best_f1:.3f}")

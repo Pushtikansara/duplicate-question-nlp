@@ -25,6 +25,7 @@ class TestCLI:
     def test_main_contains_version(self, capsys):
         with patch.object(sys, "argv", ["dqd"]):
             from duplicate_question_app import __version__
+
             main()
             captured = capsys.readouterr()
             assert __version__ in captured.out
@@ -32,25 +33,36 @@ class TestCLI:
     def test_run_app_imports(self):
         with patch("subprocess.run") as mock_run:
             from duplicate_question_app.cli import run_app
+
             run_app()
             mock_run.assert_called_once()
 
     @pytest.mark.cli
     def test_predict_no_file_exits(self):
         from duplicate_question_app.cli import predict
+
         with patch.object(sys, "argv", ["dqd-predict", "/nonexistent/file.csv"]):
             with patch("pathlib.Path.exists", return_value=False):
                 with pytest.raises(SystemExit):
                     predict()
 
     def test_predict_with_csv_runs(self):
-        import pandas as pd
         import tempfile
+
+        import pandas as pd
+
         from duplicate_question_app._inference.transformer import ModelMetadata
+
         meta = ModelMetadata(
-            model_dir=Path("/tmp"), model_label="T", model_version="1",
-            decision_threshold=0.5, threshold_source="config", device="cpu",
-            fallback_reason=None, load_errors=(), cache_key="k",
+            model_dir=Path("/tmp"),
+            model_label="T",
+            model_version="1",
+            decision_threshold=0.5,
+            threshold_source="config",
+            device="cpu",
+            fallback_reason=None,
+            load_errors=(),
+            cache_key="k",
         )
         df = pd.DataFrame({"question1": ["test"], "question2": ["test2"], "label": [1]})
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
@@ -58,27 +70,32 @@ class TestCLI:
             df.to_csv(fname, index=False)
         with patch.object(sys, "argv", ["dqd-predict", fname, "--model", "E5-base-v2"]):
             with patch("duplicate_question_app.week2_inference.is_week2_model", return_value=False):
-                with patch("duplicate_question_app.inference.load_model_and_tokenizer", return_value=(MagicMock(), MagicMock(), meta)):
+                with patch(
+                    "duplicate_question_app.inference.load_model_and_tokenizer",
+                    return_value=(MagicMock(), MagicMock(), meta),
+                ):
                     with patch("duplicate_question_app.inference.DuplicateQuestionInferenceService") as mock_svc:
                         mock_instance = MagicMock()
                         mock_instance.predict_single.return_value = {
-                            "predicted_label": 1, "prob_duplicate": 0.9, "prob_non_duplicate": 0.1,
+                            "predicted_label": 1,
+                            "prob_duplicate": 0.9,
+                            "prob_non_duplicate": 0.1,
                         }
                         mock_svc.return_value = mock_instance
                         from duplicate_question_app.cli import predict
+
                         predict()
 
     def test_benchmark_imports(self):
         from duplicate_question_app.cli import benchmark
 
-        with patch("subprocess.run") as mock_run:
-            with patch.object(sys, "argv", ["dqd-benchmark"]):
-                # The benchmark script already exists from the Phase 5 commit
-                benchmark()
-                mock_run.assert_called_once()
+        with patch("subprocess.run") as mock_run, patch.object(sys, "argv", ["dqd-benchmark"]):
+            # The benchmark script already exists from the Phase 5 commit
+            benchmark()
+            mock_run.assert_called_once()
 
     def test_predict_no_args(self):
         from duplicate_question_app.cli import predict
-        with patch.object(sys, "argv", ["dqd-predict"]):
-            with pytest.raises((SystemExit, Exception)):
-                predict()
+
+        with patch.object(sys, "argv", ["dqd-predict"]), pytest.raises((SystemExit, Exception)):
+            predict()

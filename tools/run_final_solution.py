@@ -19,22 +19,23 @@ Usage:
 
 from __future__ import annotations
 
-import sys
 import json
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix
 from scipy.special import softmax
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
 
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
+from sentence_transformers import CrossEncoder, SentenceTransformer
+
 from duplicate_question_app.preprocessing import normalize_question
-from sentence_transformers import SentenceTransformer, CrossEncoder
 
 CSV_DIR = Path.home() / "Downloads"
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "outputs" / "final_solution"
@@ -61,7 +62,7 @@ def load_csv(csv_file: str):
     label_col = next((c for c in df.columns if c.lower().strip() in ("is_duplicate", "label")), None)
     q1_col = next(c for c in df.columns if "q1" in c.lower() or "question1" in c.lower())
     q2_col = next(c for c in df.columns if "q2" in c.lower() or "question2" in c.lower())
-    pairs = list(zip(df[q1_col].astype(str), df[q2_col].astype(str)))
+    pairs = list(zip(df[q1_col].astype(str), df[q2_col].astype(str), strict=False))
     return pairs, df[label_col].values if label_col else None, df, q1_col, q2_col
 
 
@@ -80,13 +81,12 @@ def main():
     bi_encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L12-v2", device=device)
     ce_path = str(Path(__file__).resolve().parents[1] / "models" / "cross-encoder-quora")
     trained_ce = CrossEncoder(ce_path, device=device)
-    print(f"  all-MiniLM-L12-v2: loaded")
+    print("  all-MiniLM-L12-v2: loaded")
     print(f"  cross-encoder-quora (trained): loaded from {ce_path}")
 
     # Fixed config (works well across all datasets without per-dataset tuning)
     # Using CE-only with threshold 0.10 is simple and effective
     # But we also check if hybrid helps
-    FIXED_CE_WEIGHT = 1.0  # Use CE only by default
     FIXED_THRESHOLD = 0.10
 
     leaderboard = {}
@@ -97,9 +97,9 @@ def main():
             continue
 
         n = len(pairs)
-        print(f"\n{'='*100}")
+        print(f"\n{'=' * 100}")
         print(f"  {csv_file}: {n:,} pairs, pos_rate={y_true.mean():.3f}")
-        print(f"{'='*100}")
+        print(f"{'=' * 100}")
 
         # Preprocess with typo fix
         q1s = [normalize_question(p[0], fix_typos=True) for p in pairs]
@@ -107,7 +107,7 @@ def main():
 
         # Cross-Encoder scores
         start_ce = time.time()
-        ce_logits = trained_ce.predict(list(zip(q1s, q2s)), batch_size=64, show_progress_bar=False)
+        ce_logits = trained_ce.predict(list(zip(q1s, q2s, strict=False)), batch_size=64, show_progress_bar=False)
         ce_probs = softmax(ce_logits, axis=1)[:, 1]
         ce_time = time.time() - start_ce
         print(f"  Cross-Encoder: {ce_time:.1f}s")
@@ -150,8 +150,8 @@ def main():
                     best_ce_w = ce_w
                     best_hyb_th = th
 
-        prec = precision_score(y_true, preds_ce, zero_division=0)
-        rec = recall_score(y_true, preds_ce, zero_division=0)
+        precision_score(y_true, preds_ce, zero_division=0)
+        recall_score(y_true, preds_ce, zero_division=0)
         cm = confusion_matrix(y_true, preds_ce)
         tn, fp, fn, tp = cm.ravel()
 
@@ -161,22 +161,23 @@ def main():
         print(f"  Confusion: TN={tn} FP={fp} FN={fn} TP={tp}")
 
         # Save predictions using the best config
-        final_ce_w = 1.0  # Use CE only as primary
         final_th = 0.10
         final_scores = ce_probs
         y_pred = (final_scores >= final_th).astype(int)
 
-        out_df = pd.DataFrame({
-            q1_col: df[q1_col],
-            q2_col: df[q2_col],
-            "is_duplicate": y_true,
-            "predicted_label": y_pred,
-            "prediction": ["Duplicate" if p else "Non-Duplicate" for p in y_pred],
-            "cross_encoder_score": ce_probs,
-            "bi_encoder_score": bi_scores,
-            "threshold": final_th,
-            "model": "CrossEncoder-Quora-Finetuned",
-        })
+        out_df = pd.DataFrame(
+            {
+                q1_col: df[q1_col],
+                q2_col: df[q2_col],
+                "is_duplicate": y_true,
+                "predicted_label": y_pred,
+                "prediction": ["Duplicate" if p else "Non-Duplicate" for p in y_pred],
+                "cross_encoder_score": ce_probs,
+                "bi_encoder_score": bi_scores,
+                "threshold": final_th,
+                "model": "CrossEncoder-Quora-Finetuned",
+            }
+        )
 
         out_dir = RESULTS_DIR / "predictions"
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -188,26 +189,35 @@ def main():
             "pos_rate": float(y_true.mean()),
             "ce_fixed": {"accuracy": float(fixed_acc), "f1": float(fixed_f1), "threshold": FIXED_THRESHOLD},
             "ce_optimal": {"accuracy": float(ce_acc), "f1": float(best_ce_f1), "threshold": float(best_ce_th)},
-            "hybrid_optimal": {"accuracy": float(best_hyb_acc), "f1": float(best_hyb_f1), "ce_weight": float(best_ce_w), "threshold": float(best_hyb_th)},
+            "hybrid_optimal": {
+                "accuracy": float(best_hyb_acc),
+                "f1": float(best_hyb_f1),
+                "ce_weight": float(best_ce_w),
+                "threshold": float(best_hyb_th),
+            },
             "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
         }
 
     # Final leaderboard
-    print(f"\n{'='*130}")
+    print(f"\n{'=' * 130}")
     print("  FINAL LEADERBOARD — Trained Cross-Encoder (DeBERTa-v3 + Quora)")
-    print(f"{'='*130}")
-    print(f"  {'Dataset':35s}  {'CE_fixed':>9s}  {'CE_opt':>9s}  {'Hybrid':>9s}  {'F1_opt':>8s}  {'TN':>5s}  {'FP':>5s}  {'FN':>5s}  {'TP':>5s}")
-    print(f"  {'-'*130}")
+    print(f"{'=' * 130}")
+    print(
+        f"  {'Dataset':35s}  {'CE_fixed':>9s}  {'CE_opt':>9s}  {'Hybrid':>9s}  {'F1_opt':>8s}  {'TN':>5s}  {'FP':>5s}  {'FN':>5s}  {'TP':>5s}"
+    )
+    print(f"  {'-' * 130}")
 
     ranked = sorted(leaderboard.items(), key=lambda x: x[1]["ce_optimal"]["accuracy"], reverse=True)
-    for key, info in ranked:
+    for _key, info in ranked:
         ce_f = info["ce_fixed"]
         ce_o = info["ce_optimal"]
         hyb = info["hybrid_optimal"]
         cm = info["confusion_matrix"]
-        print(f"  {info['file']:35s}  {ce_f['accuracy']:9.4f}  {ce_o['accuracy']:9.4f}  "
-              f"{hyb['accuracy']:9.4f}  {ce_o['f1']:8.4f}  "
-              f"{cm['tn']:5d}  {cm['fp']:5d}  {cm['fn']:5d}  {cm['tp']:5d}")
+        print(
+            f"  {info['file']:35s}  {ce_f['accuracy']:9.4f}  {ce_o['accuracy']:9.4f}  "
+            f"{hyb['accuracy']:9.4f}  {ce_o['f1']:8.4f}  "
+            f"{cm['tn']:5d}  {cm['fp']:5d}  {cm['fn']:5d}  {cm['tp']:5d}"
+        )
 
     with open(RESULTS_DIR / "leaderboard.json", "w") as f:
         json.dump(leaderboard, f, indent=2)
@@ -215,20 +225,24 @@ def main():
     print(f"Predictions saved to {RESULTS_DIR}/predictions/")
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     min_acc = min(info["ce_optimal"]["accuracy"] for info in leaderboard.values())
     min_hyb = min(info["hybrid_optimal"]["accuracy"] for info in leaderboard.values())
     print(f"  Minimum CE optimal accuracy: {min_acc:.2%}")
     print(f"  Minimum Hybrid accuracy:     {min_hyb:.2%}")
-    print(f"  Number of CSVs >= 95%:       {sum(1 for i in leaderboard.values() if i['ce_optimal']['accuracy'] >= 0.95)}/{len(leaderboard)}")
-    print(f"  Number of CSVs >= 95% (hybrid): {sum(1 for i in leaderboard.values() if i['hybrid_optimal']['accuracy'] >= 0.95)}/{len(leaderboard)}")
-    print(f"  Model: DeBERTa-v3-base trained on Quora (150K pairs, 2 epochs)")
-    print(f"  + MiniLM-L12-v2 bi-encoder (hybrid, optimal weight per dataset)")
-    print(f"  + Typo fixing in preprocessing")
-    print(f"  Recommended fixed config: CE only, threshold=0.10")
-    print(f"{'='*60}")
+    print(
+        f"  Number of CSVs >= 95%:       {sum(1 for i in leaderboard.values() if i['ce_optimal']['accuracy'] >= 0.95)}/{len(leaderboard)}"
+    )
+    print(
+        f"  Number of CSVs >= 95% (hybrid): {sum(1 for i in leaderboard.values() if i['hybrid_optimal']['accuracy'] >= 0.95)}/{len(leaderboard)}"
+    )
+    print("  Model: DeBERTa-v3-base trained on Quora (150K pairs, 2 epochs)")
+    print("  + MiniLM-L12-v2 bi-encoder (hybrid, optimal weight per dataset)")
+    print("  + Typo fixing in preprocessing")
+    print("  Recommended fixed config: CE only, threshold=0.10")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

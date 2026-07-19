@@ -40,7 +40,9 @@ class TestExceptionHierarchy:
             LinguistError,
         ]
         for exc in exceptions:
-            assert issubclass(exc, DuplicateQuestionAppError), f"{exc.__name__} is not a subclass of DuplicateQuestionAppError"
+            assert issubclass(exc, DuplicateQuestionAppError), (
+                f"{exc.__name__} is not a subclass of DuplicateQuestionAppError"
+            )
 
     def test_data_error_extends_exception(self):
         assert issubclass(DataError, DuplicateQuestionAppError)
@@ -140,10 +142,19 @@ class TestExceptionHierarchy:
     def test_no_extra_exception_classes(self):
         exc_names = {c.__name__ for c in DuplicateQuestionAppError.__subclasses__()}
         expected = {
-            "ConfigurationError", "ModelNotFoundError", "ModelNotReadyError",
-            "InferenceError", "DataError", "TrainingError", "CalibrationError",
-            "EnsembleError", "RegistryError", "EvaluationError",
-            "PreprocessingError", "ArtifactError", "LinguistError",
+            "ConfigurationError",
+            "ModelNotFoundError",
+            "ModelNotReadyError",
+            "InferenceError",
+            "DataError",
+            "TrainingError",
+            "CalibrationError",
+            "EnsembleError",
+            "RegistryError",
+            "EvaluationError",
+            "PreprocessingError",
+            "ArtifactError",
+            "LinguistError",
         }
         assert exc_names == expected
 

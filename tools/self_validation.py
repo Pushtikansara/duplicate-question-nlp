@@ -14,9 +14,8 @@ from pathlib import Path
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.config import get_app_paths, MODEL_CHOICES
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
 from duplicate_question_app.agreement_engine import get_agreement_report
+from duplicate_question_app.config import MODEL_CHOICES, get_app_paths
 from duplicate_question_app.intelligent_ensemble import get_adaptive_ensemble_prediction
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -63,7 +62,7 @@ def run_validation() -> dict[str, dict]:
 
     # Test agreement engine
     print("Testing Agreement Engine...")
-    for q1, q2, expected in TEST_PAIRS[:3]:  # Test first 3 pairs
+    for q1, q2, _expected in TEST_PAIRS[:3]:  # Test first 3 pairs
         report = get_agreement_report(q1, q2, PATHS)
         results[f"agreement_{q1[:20]}"] = {
             "num_models": report.num_models_voted,
@@ -84,19 +83,21 @@ def print_report(results: dict[str, dict]) -> None:
 
     # Ensemble results
     ens = results.get("adaptive_ensemble", {})
-    print(f"\n📊 Adaptive Ensemble:")
+    print("\n📊 Adaptive Ensemble:")
     print(f"  Accuracy:      {ens.get('accuracy', 0):.1%} ({ens.get('correct', 0)}/{ens.get('total', 0)})")
     print(f"  Avg Latency:   {ens.get('avg_latency_ms', 0):.0f} ms")
     print(f"  Max Latency:   {ens.get('max_latency_ms', 0):.0f} ms")
 
     # Agreement results
-    print(f"\n🤝 Model Agreement (sample):")
+    print("\n🤝 Model Agreement (sample):")
     for key, val in results.items():
         if key.startswith("agreement_"):
             models_voted = val.get("num_models", 0)
             agreement = val.get("agreement", 0)
-            print(f"  {key[11:30]:<25} models={models_voted} agree={agreement:.0%} "
-                  f"{'✅' if val.get('unanimous') else '⬜'}")
+            print(
+                f"  {key[11:30]:<25} models={models_voted} agree={agreement:.0%} "
+                f"{'✅' if val.get('unanimous') else '⬜'}"
+            )
 
     # Summary
     print(f"\n{'=' * 60}")

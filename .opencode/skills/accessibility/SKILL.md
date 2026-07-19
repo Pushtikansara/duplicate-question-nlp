@@ -202,4 +202,3 @@ description: Use when ensuring web accessibility (a11y) compliance. Covers WCAG 
 - Test every component with keyboard navigation before considering it complete.
 - Run automated accessibility tests as part of the CI/CD pipeline with axe-core or Pa11y.
 - Maintain an accessibility statement page that documents known issues and accommodations.
-

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-import time
-from typing import Any, Iterable
 
-import numpy as np
 import pandas as pd
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -19,7 +18,29 @@ from duplicate_question_app.config import (
     resolve_model_selection,
 )
 from duplicate_question_app.preprocessing import normalize_question
-from duplicate_question_app.week2_inference import Week2InferenceService, is_week2_model
+
+
+class ModelArtifactsNotFoundError(FileNotFoundError):
+    """Raised when no loadable model artifacts can be found on disk.
+
+    This is a recoverable condition: callers should fall back to a
+    different model, present a user-facing message, or skip
+    model-dependent tests.
+    """
+
+    def __init__(self, message: str, *, week4_issues: str = "", week3_issues: str = ""):
+        super().__init__(message)
+        self.week4_issues = week4_issues
+        self.week3_issues = week3_issues
+
+
+class ModelLoadError(RuntimeError):
+    """Raised when a model directory exists but loading fails.
+
+    Unlike ModelArtifactsNotFoundError, this means artifacts exist but
+    are corrupted or incompatible.
+    """
+
 
 DEFAULT_MAX_LENGTH = get_config("inference").get("max_length", 128)
 
@@ -40,7 +61,8 @@ class ModelMetadata:
 
 # DistilBERT models were fine-tuned on original (non-expanded) text.
 # Abbreviation expansion would change token distributions they were trained on.
-_norm = lambda text: normalize_question(text, expand_abbrevs=False)
+def _norm(text):
+    return normalize_question(text, expand_abbrevs=False)
 
 
 def _resolve_threshold(paths: AppPaths) -> tuple[float, str]:
@@ -71,6 +93,7 @@ def _build_metadata(
     paths: AppPaths,
 ) -> ModelMetadata:
     from duplicate_question_app._config.loader import get_config as _get_inf_config
+
     _inf_cfg = _get_inf_config("inference")
     _default_th = _inf_cfg.get("default_threshold", 0.5)
 
@@ -100,7 +123,9 @@ def _resolve_device() -> str:
     return inf_cfg.get("default_device", "cpu")
 
 
-def load_model_and_tokenizer(paths: AppPaths, model_version: str | None = None) -> tuple[AutoModelForSequenceClassification, AutoTokenizer, ModelMetadata]:
+def load_model_and_tokenizer(
+    paths: AppPaths, model_version: str | None = None
+) -> tuple[AutoModelForSequenceClassification, AutoTokenizer, ModelMetadata]:
     resolution = resolve_model_selection(paths)
     device = _resolve_device()
 
@@ -109,14 +134,14 @@ def load_model_and_tokenizer(paths: AppPaths, model_version: str | None = None) 
 
     candidates: list[tuple[str, ModelDirectoryStatus, str | None]] = []
 
-    if model_version == "Improved DistilBERT (Week 4)" or model_version is None:
-        if resolution.week4.ready:
-            candidates.append(("week4", resolution.week4, None))
+    if (model_version == "Improved DistilBERT (Week 4)" or model_version is None) and resolution.week4.ready:
+        candidates.append(("week4", resolution.week4, None))
 
-    if model_version == "DistilBERT (Week 3)" or (model_version is None and not candidates):
-        if resolution.week3.ready:
-            fallback = None if model_version else resolution.fallback_reason
-            candidates.append(("week3", resolution.week3, fallback))
+    if (
+        model_version == "DistilBERT (Week 3)" or (model_version is None and not candidates)
+    ) and resolution.week3.ready:
+        fallback = None if model_version else resolution.fallback_reason
+        candidates.append(("week3", resolution.week3, fallback))
 
     # If the user explicitly requested a model that isn't ready, add a fallback
     if not candidates and model_version:
@@ -126,13 +151,15 @@ def load_model_and_tokenizer(paths: AppPaths, model_version: str | None = None) 
             candidates.append(("week4", resolution.week4, None))
 
     if not candidates:
-        if model_version:
-            raise FileNotFoundError(f"Model '{model_version}' artifacts are not available or incomplete.")
         week4_issues = ", ".join(resolution.week4.issues) or "unavailable"
         week3_issues = ", ".join(resolution.week3.issues) or "unavailable"
-        raise FileNotFoundError(
-            "No loadable model artifacts were found. "
-            f"Week 4: {week4_issues}. Week 3: {week3_issues}."
+        msg = f"No loadable model artifacts were found. Week 4: {week4_issues}. Week 3: {week3_issues}."
+        if model_version:
+            msg = f"Model '{model_version}' artifacts are not available or incomplete. " + msg
+        raise ModelArtifactsNotFoundError(
+            msg,
+            week4_issues=week4_issues,
+            week3_issues=week3_issues,
         )
 
     load_errors: list[str] = []
@@ -154,10 +181,7 @@ def load_model_and_tokenizer(paths: AppPaths, model_version: str | None = None) 
         except Exception as exc:
             load_errors.append(f"{status.label}: {exc}")
 
-    raise RuntimeError(
-        "Unable to load any available model. "
-        + " | ".join(load_errors)
-    )
+    raise ModelLoadError("Unable to load any available model. " + " | ".join(load_errors))
 
 
 class DuplicateQuestionInferenceService:
@@ -287,7 +311,7 @@ class DuplicateQuestionInferenceService:
                 outputs = self.model(**inputs)
                 probabilities = torch.softmax(outputs.logits, dim=1).detach().cpu().numpy()
 
-            for (q1, q2), (prob_non_duplicate, prob_duplicate) in zip(batch, probabilities):
+            for (q1, q2), (prob_non_duplicate, prob_duplicate) in zip(batch, probabilities, strict=False):
                 prob_non_duplicate_f = float(prob_non_duplicate)
                 prob_duplicate_f = float(prob_duplicate)
                 predicted_label = int(prob_duplicate_f >= self.metadata.decision_threshold)

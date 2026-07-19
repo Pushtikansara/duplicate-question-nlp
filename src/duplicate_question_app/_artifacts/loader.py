@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -54,9 +54,7 @@ def load_dataset_frame(paths: AppPaths) -> pd.DataFrame:
         return pd.read_parquet(parquet_path)
     if csv_path.exists():
         return pd.read_csv(csv_path)
-    raise FileNotFoundError(
-        "No cleaned dataset found. Expected data/cleaned_quora.parquet or data/cleaned_quora.csv."
-    )
+    raise FileNotFoundError("No cleaned dataset found. Expected data/cleaned_quora.parquet or data/cleaned_quora.csv.")
 
 
 def build_dataset_summary(df: pd.DataFrame) -> dict[str, Any]:
@@ -100,7 +98,11 @@ def reconstruct_week3_test_frame(paths: AppPaths) -> pd.DataFrame:
 
     # Use a deterministic hash-based split to avoid non-reproducible test sets
     # when the dataset changes or train_test_split produces different indices
-    row_hash = working_df["q1"].str.len().astype(str) + working_df["q2"].str.len().astype(str) + working_df["is_duplicate"].astype(str)
+    row_hash = (
+        working_df["q1"].str.len().astype(str)
+        + working_df["q2"].str.len().astype(str)
+        + working_df["is_duplicate"].astype(str)
+    )
     test_mask = pd.util.hash_pandas_object(row_hash) % 5 == 0
     test_df = working_df[test_mask].reset_index(drop=True)
     if len(test_df) < 100:
@@ -141,9 +143,7 @@ def load_transformer_predictions(paths: AppPaths) -> pd.DataFrame:
     df["prob_non_duplicate"] = probabilities[:, 0]
     df["prob_duplicate"] = probabilities[:, 1]
     df["confidence"] = df[["prob_non_duplicate", "prob_duplicate"]].max(axis=1)
-    df["predicted_class_name"] = np.where(
-        df["predicted_label"] == 1, "Duplicate", "Non-Duplicate"
-    )
+    df["predicted_class_name"] = np.where(df["predicted_label"] == 1, "Duplicate", "Non-Duplicate")
     df["actual_class_name"] = np.where(df["true_label"] == 1, "Duplicate", "Non-Duplicate")
     return df
 
@@ -239,9 +239,7 @@ def build_week4_metrics(predictions_df: pd.DataFrame) -> dict[str, Any]:
     y_true = predictions_df["true_label"].to_numpy(dtype=int)
     y_pred = predictions_df["pred_label"].to_numpy(dtype=int)
     y_score = (
-        predictions_df["prob_duplicate"].to_numpy(dtype=float)
-        if "prob_duplicate" in predictions_df.columns
-        else None
+        predictions_df["prob_duplicate"].to_numpy(dtype=float) if "prob_duplicate" in predictions_df.columns else None
     )
 
     metrics: dict[str, Any] = {

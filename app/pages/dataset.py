@@ -29,7 +29,9 @@ def render() -> None:
             st.bar_chart(label_counts)
     with tab_quality:
         st.subheader("Missing Values")
-        missing_df = pd.DataFrame.from_dict(summary["missing_values"], orient="index", columns=["missing_count"]).sort_values("missing_count", ascending=False)
+        missing_df = pd.DataFrame.from_dict(
+            summary["missing_values"], orient="index", columns=["missing_count"]
+        ).sort_values("missing_count", ascending=False)
         st.dataframe(missing_df, use_container_width=True)
     with tab_preview:
         st.subheader("Sample Records")

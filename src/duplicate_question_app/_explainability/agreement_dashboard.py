@@ -14,13 +14,14 @@ Provides:
 
 from __future__ import annotations
 
-import numpy as np
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from duplicate_question_app.agreement_engine import ModelVote, AgreementReport, get_agreement_report
+import numpy as np
+
+from duplicate_question_app.agreement_engine import get_agreement_report
 from duplicate_question_app.config import AppPaths, get_app_paths
 
 
@@ -35,6 +36,7 @@ class ModelStrength(Enum):
 @dataclass
 class ModelProfile:
     """Profile of a single model's behavior."""
+
     name: str
     total_predictions: int = 0
     correct_predictions: int = 0
@@ -50,28 +52,29 @@ class ModelProfile:
     is_borderline: float = 0.0  # Fraction of predictions near 0.5
     overconfidence: float = 0.0  # Confidence - accuracy when wrong
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
-            'name': self.name,
-            'total_predictions': self.total_predictions,
-            'correct_predictions': self.correct_predictions,
-            'accuracy': self.accuracy,
-            'avg_confidence': self.avg_confidence,
-            'confidence_std': self.confidence_std,
-            'avg_prob_duplicate': self.avg_prob_duplicate,
-            'prob_std': self.prob_std,
-            'ece': self.ece,
-            'brier_score': self.brier_score,
-            'agreement_with_ensemble': self.agreement_with_ensemble,
-            'influence_score': self.influence_score,
-            'is_borderline': self.is_borderline,
-            'overconfidence': self.overconfidence,
+            "name": self.name,
+            "total_predictions": self.total_predictions,
+            "correct_predictions": self.correct_predictions,
+            "accuracy": self.accuracy,
+            "avg_confidence": self.avg_confidence,
+            "confidence_std": self.confidence_std,
+            "avg_prob_duplicate": self.avg_prob_duplicate,
+            "prob_std": self.prob_std,
+            "ece": self.ece,
+            "brier_score": self.brier_score,
+            "agreement_with_ensemble": self.agreement_with_ensemble,
+            "influence_score": self.influence_score,
+            "is_borderline": self.is_borderline,
+            "overconfidence": self.overconfidence,
         }
 
 
 @dataclass
 class AgreementDashboard:
     """Complete model agreement dashboard for a question pair."""
+
     # Overall agreement
     agreement_percentage: float
     unanimous: bool
@@ -94,38 +97,38 @@ class AgreementDashboard:
     probability_std: float
 
     # Per-model details
-    model_votes: List[Dict[str, Any]]
-    models_agreeing: List[str]
-    models_disagreeing: List[str]
+    model_votes: list[dict[str, Any]]
+    models_agreeing: list[str]
+    models_disagreeing: list[str]
 
     # Ensemble info
     ensemble_prob: float
     ensemble_method: str
 
     # Calibration info
-    calibration_status: Dict[str, str]  # model -> "calibrated" / "overconfident" / "underconfident"
+    calibration_status: dict[str, str]  # model -> "calibrated" / "overconfident" / "underconfident"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
-            'agreement_percentage': self.agreement_percentage,
-            'unanimous': self.unanimous,
-            'num_models_agreeing': self.num_models_agreeing,
-            'num_models_total': self.num_models_total,
-            'confidence_mean': self.confidence_mean,
-            'confidence_std': self.confidence_std,
-            'confidence_min': self.confidence_min,
-            'confidence_max': self.confidence_max,
-            'confidence_spread': self.confidence_spread,
-            'prediction_entropy': self.prediction_entropy,
-            'probability_entropy': self.probability_entropy,
-            'probability_variance': self.probability_variance,
-            'probability_std': self.probability_std,
-            'model_votes': self.model_votes,
-            'models_agreeing': self.models_agreeing,
-            'models_disagreeing': self.models_disagreeing,
-            'ensemble_prob': self.ensemble_prob,
-            'ensemble_method': self.ensemble_method,
-            'calibration_status': self.calibration_status,
+            "agreement_percentage": self.agreement_percentage,
+            "unanimous": self.unanimous,
+            "num_models_agreeing": self.num_models_agreeing,
+            "num_models_total": self.num_models_total,
+            "confidence_mean": self.confidence_mean,
+            "confidence_std": self.confidence_std,
+            "confidence_min": self.confidence_min,
+            "confidence_max": self.confidence_max,
+            "confidence_spread": self.confidence_spread,
+            "prediction_entropy": self.prediction_entropy,
+            "probability_entropy": self.probability_entropy,
+            "probability_variance": self.probability_variance,
+            "probability_std": self.probability_std,
+            "model_votes": self.model_votes,
+            "models_agreeing": self.models_agreeing,
+            "models_disagreeing": self.models_disagreeing,
+            "ensemble_prob": self.ensemble_prob,
+            "ensemble_method": self.ensemble_method,
+            "calibration_status": self.calibration_status,
         }
 
 
@@ -147,7 +150,7 @@ def compute_vote_entropy(labels: np.ndarray) -> float:
 def analyze_model_agreement(
     q1: str,
     q2: str,
-    paths: Optional[AppPaths] = None,
+    paths: AppPaths | None = None,
 ) -> AgreementDashboard:
     """Generate agreement dashboard for a question pair."""
     if paths is None:
@@ -208,21 +211,23 @@ def analyze_model_agreement(
     # Model votes detail
     model_votes = []
     for v in valid_votes:
-        model_votes.append({
-            'model': v.model_name,
-            'vote': 'Duplicate' if v.predicted_label == 1 else 'Non-Duplicate',
-            'prob_duplicate': v.prob_duplicate,
-            'confidence': v.confidence,
-            'threshold': v.threshold,
-            'latency_ms': v.latency_ms,
-        })
+        model_votes.append(
+            {
+                "model": v.model_name,
+                "vote": "Duplicate" if v.predicted_label == 1 else "Non-Duplicate",
+                "prob_duplicate": v.prob_duplicate,
+                "confidence": v.confidence,
+                "threshold": v.threshold,
+                "latency_ms": v.latency_ms,
+            }
+        )
 
     # Calibration status (simplified)
     calibration_status = {}
     for v in valid_votes:
         # Simple heuristic: if confidence >> accuracy, overconfident
         # We don't have ground truth here, so use ensemble as proxy
-        ensemble_agrees = (v.predicted_label == report.majority_label)
+        ensemble_agrees = v.predicted_label == report.majority_label
         if v.confidence > 0.9 and not ensemble_agrees:
             calibration_status[v.model_name] = "overconfident"
         elif v.confidence < 0.6 and ensemble_agrees:
@@ -256,12 +261,13 @@ def analyze_model_agreement(
 @dataclass
 class ModelLeaderboard:
     """Ranked model leaderboard with multiple criteria."""
-    by_accuracy: List[Tuple[str, float]]
-    by_confidence: List[Tuple[str, float]]
-    by_calibration: List[Tuple[str, float]]  # ECE (lower is better)
-    by_agreement: List[Tuple[str, float]]    # Agreement with ensemble
-    by_influence: List[Tuple[str, float]]    # Influence on ensemble
-    by_speed: List[Tuple[str, float]]        # Latency (lower is better)
+
+    by_accuracy: list[tuple[str, float]]
+    by_confidence: list[tuple[str, float]]
+    by_calibration: list[tuple[str, float]]  # ECE (lower is better)
+    by_agreement: list[tuple[str, float]]  # Agreement with ensemble
+    by_influence: list[tuple[str, float]]  # Influence on ensemble
+    by_speed: list[tuple[str, float]]  # Latency (lower is better)
 
     def get_strongest_model(self) -> str:
         return self.by_accuracy[0][0] if self.by_accuracy else "N/A"
@@ -272,23 +278,23 @@ class ModelLeaderboard:
     def get_most_influential(self) -> str:
         return self.by_influence[0][0] if self.by_influence else "N/A"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
-            'by_accuracy': self.by_accuracy,
-            'by_confidence': self.by_confidence,
-            'by_calibration': self.by_calibration,
-            'by_agreement': self.by_agreement,
-            'by_influence': self.by_influence,
-            'by_speed': self.by_speed,
-            'strongest_model': self.get_strongest_model(),
-            'weakest_model': self.get_weakest_model(),
-            'most_influential': self.get_most_influential(),
+            "by_accuracy": self.by_accuracy,
+            "by_confidence": self.by_confidence,
+            "by_calibration": self.by_calibration,
+            "by_agreement": self.by_agreement,
+            "by_influence": self.by_influence,
+            "by_speed": self.by_speed,
+            "strongest_model": self.get_strongest_model(),
+            "weakest_model": self.get_weakest_model(),
+            "most_influential": self.get_most_influential(),
         }
 
 
 def compute_model_leaderboard(
-    predictions: List[Dict[str, Any]],
-    ground_truth: List[int],
+    predictions: list[dict[str, Any]],
+    ground_truth: list[int],
 ) -> ModelLeaderboard:
     """Compute model leaderboard from a set of predictions.
 
@@ -300,39 +306,41 @@ def compute_model_leaderboard(
         ModelLeaderboard with ranked models
     """
     # Aggregate per-model statistics
-    model_stats = defaultdict(lambda: {
-        'probs': [],
-        'labels': [],
-        'confidences': [],
-        'latencies': [],
-        'correct': 0,
-        'total': 0,
-        'agree_with_ensemble': 0,
-    })
+    model_stats = defaultdict(
+        lambda: {
+            "probs": [],
+            "labels": [],
+            "confidences": [],
+            "latencies": [],
+            "correct": 0,
+            "total": 0,
+            "agree_with_ensemble": 0,
+        }
+    )
 
-    for pred, true_label in zip(predictions, ground_truth):
+    for pred, true_label in zip(predictions, ground_truth, strict=False):
         # Extract model votes
-        votes = pred.get('feature_breakdown', {})
-        ensemble_pred = pred.get('predicted_label', 0)
+        votes = pred.get("feature_breakdown", {})
+        ensemble_pred = pred.get("predicted_label", 0)
 
         for model_name, contrib in votes.items():
             if isinstance(contrib, dict):
-                prob = contrib.get('prob_dup', contrib.get('prob_duplicate', 0.5))
-                conf = contrib.get('confidence', max(prob, 1-prob))
+                prob = contrib.get("prob_dup", contrib.get("prob_duplicate", 0.5))
+                conf = contrib.get("confidence", max(prob, 1 - prob))
             else:
                 prob = float(contrib)
-                conf = max(prob, 1-prob)
+                conf = max(prob, 1 - prob)
 
             model_label = 1 if prob >= 0.5 else 0
             stats = model_stats[model_name]
-            stats['probs'].append(prob)
-            stats['labels'].append(model_label)
-            stats['confidences'].append(conf)
-            stats['total'] += 1
+            stats["probs"].append(prob)
+            stats["labels"].append(model_label)
+            stats["confidences"].append(conf)
+            stats["total"] += 1
             if model_label == true_label:
-                stats['correct'] += 1
+                stats["correct"] += 1
             if model_label == ensemble_pred:
-                stats['agree_with_ensemble'] += 1
+                stats["agree_with_ensemble"] += 1
 
     # Compute rankings
     by_accuracy = []
@@ -343,23 +351,23 @@ def compute_model_leaderboard(
     by_speed = []
 
     for name, stats in model_stats.items():
-        if stats['total'] == 0:
+        if stats["total"] == 0:
             continue
 
-        acc = stats['correct'] / stats['total']
-        avg_conf = np.mean(stats['confidences']) if stats['confidences'] else 0.0
+        acc = stats["correct"] / stats["total"]
+        avg_conf = np.mean(stats["confidences"]) if stats["confidences"] else 0.0
 
         # ECE
-        if stats['probs'] and stats['labels']:
-            probs_arr = np.array(stats['probs'])
-            labels_arr = np.array(stats['labels'])
+        if stats["probs"] and stats["labels"]:
+            probs_arr = np.array(stats["probs"])
+            labels_arr = np.array(stats["labels"])
             ece = compute_ece(probs_arr, labels_arr)
         else:
             ece = 1.0
 
-        agree_rate = stats['agree_with_ensemble'] / stats['total'] if stats['total'] > 0 else 0.0
+        agree_rate = stats["agree_with_ensemble"] / stats["total"] if stats["total"] > 0 else 0.0
         influence = acc * agree_rate  # Combined metric
-        avg_latency = np.mean(stats['latencies']) if stats['latencies'] else 1000.0
+        avg_latency = np.mean(stats["latencies"]) if stats["latencies"] else 1000.0
 
         by_accuracy.append((name, acc))
         by_confidence.append((name, avg_conf))
@@ -412,33 +420,33 @@ def compute_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 10) -> floa
 def generate_agreement_summary(
     q1: str,
     q2: str,
-    paths: Optional[AppPaths] = None,
-) -> Dict[str, Any]:
+    paths: AppPaths | None = None,
+) -> dict[str, Any]:
     """Generate human-readable agreement summary."""
     dashboard = analyze_model_agreement(q1, q2, paths)
 
     summary = {
-        'overall': f"{dashboard.num_models_agreeing}/{dashboard.num_models_total} models agree ({dashboard.agreement_percentage:.0%})",
-        'confidence': f"Mean: {dashboard.confidence_mean:.1%}, Spread: {dashboard.confidence_spread:.1%}",
-        'entropy': f"Prediction entropy: {dashboard.prediction_entropy:.3f}, Probability entropy: {dashboard.probability_entropy:.3f}",
-        'variance': f"Prob variance: {dashboard.probability_variance:.4f} (std: {dashboard.probability_std:.4f})",
-        'disagreement': f"Models disagreeing: {', '.join(dashboard.models_disagreeing) if dashboard.models_disagreeing else 'None'}",
+        "overall": f"{dashboard.num_models_agreeing}/{dashboard.num_models_total} models agree ({dashboard.agreement_percentage:.0%})",
+        "confidence": f"Mean: {dashboard.confidence_mean:.1%}, Spread: {dashboard.confidence_spread:.1%}",
+        "entropy": f"Prediction entropy: {dashboard.prediction_entropy:.3f}, Probability entropy: {dashboard.probability_entropy:.3f}",
+        "variance": f"Prob variance: {dashboard.probability_variance:.4f} (std: {dashboard.probability_std:.4f})",
+        "disagreement": f"Models disagreeing: {', '.join(dashboard.models_disagreeing) if dashboard.models_disagreeing else 'None'}",
     }
 
     # Add interpretation
     if dashboard.agreement_percentage >= 0.9:
-        summary['interpretation'] = "High consensus - prediction is reliable"
+        summary["interpretation"] = "High consensus - prediction is reliable"
     elif dashboard.agreement_percentage >= 0.7:
-        summary['interpretation'] = "Moderate consensus - prediction likely correct"
+        summary["interpretation"] = "Moderate consensus - prediction likely correct"
     elif dashboard.agreement_percentage >= 0.5:
-        summary['interpretation'] = "Low consensus - prediction uncertain, consider human review"
+        summary["interpretation"] = "Low consensus - prediction uncertain, consider human review"
     else:
-        summary['interpretation'] = "High disagreement - prediction unreliable"
+        summary["interpretation"] = "High disagreement - prediction unreliable"
 
     if dashboard.confidence_spread > 0.5:
-        summary['confidence_warning'] = "Large confidence spread among models"
+        summary["confidence_warning"] = "Large confidence spread among models"
 
     if dashboard.probability_std > 0.3:
-        summary['variance_warning'] = "High probability variance - models strongly disagree on likelihood"
+        summary["variance_warning"] = "High probability variance - models strongly disagree on likelihood"
 
     return summary

@@ -29,16 +29,18 @@ def render() -> None:
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Intent Penalty", f"{details['mismatch_penalty']:.2%}")
-        col2.metric("Q1 Intent", details['q1_intent'].replace('_', ' ').title())
-        col3.metric("Q2 Intent", details['q2_intent'].replace('_', ' ').title())
+        col2.metric("Q1 Intent", details["q1_intent"].replace("_", " ").title())
+        col3.metric("Q2 Intent", details["q2_intent"].replace("_", " ").title())
 
         st.caption(f"Compatible: {'✅ Yes' if details['compatible'] else '❌ No'}")
         st.caption(f"Reason: {details['mismatch_reason']}")
 
         with st.expander("Details"):
-            st.json({
-                "q1_scores": details['q1_all_scores'],
-                "q2_scores": details['q2_all_scores'],
-                "q1_patterns": details['q1_patterns'],
-                "q2_patterns": details['q2_patterns'],
-            })
+            st.json(
+                {
+                    "q1_scores": details["q1_all_scores"],
+                    "q2_scores": details["q2_all_scores"],
+                    "q1_patterns": details["q1_patterns"],
+                    "q2_patterns": details["q2_patterns"],
+                }
+            )

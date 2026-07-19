@@ -11,8 +11,8 @@ from duplicate_question_app.config import (
     is_transformer_model,
     resolve_model_selection,
 )
-from duplicate_question_app.week2_inference import check_week2_artifacts, is_week2_model
 from duplicate_question_app.model_registry import build_registry
+from duplicate_question_app.week2_inference import check_week2_artifacts, is_week2_model
 
 
 def render(
@@ -80,7 +80,9 @@ def render(
     # KPI cards row
     r1, r2, r3, r4 = st.columns(4)
     r1.metric("Active Model", model_desc[:28] + "..." if len(model_desc) > 28 else model_desc)
-    r2.metric("Available Models", f"{sum(1 for e in registry if e.has_artifacts or e.source == 'built-in')}/{total_models}")
+    r2.metric(
+        "Available Models", f"{sum(1 for e in registry if e.has_artifacts or e.source == 'built-in')}/{total_models}"
+    )
     r3.metric("Inference Device", model_device.upper())
     r4.metric("Dataset Size", f"{summary.get('rows', 0):,} pairs")
 
@@ -94,19 +96,27 @@ def render(
     st.markdown("<div class='section-header'>Model Registry</div>", unsafe_allow_html=True)
     reg_data = []
     for e in registry:
-        status_icon = "✅" if e.has_artifacts or e.source == "built-in" else ("⬇️" if e.source == "huggingface" else "❌")
-        reg_data.append({
-            "Model": e.display_name,
-            "Type": e.model_type.replace("-", " ").title(),
-            "Framework": e.framework.upper(),
-            "Source": e.source.title(),
-            "Status": status_icon,
-            "Params": e.parameters,
-        })
+        status_icon = (
+            "✅" if e.has_artifacts or e.source == "built-in" else ("⬇️" if e.source == "huggingface" else "❌")
+        )
+        reg_data.append(
+            {
+                "Model": e.display_name,
+                "Type": e.model_type.replace("-", " ").title(),
+                "Framework": e.framework.upper(),
+                "Source": e.source.title(),
+                "Status": status_icon,
+                "Params": e.parameters,
+            }
+        )
     # Active model performance
     if active_metrics and any(v is not None for v in [active_metrics.get("accuracy"), active_metrics.get("f1")]):
         st.markdown("<div class='section-header'>Active Model Performance</div>", unsafe_allow_html=True)
         metric_card_row(active_metrics)
 
-    st.dataframe(pd.DataFrame(reg_data), use_container_width=True, hide_index=True,
-                 column_config={"Status": st.column_config.TextColumn("Status", width="small")})
+    st.dataframe(
+        pd.DataFrame(reg_data),
+        use_container_width=True,
+        hide_index=True,
+        column_config={"Status": st.column_config.TextColumn("Status", width="small")},
+    )

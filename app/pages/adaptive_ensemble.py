@@ -38,38 +38,51 @@ def render() -> None:
 
         st.subheader("Dynamic Weights")
         weights = result["adaptive_weights"]
-        weight_df = pd.DataFrame([
-            ("TF-IDF", weights.get("tfidf_weight", 0)),
-            ("Transformer", weights.get("transformer_weight", 0)),
-            ("Embedding", weights.get("embedding_weight", 0)),
-            ("Cross-Encoder", weights.get("cross_encoder_weight", 0)),
-        ], columns=["Model Group", "Weight"])
+        weight_df = pd.DataFrame(
+            [
+                ("TF-IDF", weights.get("tfidf_weight", 0)),
+                ("Transformer", weights.get("transformer_weight", 0)),
+                ("Embedding", weights.get("embedding_weight", 0)),
+                ("Cross-Encoder", weights.get("cross_encoder_weight", 0)),
+            ],
+            columns=["Model Group", "Weight"],
+        )
         st.bar_chart(weight_df.set_index("Model Group"))
         st.dataframe(weight_df, use_container_width=True, hide_index=True)
 
         st.subheader("Feature Analysis")
         features = result["features"]
-        feat_df = pd.DataFrame([
-            ("Lexical Overlap", features.get("lexical_overlap", 0)),
-            ("Semantic Depth", features.get("semantic_depth", 0)),
-            ("Entity Penalty", features.get("entity_penalty", 0)),
-            ("Intent Penalty", features.get("intent_penalty", 0)),
-            ("Negation Penalty", features.get("negation_penalty", 0)),
-            ("Contradiction Penalty", features.get("contradiction_penalty", 0)),
-            ("Lexical Penalty", features.get("lexical_penalty", 0)),
-            ("Model Agreement", features.get("model_agreement", 0)),
-            ("Prob Std", features.get("prob_std", 0)),
-            ("Is Borderline", features.get("is_borderline", False)),
-        ], columns=["Feature", "Value"])
+        feat_df = pd.DataFrame(
+            [
+                ("Lexical Overlap", features.get("lexical_overlap", 0)),
+                ("Semantic Depth", features.get("semantic_depth", 0)),
+                ("Entity Penalty", features.get("entity_penalty", 0)),
+                ("Intent Penalty", features.get("intent_penalty", 0)),
+                ("Negation Penalty", features.get("negation_penalty", 0)),
+                ("Contradiction Penalty", features.get("contradiction_penalty", 0)),
+                ("Lexical Penalty", features.get("lexical_penalty", 0)),
+                ("Model Agreement", features.get("model_agreement", 0)),
+                ("Prob Std", features.get("prob_std", 0)),
+                ("Is Borderline", features.get("is_borderline", False)),
+            ],
+            columns=["Feature", "Value"],
+        )
         st.dataframe(feat_df, use_container_width=True, hide_index=True)
 
         st.subheader("Model Contributions")
         contrib = result.get("feature_breakdown", {})
         if contrib:
-            contrib_df = pd.DataFrame([
-                {"Model": k, "Prob": v.get("prob_dup", v.get("prob_duplicate", 0)), "Weight": v.get("weight", 0), "Weighted": v.get("weighted_contribution", 0)}
-                for k, v in contrib.items()
-            ])
+            contrib_df = pd.DataFrame(
+                [
+                    {
+                        "Model": k,
+                        "Prob": v.get("prob_dup", v.get("prob_duplicate", 0)),
+                        "Weight": v.get("weight", 0),
+                        "Weighted": v.get("weighted_contribution", 0),
+                    }
+                    for k, v in contrib.items()
+                ]
+            )
             st.dataframe(contrib_df, use_container_width=True, hide_index=True)
 
         st.info(f"Reason: {result.get('reason', 'N/A')}")

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from duplicate_question_app._models.registry import ModelRegistryEntry, build_registry
 
 
@@ -78,15 +76,26 @@ class TestModelRegistry:
 
     def test_registry_entry_load_status(self):
         entry = ModelRegistryEntry(
-            display_name="Test", internal_id="t", model_type="t", framework="f",
-            source="s", version="1", local_path="/p", cache_path=None, device="cpu",
-            size_mb=1, load_status="loaded", is_loaded=True, has_artifacts=True,
+            display_name="Test",
+            internal_id="t",
+            model_type="t",
+            framework="f",
+            source="s",
+            version="1",
+            local_path="/p",
+            cache_path=None,
+            device="cpu",
+            size_mb=1,
+            load_status="loaded",
+            is_loaded=True,
+            has_artifacts=True,
         )
         assert entry.load_status == "loaded"
         assert entry.is_loaded is True
 
     def test_registry_importable_from_stub(self):
         from duplicate_question_app.model_registry import ModelRegistryEntry as StubEntry
+
         assert StubEntry is ModelRegistryEntry
 
     def test_build_registry_orders_consistently(self):

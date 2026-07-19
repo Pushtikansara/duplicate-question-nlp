@@ -47,9 +47,10 @@ def predict() -> None:
     args = parser.parse_args()
 
     import pandas as pd
+
     from duplicate_question_app.config import get_app_paths, get_config
-    from duplicate_question_app.week2_inference import is_week2_model
     from duplicate_question_app.utils.device import resolve_device
+    from duplicate_question_app.week2_inference import is_week2_model
 
     paths = get_app_paths()
     device = resolve_device()
@@ -71,14 +72,17 @@ def predict() -> None:
     threshold = args.threshold or get_config("inference").get("default_threshold", 0.5)
 
     from duplicate_question_app._config.logging_setup import get_logger
+
     logger = get_logger("cli.predict")
     logger.info("Predicting with model=%s threshold=%.2f device=%s", model_name, threshold, device)
 
     if is_week2_model(model_name):
         from duplicate_question_app.week2_inference import Week2InferenceService
+
         service = Week2InferenceService(paths)
     else:
         from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
+
         model, tokenizer, metadata = load_model_and_tokenizer(paths, model_version=model_name)
         service = DuplicateQuestionInferenceService(model=model, tokenizer=tokenizer, metadata=metadata)
 
@@ -121,6 +125,7 @@ def benchmark() -> None:
         sys.exit(1)
 
     import subprocess
+
     cmd = [sys.executable, str(benchmark_script)] + sys.argv[2:]
     subprocess.run(cmd)
 

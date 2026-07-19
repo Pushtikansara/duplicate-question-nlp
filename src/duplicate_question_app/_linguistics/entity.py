@@ -8,134 +8,665 @@ If important entities differ between question pairs, apply a penalty to duplicat
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any
 
-from typing import List, Dict, Set, Tuple, Optional
-from collections import defaultdict
-
 # Entity dictionaries for exact matching
-_PROGRAMMING_LANGUAGES: Set[str] = {
-    "python", "java", "javascript", "typescript", "c++", "c#", "c", "go", "rust", "swift",
-    "kotlin", "scala", "ruby", "php", "perl", "r", "matlab", "julia", "dart", "lua",
-    "haskell", "clojure", "erlang", "elixir", "f#", "vb.net", "objective-c", "assembly",
-    "sql", "html", "css", "bash", "powershell", "r", "sas", "stata", "spss",
+_PROGRAMMING_LANGUAGES: set[str] = {
+    "python",
+    "java",
+    "javascript",
+    "typescript",
+    "c++",
+    "c#",
+    "c",
+    "go",
+    "rust",
+    "swift",
+    "kotlin",
+    "scala",
+    "ruby",
+    "php",
+    "perl",
+    "r",
+    "matlab",
+    "julia",
+    "dart",
+    "lua",
+    "haskell",
+    "clojure",
+    "erlang",
+    "elixir",
+    "f#",
+    "vb.net",
+    "objective-c",
+    "assembly",
+    "sql",
+    "html",
+    "css",
+    "bash",
+    "powershell",
+    "sas",
+    "stata",
+    "spss",
 }
 
-_FRAMEWORKS: Set[str] = {
-    "django", "flask", "fastapi", "spring", "spring boot", "express", "nestjs", "koa",
-    "react", "vue", "angular", "svelte", "next.js", "nuxt", "gatsby", "remix",
-    "tensorflow", "pytorch", "keras", "jax", "scikit-learn", "xgboost", "lightgbm",
-    "catboost", "huggingface", "transformers", "langchain", "llamaindex",
-    "pandas", "numpy", "scipy", "matplotlib", "seaborn", "plotly", "bokeh",
-    "requests", "httpx", "aiohttp", "asyncio", "celery", "redis", "sqlalchemy",
-    "peewee", "tortoise-orm", "prisma", "typeorm", "sequelize", "mongoose",
-    "graphql", "apollo", "relay", "grpc", "protobuf", "kafka", "rabbitmq",
-    "docker", "kubernetes", "k8s", "helm", "terraform", "ansible", "prometheus",
-    "grafana", "elk", "elastic", "logstash", "kibana", "jenkins", "gitlab ci",
-    "github actions", "circleci", "travis", "argo", "tekton", "vagrant", "vagrant",
+_FRAMEWORKS: set[str] = {
+    "django",
+    "flask",
+    "fastapi",
+    "spring",
+    "spring boot",
+    "express",
+    "nestjs",
+    "koa",
+    "react",
+    "vue",
+    "angular",
+    "svelte",
+    "next.js",
+    "nuxt",
+    "gatsby",
+    "remix",
+    "tensorflow",
+    "pytorch",
+    "keras",
+    "jax",
+    "scikit-learn",
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "huggingface",
+    "transformers",
+    "langchain",
+    "llamaindex",
+    "pandas",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "bokeh",
+    "requests",
+    "httpx",
+    "aiohttp",
+    "asyncio",
+    "celery",
+    "redis",
+    "sqlalchemy",
+    "peewee",
+    "tortoise-orm",
+    "prisma",
+    "typeorm",
+    "sequelize",
+    "mongoose",
+    "graphql",
+    "apollo",
+    "relay",
+    "grpc",
+    "protobuf",
+    "kafka",
+    "rabbitmq",
+    "docker",
+    "kubernetes",
+    "k8s",
+    "helm",
+    "terraform",
+    "ansible",
+    "prometheus",
+    "grafana",
+    "elk",
+    "elastic",
+    "logstash",
+    "kibana",
+    "jenkins",
+    "gitlab ci",
+    "github actions",
+    "circleci",
+    "travis",
+    "argo",
+    "tekton",
+    "vagrant",
 }
 
-_OPERATING_SYSTEMS: Set[str] = {
-    "ubuntu", "debian", "fedora", "centos", "rhel", "arch", "manjaro", "opensuse",
-    "alpine", "linux", "windows", "macos", "mac os x", "osx", "darwin", "freebsd",
-    "openbsd", "netbsd", "android", "ios", "ipados", "watchos", "tvos",
-    "wsl", "wsl2", "cygwin", "mingw", "msys2",
+_OPERATING_SYSTEMS: set[str] = {
+    "ubuntu",
+    "debian",
+    "fedora",
+    "centos",
+    "rhel",
+    "arch",
+    "manjaro",
+    "opensuse",
+    "alpine",
+    "linux",
+    "windows",
+    "macos",
+    "mac os x",
+    "osx",
+    "darwin",
+    "freebsd",
+    "openbsd",
+    "netbsd",
+    "android",
+    "ios",
+    "ipados",
+    "watchos",
+    "tvos",
+    "wsl",
+    "wsl2",
+    "cygwin",
+    "mingw",
+    "msys2",
 }
 
-_COMPANIES: Set[str] = {
-    "google", "microsoft", "apple", "amazon", "meta", "facebook", "netflix", "uber",
-    "airbnb", "twitter", "x.com", "github", "gitlab", "bitbucket", "atlassian",
-    "jetbrains", "adobe", "salesforce", "oracle", "ibm", "intel", "amd", "nvidia",
-    "qualcomm", "cisco", "vmware", "red hat", "canonical", "docker", "hashicorp",
-    "mongodb", "redis", "elastic", "confluent", "databricks", "snowflake", "stripe",
-    "twilio", "sendgrid", "mailgun", "postmark", "vercel", "netlify", "cloudflare",
-    "aws", "gcp", "azure", "digitalocean", "linode", "vultr", "heroku", "render",
-    "railway", "fly.io", "planetscale", "supabase", "firebase", "planetscale",
+_COMPANIES: set[str] = {
+    "google",
+    "microsoft",
+    "apple",
+    "amazon",
+    "meta",
+    "facebook",
+    "netflix",
+    "uber",
+    "airbnb",
+    "twitter",
+    "x.com",
+    "github",
+    "gitlab",
+    "bitbucket",
+    "atlassian",
+    "jetbrains",
+    "adobe",
+    "salesforce",
+    "oracle",
+    "ibm",
+    "intel",
+    "amd",
+    "nvidia",
+    "qualcomm",
+    "cisco",
+    "vmware",
+    "red hat",
+    "canonical",
+    "docker",
+    "hashicorp",
+    "mongodb",
+    "redis",
+    "elastic",
+    "confluent",
+    "databricks",
+    "snowflake",
+    "stripe",
+    "twilio",
+    "sendgrid",
+    "mailgun",
+    "postmark",
+    "vercel",
+    "netlify",
+    "cloudflare",
+    "aws",
+    "gcp",
+    "azure",
+    "digitalocean",
+    "linode",
+    "vultr",
+    "heroku",
+    "render",
+    "railway",
+    "fly.io",
+    "planetscale",
+    "supabase",
+    "firebase",
 }
 
-_TECHNOLOGIES: Set[str] = {
-    "git", "github", "gitlab", "bitbucket", "svn", "mercurial", "perforce",
-    "docker", "podman", "containerd", "kubernetes", "k8s", "helm", "istio",
-    "linkerd", "consul", "vault", "nomad", "terraform", "packer", "vagrant",
-    "ansible", "chef", "puppet", "saltstack", "jenkins", "gitlab ci", "github actions",
-    "circleci", "travis", "bamboo", "teamcity", "argo", "tekton", "flux", "argo cd",
-    "prometheus", "grafana", "loki", "tempo", "jaeger", "zipkin", "elk", "elastic",
-    "logstash", "kibana", "filebeat", "metricbeat", "packetbeat", "auditbeat",
-    "kafka", "rabbitmq", "pulsar", "nats", "redis", "memcached", "etcd", "consul",
-    "postgresql", "mysql", "mariadb", "sqlite", "mongodb", "cassandra", "dynamodb",
-    "redis", "elasticsearch", "opensearch", "meilisearch", "typesense", "clickhouse",
-    "snowflake", "bigquery", "redshift", "databricks", "spark", "flink", "kafka streams",
-    "airflow", "prefect", "dagster", "luigi", "dbt", "fivetran", "airbyte", "stitch",
-    "cuda", "cudnn", "tensorrt", "onnx", "onnxruntime", "openvino", "tflite",
-    "coreml", "mps", "rocm", "hip", "oneapi", "mkl", "mkl-dnn", "blas", "lapack",
+_TECHNOLOGIES: set[str] = {
+    "git",
+    "github",
+    "gitlab",
+    "bitbucket",
+    "svn",
+    "mercurial",
+    "perforce",
+    "docker",
+    "podman",
+    "containerd",
+    "kubernetes",
+    "k8s",
+    "helm",
+    "istio",
+    "linkerd",
+    "consul",
+    "vault",
+    "nomad",
+    "terraform",
+    "packer",
+    "vagrant",
+    "ansible",
+    "chef",
+    "puppet",
+    "saltstack",
+    "jenkins",
+    "gitlab ci",
+    "github actions",
+    "circleci",
+    "travis",
+    "bamboo",
+    "teamcity",
+    "argo",
+    "tekton",
+    "flux",
+    "argo cd",
+    "prometheus",
+    "grafana",
+    "loki",
+    "tempo",
+    "jaeger",
+    "zipkin",
+    "elk",
+    "elastic",
+    "logstash",
+    "kibana",
+    "filebeat",
+    "metricbeat",
+    "packetbeat",
+    "auditbeat",
+    "kafka",
+    "rabbitmq",
+    "pulsar",
+    "nats",
+    "redis",
+    "memcached",
+    "etcd",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "sqlite",
+    "mongodb",
+    "cassandra",
+    "dynamodb",
+    "elasticsearch",
+    "opensearch",
+    "meilisearch",
+    "typesense",
+    "clickhouse",
+    "snowflake",
+    "bigquery",
+    "redshift",
+    "databricks",
+    "spark",
+    "flink",
+    "kafka streams",
+    "airflow",
+    "prefect",
+    "dagster",
+    "luigi",
+    "dbt",
+    "fivetran",
+    "airbyte",
+    "stitch",
+    "cuda",
+    "cudnn",
+    "tensorrt",
+    "onnx",
+    "onnxruntime",
+    "openvino",
+    "tflite",
+    "coreml",
+    "mps",
+    "rocm",
+    "hip",
+    "oneapi",
+    "mkl",
+    "mkl-dnn",
+    "blas",
+    "lapack",
 }
 
-_PRODUCTS: Set[str] = {
-    "vscode", "visual studio", "intellij", "pycharm", "webstorm", "clion", "rider",
-    "goland", "datagrip", "rubymine", "phpstorm", "rider", "fleet", "vim", "neovim",
-    "emacs", "spacemacs", "doom emacs", "sublime text", "atom", "brackets",
-    "postman", "insomnia", "hoppscotch", "bruno", "httpie", "curl", "wget",
-    "terraform", "pulumi", "crossplane", "kustomize", "kpt", "helm", "kustomize",
-    "argocd", "flux", "tekton", "jenkins", "gitlab", "github", "bitbucket", "gitea",
-    "jira", "confluence", "notion", "linear", "clickup", "asana", "trello", "monday",
-    "slack", "discord", "teams", "zoom", "meet", "webex", "mattermost", "rocketchat",
+_PRODUCTS: set[str] = {
+    "vscode",
+    "visual studio",
+    "intellij",
+    "pycharm",
+    "webstorm",
+    "clion",
+    "rider",
+    "goland",
+    "datagrip",
+    "rubymine",
+    "phpstorm",
+    "fleet",
+    "vim",
+    "neovim",
+    "emacs",
+    "spacemacs",
+    "doom emacs",
+    "sublime text",
+    "atom",
+    "brackets",
+    "postman",
+    "insomnia",
+    "hoppscotch",
+    "bruno",
+    "httpie",
+    "curl",
+    "wget",
+    "terraform",
+    "pulumi",
+    "crossplane",
+    "kustomize",
+    "kpt",
+    "helm",
+    "argocd",
+    "flux",
+    "tekton",
+    "jenkins",
+    "gitlab",
+    "github",
+    "bitbucket",
+    "gitea",
+    "jira",
+    "confluence",
+    "notion",
+    "linear",
+    "clickup",
+    "asana",
+    "trello",
+    "monday",
+    "slack",
+    "discord",
+    "teams",
+    "zoom",
+    "meet",
+    "webex",
+    "mattermost",
+    "rocketchat",
 }
 
-_COUNTRIES: Set[str] = {
-    "usa", "united states", "america", "uk", "united kingdom", "britain", "england",
-    "canada", "australia", "germany", "france", "italy", "spain", "netherlands",
-    "belgium", "switzerland", "austria", "sweden", "norway", "denmark", "finland",
-    "poland", "czech republic", "hungary", "romania", "bulgaria", "croatia", "serbia",
-    "greece", "portugal", "ireland", "new zealand", "singapore", "japan", "china",
-    "india", "brazil", "mexico", "argentina", "chile", "colombia", "peru", "korea",
-    "south korea", "north korea", "taiwan", "hong kong", "israel", "uae", "saudi arabia",
-    "turkey", "russia", "ukraine", "belarus", "kazakhstan", "uzbekistan", "vietnam",
-    "thailand", "malaysia", "indonesia", "philippines", "pakistan", "bangladesh",
-    "nigeria", "south africa", "egypt", "kenya", "morocco", "tunisia", "ghana",
+_COUNTRIES: set[str] = {
+    "usa",
+    "united states",
+    "america",
+    "uk",
+    "united kingdom",
+    "britain",
+    "england",
+    "canada",
+    "australia",
+    "germany",
+    "france",
+    "italy",
+    "spain",
+    "netherlands",
+    "belgium",
+    "switzerland",
+    "austria",
+    "sweden",
+    "norway",
+    "denmark",
+    "finland",
+    "poland",
+    "czech republic",
+    "hungary",
+    "romania",
+    "bulgaria",
+    "croatia",
+    "serbia",
+    "greece",
+    "portugal",
+    "ireland",
+    "new zealand",
+    "singapore",
+    "japan",
+    "china",
+    "india",
+    "brazil",
+    "mexico",
+    "argentina",
+    "chile",
+    "colombia",
+    "peru",
+    "korea",
+    "south korea",
+    "north korea",
+    "taiwan",
+    "hong kong",
+    "israel",
+    "uae",
+    "saudi arabia",
+    "turkey",
+    "russia",
+    "ukraine",
+    "belarus",
+    "kazakhstan",
+    "uzbekistan",
+    "vietnam",
+    "thailand",
+    "malaysia",
+    "indonesia",
+    "philippines",
+    "pakistan",
+    "bangladesh",
+    "nigeria",
+    "south africa",
+    "egypt",
+    "kenya",
+    "morocco",
+    "tunisia",
+    "ghana",
 }
 
-_CITIES: Set[str] = {
-    "new york", "los angeles", "chicago", "houston", "phoenix", "philadelphia",
-    "san antonio", "san diego", "dallas", "san jose", "austin", "jacksonville",
-    "fort worth", "columbus", "charlotte", "san francisco", "seattle", "denver",
-    "washington dc", "boston", "el paso", "detroit", "nashville", "portland",
-    "oklahoma city", "las vegas", "memphis", "louisville", "baltimore", "milwaukee",
-    "albuquerque", "tucson", "fresno", "sacramento", "mesa", "kansas city",
-    "atlanta", "long beach", "colorado springs", "raleigh", "miami", "virginia beach",
-    "omaha", "oakland", "minneapolis", "tulsa", "arlington", "tampa", "new orleans",
-    "london", "birmingham", "manchester", "glasgow", "liverpool", "leeds", "sheffield",
-    "edinburgh", "bristol", "cardiff", "belfast", "newcastle", "nottingham",
-    "paris", "marseille", "lyon", "toulouse", "nice", "nantes", "strasbourg",
-    "montpellier", "bordeaux", "lille", "rennes", "reims", "le havre", "saint-etienne",
-    "tokyo", "yokohama", "osaka", "nagoya", "sapporo", "fukuoka", "kobe", "kyoto",
-    "kawasaki", "saitama", "hiroshima", "sendai", "kitakyushu", "chiba", "sakai",
+_CITIES: set[str] = {
+    "new york",
+    "los angeles",
+    "chicago",
+    "houston",
+    "phoenix",
+    "philadelphia",
+    "san antonio",
+    "san diego",
+    "dallas",
+    "san jose",
+    "austin",
+    "jacksonville",
+    "fort worth",
+    "columbus",
+    "charlotte",
+    "san francisco",
+    "seattle",
+    "denver",
+    "washington dc",
+    "boston",
+    "el paso",
+    "detroit",
+    "nashville",
+    "portland",
+    "oklahoma city",
+    "las vegas",
+    "memphis",
+    "louisville",
+    "baltimore",
+    "milwaukee",
+    "albuquerque",
+    "tucson",
+    "fresno",
+    "sacramento",
+    "mesa",
+    "kansas city",
+    "atlanta",
+    "long beach",
+    "colorado springs",
+    "raleigh",
+    "miami",
+    "virginia beach",
+    "omaha",
+    "oakland",
+    "minneapolis",
+    "tulsa",
+    "arlington",
+    "tampa",
+    "new orleans",
+    "london",
+    "birmingham",
+    "manchester",
+    "glasgow",
+    "liverpool",
+    "leeds",
+    "sheffield",
+    "edinburgh",
+    "bristol",
+    "cardiff",
+    "belfast",
+    "newcastle",
+    "nottingham",
+    "paris",
+    "marseille",
+    "lyon",
+    "toulouse",
+    "nice",
+    "nantes",
+    "strasbourg",
+    "montpellier",
+    "bordeaux",
+    "lille",
+    "rennes",
+    "reims",
+    "le havre",
+    "saint-etienne",
+    "tokyo",
+    "yokohama",
+    "osaka",
+    "nagoya",
+    "sapporo",
+    "fukuoka",
+    "kobe",
+    "kyoto",
+    "kawasaki",
+    "saitama",
+    "hiroshima",
+    "sendai",
+    "kitakyushu",
+    "chiba",
+    "sakai",
 }
 
-_CURRENCIES: Set[str] = {
-    "usd", "dollar", "dollars", "eur", "euro", "euros", "gbp", "pound", "pounds",
-    "jpy", "yen", "cny", "yuan", "rmb", "inr", "rupee", "rupees", "cad", "aud",
-    "chf", "sek", "nok", "dkk", "pln", "czk", "huf", "ron", "bgn", "hrk", "rub",
-    "try", "ils", "aed", "sar", "qar", "kwd", "bhd", "omr", "jod", "lbp", "egp",
-    "zar", "ngn", "kes", "ghs", "tzs", "ugx", "rwf", "zmw", "mwk", "bwp", "nad",
+_CURRENCIES: set[str] = {
+    "usd",
+    "dollar",
+    "dollars",
+    "eur",
+    "euro",
+    "euros",
+    "gbp",
+    "pound",
+    "pounds",
+    "jpy",
+    "yen",
+    "cny",
+    "yuan",
+    "rmb",
+    "inr",
+    "rupee",
+    "rupees",
+    "cad",
+    "aud",
+    "chf",
+    "sek",
+    "nok",
+    "dkk",
+    "pln",
+    "czk",
+    "huf",
+    "ron",
+    "bgn",
+    "hrk",
+    "rub",
+    "try",
+    "ils",
+    "aed",
+    "sar",
+    "qar",
+    "kwd",
+    "bhd",
+    "omr",
+    "jod",
+    "lbp",
+    "egp",
+    "zar",
+    "ngn",
+    "kes",
+    "ghs",
+    "tzs",
+    "ugx",
+    "rwf",
+    "zmw",
+    "mwk",
+    "bwp",
+    "nad",
 }
 
-_UNITS: Set[str] = {
-    "gb", "mb", "kb", "tb", "pb", "ghz", "mhz", "khz", "ms", "us", "ns", "s", "m", "h",
-    "px", "dpi", "ppi", "fps", "hz", "khz", "mhz", "ghz", "rpm", "bps", "kbps", "mbps",
-    "gbps", "tbps", "c", "f", "k", "v", "a", "w", "wh", "kwh", "mah", "ah", "ohm",
-    "farad", "henry", "tesla", "gauss", "weber", "lumen", "lux", "candela", "diopter",
+_UNITS: set[str] = {
+    "gb",
+    "mb",
+    "kb",
+    "tb",
+    "pb",
+    "ghz",
+    "mhz",
+    "khz",
+    "ms",
+    "us",
+    "ns",
+    "s",
+    "m",
+    "h",
+    "px",
+    "dpi",
+    "ppi",
+    "fps",
+    "hz",
+    "rpm",
+    "bps",
+    "kbps",
+    "mbps",
+    "gbps",
+    "tbps",
+    "c",
+    "f",
+    "k",
+    "v",
+    "a",
+    "w",
+    "wh",
+    "kwh",
+    "mah",
+    "ah",
+    "ohm",
+    "farad",
+    "henry",
+    "tesla",
+    "gauss",
+    "weber",
+    "lumen",
+    "lux",
+    "candela",
+    "diopter",
 }
 
 # Regex patterns for versions, numbers, dates
 _VERSION_PATTERN = re.compile(r"\b\d+(?:\.\d+){1,3}(?:[-_](?:alpha|beta|rc|dev|stable|lts))?\b", re.IGNORECASE)
-_DATE_PATTERN = re.compile(r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b|\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s+\d{4}\b", re.IGNORECASE)
+_DATE_PATTERN = re.compile(
+    r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b|\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s+\d{4}\b",
+    re.IGNORECASE,
+)
 _NUMBER_PATTERN = re.compile(r"\b\d+(?:[.,]\d+)?\b")
 
 
 @dataclass
 class EntityMatch:
     """A single detected entity."""
+
     entity_type: str
     value: str
     start: int
@@ -146,14 +677,15 @@ class EntityMatch:
 @dataclass
 class EntityDetectionResult:
     """Result of entity detection for a question pair."""
-    q1_entities: List[EntityMatch]
-    q2_entities: List[EntityMatch]
-    entity_overlap: Dict[str, Set[str]]  # type -> shared entities
-    entity_mismatch: Dict[str, Tuple[Set[str], Set[str]]]  # type -> (q1_only, q2_only)
-    mismatch_penalty: float
-    penalty_details: List[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    q1_entities: list[EntityMatch]
+    q2_entities: list[EntityMatch]
+    entity_overlap: dict[str, set[str]]  # type -> shared entities
+    entity_mismatch: dict[str, tuple[set[str], set[str]]]  # type -> (q1_only, q2_only)
+    mismatch_penalty: float
+    penalty_details: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "q1_entities": [{"type": e.entity_type, "value": e.value} for e in self.q1_entities],
             "q2_entities": [{"type": e.entity_type, "value": e.value} for e in self.q2_entities],
@@ -164,7 +696,7 @@ class EntityDetectionResult:
         }
 
 
-def _extract_entities_from_text(text: str, entity_dict: Set[str], entity_type: str) -> List[EntityMatch]:
+def _extract_entities_from_text(text: str, entity_dict: set[str], entity_type: str) -> list[EntityMatch]:
     """Extract entities of a specific type from text using exact matching."""
     matches = []
     text_lower = text.lower()
@@ -172,62 +704,48 @@ def _extract_entities_from_text(text: str, entity_dict: Set[str], entity_type: s
         # Use word boundaries for matching
         pattern = r"\b" + re.escape(entity) + r"\b"
         for match in re.finditer(pattern, text_lower):
-            matches.append(EntityMatch(
-                entity_type=entity_type,
-                value=entity,
-                start=match.start(),
-                end=match.end(),
-                confidence=1.0
-            ))
+            matches.append(
+                EntityMatch(entity_type=entity_type, value=entity, start=match.start(), end=match.end(), confidence=1.0)
+            )
     return matches
 
 
-def _extract_versions(text: str) -> List[EntityMatch]:
+def _extract_versions(text: str) -> list[EntityMatch]:
     """Extract version numbers from text."""
     matches = []
     for match in _VERSION_PATTERN.finditer(text):
-        matches.append(EntityMatch(
-            entity_type="version",
-            value=match.group(),
-            start=match.start(),
-            end=match.end(),
-            confidence=0.9
-        ))
+        matches.append(
+            EntityMatch(
+                entity_type="version", value=match.group(), start=match.start(), end=match.end(), confidence=0.9
+            )
+        )
     return matches
 
 
-def _extract_dates(text: str) -> List[EntityMatch]:
+def _extract_dates(text: str) -> list[EntityMatch]:
     """Extract dates from text."""
     matches = []
     for match in _DATE_PATTERN.finditer(text):
-        matches.append(EntityMatch(
-            entity_type="date",
-            value=match.group(),
-            start=match.start(),
-            end=match.end(),
-            confidence=0.8
-        ))
+        matches.append(
+            EntityMatch(entity_type="date", value=match.group(), start=match.start(), end=match.end(), confidence=0.8)
+        )
     return matches
 
 
-def _extract_numbers(text: str) -> List[EntityMatch]:
+def _extract_numbers(text: str) -> list[EntityMatch]:
     """Extract numbers from text."""
     matches = []
     for match in _NUMBER_PATTERN.finditer(text):
         val = match.group()
         # Filter out very short numbers that are likely not meaningful
         if len(val) >= 2 or val.isdigit():
-            matches.append(EntityMatch(
-                entity_type="number",
-                value=val,
-                start=match.start(),
-                end=match.end(),
-                confidence=0.5
-            ))
+            matches.append(
+                EntityMatch(entity_type="number", value=val, start=match.start(), end=match.end(), confidence=0.5)
+            )
     return matches
 
 
-def detect_entities(text: str) -> List[EntityMatch]:
+def detect_entities(text: str) -> list[EntityMatch]:
     """Detect all entities in a text."""
     entities = []
 
@@ -252,13 +770,13 @@ def detect_entities(text: str) -> List[EntityMatch]:
 
 
 def compute_entity_mismatch(
-    q1_entities: List[EntityMatch],
-    q2_entities: List[EntityMatch],
+    q1_entities: list[EntityMatch],
+    q2_entities: list[EntityMatch],
 ) -> EntityDetectionResult:
     """Compute entity overlap and mismatch between two questions."""
     # Group entities by type
-    q1_by_type: Dict[str, Set[str]] = defaultdict(set)
-    q2_by_type: Dict[str, Set[str]] = defaultdict(set)
+    q1_by_type: dict[str, set[str]] = defaultdict(set)
+    q2_by_type: dict[str, set[str]] = defaultdict(set)
 
     for e in q1_entities:
         q1_by_type[e.entity_type].add(e.value.lower())
@@ -267,8 +785,8 @@ def compute_entity_mismatch(
 
     all_types = set(q1_by_type.keys()) | set(q2_by_type.keys())
 
-    entity_overlap: Dict[str, Set[str]] = {}
-    entity_mismatch: Dict[str, Tuple[Set[str], Set[str]]] = {}
+    entity_overlap: dict[str, set[str]] = {}
+    entity_mismatch: dict[str, tuple[set[str], set[str]]] = {}
 
     penalty_details = []
     total_penalty = 0.0
@@ -310,22 +828,16 @@ def compute_entity_mismatch(
             if q1_set and q2_set and not overlap:
                 penalty = weight * 1.0
                 total_penalty += penalty
-                penalty_details.append(
-                    f"{etype}: Q1={sorted(q1_only)}, Q2={sorted(q2_only)} (penalty: {penalty:.2f})"
-                )
+                penalty_details.append(f"{etype}: Q1={sorted(q1_only)}, Q2={sorted(q2_only)} (penalty: {penalty:.2f})")
             elif q1_set and not q2_set:
                 # Q1 has entity type, Q2 doesn't - smaller penalty
                 penalty = weight * 0.5
                 total_penalty += penalty
-                penalty_details.append(
-                    f"{etype}: Q1={sorted(q1_set)}, Q2=none (penalty: {penalty:.2f})"
-                )
+                penalty_details.append(f"{etype}: Q1={sorted(q1_set)}, Q2=none (penalty: {penalty:.2f})")
             elif q2_set and not q1_set:
                 penalty = weight * 0.5
                 total_penalty += penalty
-                penalty_details.append(
-                    f"{etype}: Q1=none, Q2={sorted(q2_set)} (penalty: {penalty:.2f})"
-                )
+                penalty_details.append(f"{etype}: Q1=none, Q2={sorted(q2_set)} (penalty: {penalty:.2f})")
 
     # Cap penalty at 0.8 (80% reduction)
     total_penalty = min(0.8, total_penalty)
@@ -347,7 +859,7 @@ def analyze_entity_mismatch(q1: str, q2: str) -> EntityDetectionResult:
     return compute_entity_mismatch(q1_entities, q2_entities)
 
 
-def get_entity_penalty(q1: str, q2: str) -> Tuple[float, List[str]]:
+def get_entity_penalty(q1: str, q2: str) -> tuple[float, list[str]]:
     """Get entity mismatch penalty and details for a question pair."""
     result = analyze_entity_mismatch(q1, q2)
     return result.mismatch_penalty, result.penalty_details

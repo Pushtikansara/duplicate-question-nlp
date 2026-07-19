@@ -6,9 +6,6 @@ import streamlit as st
 
 from app.services.runtime import get_runtime_context
 from app.utils.constants import get_model_prediction
-from duplicate_question_app.config import is_ensemble_model, is_new_embedding_model
-from duplicate_question_app.week2_inference import is_week2_model
-from duplicate_question_app.embedding_models import get_ensemble_prediction, predict_with_sentence_transformer
 from duplicate_question_app.visuals import create_probability_figure
 
 
@@ -35,7 +32,9 @@ def render() -> None:
         decision_threshold = 0.5
         device = "cpu"
 
-    st.caption(f"Running live inference with **{model_label}** on **{device}**. Decision threshold: **{decision_threshold:.2f}**.")
+    st.caption(
+        f"Running live inference with **{model_label}** on **{device}**. Decision threshold: **{decision_threshold:.2f}**."
+    )
 
     with st.form("single_prediction_form"):
         question1 = st.text_area("Question 1", placeholder="Enter the first question", height=120)
@@ -62,7 +61,7 @@ def render() -> None:
         col3.metric("Probability (Duplicate)", f"{result['prob_duplicate']:.2%}")
         col4.metric("Threshold", f"{result['threshold']:.2f}")
 
-        st.caption(f"Model: **{result['model_label']}** | ⏱️ Inference time: {result['inference_time']*1000:.1f} ms")
+        st.caption(f"Model: **{result['model_label']}** | ⏱️ Inference time: {result['inference_time'] * 1000:.1f} ms")
 
         if result.get("reason"):
             st.info(f"ℹ️ {result['reason']}")
@@ -73,5 +72,7 @@ def render() -> None:
                     st.write(f"- **{model_name}**: duplicate probability = {contrib.get('prob_dup', 0):.4f}")
 
         st.success(f"Model decision: **{result['prediction']}** using **{result['model_label']}**.")
-        probability_figure = create_probability_figure(prob_duplicate=float(result["prob_duplicate"]), threshold=float(result["threshold"]))
+        probability_figure = create_probability_figure(
+            prob_duplicate=float(result["prob_duplicate"]), threshold=float(result["threshold"])
+        )
         st.pyplot(probability_figure, clear_figure=True)

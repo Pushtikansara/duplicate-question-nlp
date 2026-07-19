@@ -9,7 +9,9 @@ from app.services.builder import build_model_comparison_table, format_model_comp
 
 def render() -> None:
     st.title("Model Comparison")
-    st.write("Side-by-side comparison across all models: Week 2 classical baselines, Week 3/4 transformers, and Phase 2 embedding models.")
+    st.write(
+        "Side-by-side comparison across all models: Week 2 classical baselines, Week 3/4 transformers, and Phase 2 embedding models."
+    )
 
     comparison_df = build_model_comparison_table()
     display_df = format_model_comparison_for_display(comparison_df)
@@ -37,7 +39,17 @@ def render() -> None:
     st.subheader("Model Details")
     detail_data = {
         "Model": comparison_df["Model"].tolist(),
-        "Type": ["Classical ML", "Classical ML", "Transformer", "Transformer", "Bi-Encoder", "Bi-Encoder", "Bi-Encoder", "Cross-Encoder", "Ensemble"],
+        "Type": [
+            "Classical ML",
+            "Classical ML",
+            "Transformer",
+            "Transformer",
+            "Bi-Encoder",
+            "Bi-Encoder",
+            "Bi-Encoder",
+            "Cross-Encoder",
+            "Ensemble",
+        ],
         "Parameters": ["~10K features", "~10K features", "66.9M", "66.9M", "110M", "118M", "110M", "184M", "Varies"],
     }
     st.dataframe(pd.DataFrame(detail_data), use_container_width=True, hide_index=True)

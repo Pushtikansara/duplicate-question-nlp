@@ -329,4 +329,3 @@ sections.forEach((section, i) => {
 - Use `@keyframes` with descriptive names that describe the motion, not the element: `@keyframes fade-in-up` not `@keyframes modal-enter`.
 - Use `linear()` easing function (CSS) for custom easing curves that do not fit cubic-bezier: `animation-timing-function: linear(0, 0.1 10%, 0.3 25%, 1)`.
 - Use `interpolate-size: allow-keywords` for animating between keyword and length values in CSS transitions.
-

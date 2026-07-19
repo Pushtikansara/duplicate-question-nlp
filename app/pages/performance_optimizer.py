@@ -6,7 +6,10 @@ import streamlit as st
 
 from duplicate_question_app.config import MODEL_CHOICES
 from duplicate_question_app.performance_optimizer import (
-    get_embedding_cache, get_preprocessing_cache, clear_all_caches, benchmark_inference
+    benchmark_inference,
+    clear_all_caches,
+    get_embedding_cache,
+    get_preprocessing_cache,
 )
 
 
@@ -66,10 +69,10 @@ def render() -> None:
                     st.dataframe(bench_df, use_container_width=True)
 
                     fig, ax = plt.subplots(figsize=(8, 4))
-                    ax.bar(bench_df.index, bench_df['per_pair_ms'])
-                    ax.set_ylabel('ms per pair')
-                    ax.set_title('Inference Latency per Pair')
-                    plt.xticks(rotation=45, ha='right')
+                    ax.bar(bench_df.index, bench_df["per_pair_ms"])
+                    ax.set_ylabel("ms per pair")
+                    ax.set_title("Inference Latency per Pair")
+                    plt.xticks(rotation=45, ha="right")
                     st.pyplot(fig, clear_figure=True)
                 except Exception as exc:
                     st.error(f"Benchmark failed: {exc}")

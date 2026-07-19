@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 
@@ -31,8 +28,8 @@ class TestCrossModule:
 
     @pytest.mark.integration
     def test_preprocessing_to_linguistics_flow(self):
-        from duplicate_question_app._preprocessing.text import normalize_question
         from duplicate_question_app._linguistics.lexical import compute_lexical_penalty
+        from duplicate_question_app._preprocessing.text import normalize_question
 
         q1 = normalize_question("How to learn Python?")
         q2 = normalize_question("How can I learn Python?")
@@ -69,12 +66,19 @@ class TestCrossModule:
 
     @pytest.mark.integration
     def test_embeddings_to_evaluation_flow(self):
-        from duplicate_question_app._models.embeddings import _get_threshold, _result_dict
         from duplicate_question_app._evaluation.error_analysis import categorize_error
+        from duplicate_question_app._models.embeddings import _result_dict
 
         result = _result_dict(
-            q1="a", q2="b", pred_label=1, prob_dup=0.8, prob_non=0.2,
-            threshold=0.5, model_name="E5", device="cpu", latency_ms=10,
+            q1="a",
+            q2="b",
+            pred_label=1,
+            prob_dup=0.8,
+            prob_non=0.2,
+            threshold=0.5,
+            model_name="E5",
+            device="cpu",
+            latency_ms=10,
         )
         errors = categorize_error(
             q1="a",

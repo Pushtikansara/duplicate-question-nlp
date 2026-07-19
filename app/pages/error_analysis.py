@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import pandas as pd
 import streamlit as st
 
-from app.services.data import get_week4_predictions_df, get_week3_analysis_frame
+from app.services.data import get_week3_analysis_frame, get_week4_predictions_df
 
 
 def render() -> None:
@@ -25,8 +26,12 @@ def render() -> None:
             working.loc[(working[label_true] == 1) & (working[label_pred] == 0), "error_type"] = "False Negative"
         if "error_type" in working.columns:
             normalized_error = working["error_type"].astype(str).str.replace(r"\s+", " ", regex=True).str.strip()
-            normalized_error = normalized_error.mask(normalized_error.str.contains("False Positive", na=False), "False Positive")
-            normalized_error = normalized_error.mask(normalized_error.str.contains("False Negative", na=False), "False Negative")
+            normalized_error = normalized_error.mask(
+                normalized_error.str.contains("False Positive", na=False), "False Positive"
+            )
+            normalized_error = normalized_error.mask(
+                normalized_error.str.contains("False Negative", na=False), "False Negative"
+            )
             normalized_error = normalized_error.mask(normalized_error.str.contains("Correct", na=False), "Correct")
             working["error_type"] = normalized_error
         if "confidence" not in working.columns and {"prob_duplicate", "prob_non_duplicate"}.issubset(working.columns):
@@ -53,7 +58,19 @@ def render() -> None:
         st.bar_chart(working["error_type"].value_counts())
         if not error_df.empty and "confidence" in error_df.columns:
             st.subheader("Most Confident Errors")
-            display_cols = [col for col in ["q1", "q2", "actual_class_name", "predicted_class_name", "confidence", "prob_duplicate", "error_type"] if col in error_df.columns]
+            display_cols = [
+                col
+                for col in [
+                    "q1",
+                    "q2",
+                    "actual_class_name",
+                    "predicted_class_name",
+                    "confidence",
+                    "prob_duplicate",
+                    "error_type",
+                ]
+                if col in error_df.columns
+            ]
             top_errors = error_df.nlargest(min(10, len(error_df)), "confidence")[display_cols]
             st.dataframe(top_errors, use_container_width=True)
         tab1, tab2 = st.tabs(["False Positives", "False Negatives"])

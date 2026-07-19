@@ -3,15 +3,14 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from app.components.metric_cards import safe_metric, metric_card_row
+from app.components.metric_cards import metric_card_row, safe_metric
+from app.services.builder import get_model_metrics_for
 from app.services.data import get_dataset_summary
 from app.services.runtime import get_model_resolution, get_runtime_context
-from app.services.builder import get_model_metrics_for
 from app.utils.constants import PATHS
 from duplicate_question_app.config import get_config, is_transformer_model
-from duplicate_question_app.week2_inference import is_week2_model
-from duplicate_question_app.week2_inference import check_week2_artifacts
 from duplicate_question_app.model_registry import build_registry
+from duplicate_question_app.week2_inference import check_week2_artifacts, is_week2_model
 
 
 def _get_default_model() -> str:
@@ -93,15 +92,23 @@ def render() -> None:
     st.markdown("<div class='section-header'>Model Registry</div>", unsafe_allow_html=True)
     reg_data = []
     for e in registry:
-        status_icon = "✅" if e.has_artifacts or e.source == "built-in" else ("⬇️" if e.source == "huggingface" else "❌")
-        reg_data.append({
-            "Model": e.display_name,
-            "Type": e.model_type.replace("-", " ").title(),
-            "Framework": e.framework.upper(),
-            "Source": e.source.title(),
-            "Status": status_icon,
-            "Params": e.parameters,
-        })
+        status_icon = (
+            "✅" if e.has_artifacts or e.source == "built-in" else ("⬇️" if e.source == "huggingface" else "❌")
+        )
+        reg_data.append(
+            {
+                "Model": e.display_name,
+                "Type": e.model_type.replace("-", " ").title(),
+                "Framework": e.framework.upper(),
+                "Source": e.source.title(),
+                "Status": status_icon,
+                "Params": e.parameters,
+            }
+        )
     reg_df = pd.DataFrame(reg_data)
-    st.dataframe(reg_df, use_container_width=True, hide_index=True,
-                 column_config={"Status": st.column_config.TextColumn("Status", width="small")})
+    st.dataframe(
+        reg_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={"Status": st.column_config.TextColumn("Status", width="small")},
+    )

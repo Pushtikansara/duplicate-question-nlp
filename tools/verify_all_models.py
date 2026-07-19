@@ -3,6 +3,7 @@
 Tests every model with identical sample questions and reports results.
 Usage: PYTHONPATH=src python scripts/verify_all_models.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -14,15 +15,14 @@ SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
 from duplicate_question_app.config import (
-    MODEL_CHOICES,
     get_app_paths,
 )
-from duplicate_question_app.week2_inference import Week2InferenceService, is_week2_model, check_week2_artifacts
-from duplicate_question_app.inference import load_model_and_tokenizer, DuplicateQuestionInferenceService
 from duplicate_question_app.embedding_models import (
-    predict_with_sentence_transformer,
     get_ensemble_prediction,
+    predict_with_sentence_transformer,
 )
+from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
+from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PATHS = get_app_paths(PROJECT_ROOT)
@@ -43,7 +43,9 @@ def verify_sentence_transformer_model(model_name: str) -> bool:
         start = time.time()
         result = predict_with_sentence_transformer(model_name, q1, q2)
         elapsed = time.time() - start
-        print(f"  ✅ Loaded and predicted: {result['prediction']} (conf={result['confidence']:.4f}, {elapsed*1000:.1f}ms)")
+        print(
+            f"  ✅ Loaded and predicted: {result['prediction']} (conf={result['confidence']:.4f}, {elapsed * 1000:.1f}ms)"
+        )
         return True
     except Exception as e:
         print(f"  ❌ Error: {e}")
@@ -57,7 +59,9 @@ def verify_ensemble() -> bool:
         start = time.time()
         result = get_ensemble_prediction(q1, q2, PATHS)
         elapsed = time.time() - start
-        print(f"  ✅ Ensemble predicted: {result['prediction']} (conf={result['confidence']:.4f}, {elapsed*1000:.1f}ms, models={len(result.get('feature_breakdown', {}))})")
+        print(
+            f"  ✅ Ensemble predicted: {result['prediction']} (conf={result['confidence']:.4f}, {elapsed * 1000:.1f}ms, models={len(result.get('feature_breakdown', {}))})"
+        )
         return True
     except Exception as e:
         print(f"  ❌ Error: {e}")
@@ -86,7 +90,9 @@ def main() -> None:
                 start = time.time()
                 result = service.predict_single(q1, q2, model_name)
                 elapsed = time.time() - start
-                print(f"  ✅ {model_name}: {result['prediction']} (conf={result['confidence']:.4f}, {elapsed*1000:.1f}ms)")
+                print(
+                    f"  ✅ {model_name}: {result['prediction']} (conf={result['confidence']:.4f}, {elapsed * 1000:.1f}ms)"
+                )
                 passed += 1
                 results.append(f"{model_name}: PASS")
             except Exception as e:
@@ -108,7 +114,9 @@ def main() -> None:
         start = time.time()
         result = service.predict_single(q1, q2)
         elapsed = time.time() - start
-        print(f"  ✅ DistilBERT (Week 3): {result['prediction']} (conf={result['confidence']:.4f}, {elapsed*1000:.1f}ms)")
+        print(
+            f"  ✅ DistilBERT (Week 3): {result['prediction']} (conf={result['confidence']:.4f}, {elapsed * 1000:.1f}ms)"
+        )
         print(f"     Device: {metadata.device}")
         passed += 1
         results.append("DistilBERT (Week 3): PASS")
@@ -127,7 +135,9 @@ def main() -> None:
         start = time.time()
         result = service.predict_single(q1, q2)
         elapsed = time.time() - start
-        print(f"  ✅ Improved DistilBERT (Week 4): {result['prediction']} (conf={result['confidence']:.4f}, {elapsed*1000:.1f}ms)")
+        print(
+            f"  ✅ Improved DistilBERT (Week 4): {result['prediction']} (conf={result['confidence']:.4f}, {elapsed * 1000:.1f}ms)"
+        )
         print(f"     Device: {metadata.device}")
         passed += 1
         results.append("Improved DistilBERT (Week 4): PASS")

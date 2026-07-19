@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.patches import FancyBboxPatch
 
 
 def create_probability_figure(prob_duplicate: float, threshold: float) -> plt.Figure:
@@ -14,7 +14,7 @@ def create_probability_figure(prob_duplicate: float, threshold: float) -> plt.Fi
     colors = ["#64748B", "#2563EB"]
     bars = ax.barh(categories, values, color=colors)
 
-    for bar, value in zip(bars, values):
+    for bar, value in zip(bars, values, strict=False):
         ax.text(value + 0.02, bar.get_y() + bar.get_height() / 2, f"{value:.2%}", va="center")
 
     ax.axvline(threshold, color="#DC2626", linestyle="--", linewidth=2, label=f"Threshold = {threshold:.2f}")
@@ -113,50 +113,77 @@ def create_pipeline_figure() -> plt.Figure:
 
         # Draw main box with rounded corners
         rect_bg = FancyBboxPatch(
-            (x_center - box_w / 2, 1.2), box_w, box_h,
+            (x_center - box_w / 2, 1.2),
+            box_w,
+            box_h,
             boxstyle="round,pad=0.08,rounding_size=0.2",
-            facecolor="#F8FAFC", edgecolor=stage["color"],
-            linewidth=2.5, zorder=2,
+            facecolor="#F8FAFC",
+            edgecolor=stage["color"],
+            linewidth=2.5,
+            zorder=2,
         )
         ax.add_patch(rect_bg)
 
         # Top accent bar with rounded top corners
         accent = FancyBboxPatch(
-            (x_center - box_w / 2, 1.2 + box_h - 0.55), box_w, 0.55,
+            (x_center - box_w / 2, 1.2 + box_h - 0.55),
+            box_w,
+            0.55,
             boxstyle="round,pad=0.08,rounding_size=0.2",
-            facecolor=stage["color"], alpha=0.15, zorder=3,
+            facecolor=stage["color"],
+            alpha=0.15,
+            zorder=3,
             linewidth=0,
         )
         ax.add_patch(accent)
 
         # Week label (top left corner of box)
         ax.text(
-            x_center - box_w / 2 + 0.15, 1.2 + box_h - 0.4,
+            x_center - box_w / 2 + 0.15,
+            1.2 + box_h - 0.4,
             stage["week"],
-            fontsize=9, fontweight="bold",
-            color=stage["color"], ha="left", va="center", zorder=4,
+            fontsize=9,
+            fontweight="bold",
+            color=stage["color"],
+            ha="left",
+            va="center",
+            zorder=4,
         )
 
         # Icon
         ax.text(
-            x_center + box_w / 2 - 0.25, 1.2 + box_h - 0.4,
-            stage["icon"], fontsize=14, ha="center", va="center", zorder=4,
+            x_center + box_w / 2 - 0.25,
+            1.2 + box_h - 0.4,
+            stage["icon"],
+            fontsize=14,
+            ha="center",
+            va="center",
+            zorder=4,
         )
 
         # Title
         ax.text(
-            x_center, 1.2 + box_h - 0.95,
+            x_center,
+            1.2 + box_h - 0.95,
             stage["title"],
-            fontsize=10, fontweight="bold",
-            color="#1E293B", ha="center", va="center", zorder=4,
+            fontsize=10,
+            fontweight="bold",
+            color="#1E293B",
+            ha="center",
+            va="center",
+            zorder=4,
         )
 
         # Description
         ax.text(
-            x_center, 1.2 + box_h / 2 - 0.2,
+            x_center,
+            1.2 + box_h / 2 - 0.2,
             stage["desc"],
-            fontsize=8.5, color="#475569",
-            ha="center", va="center", zorder=4,
+            fontsize=8.5,
+            color="#475569",
+            ha="center",
+            va="center",
+            zorder=4,
             linespacing=1.5,
         )
 
@@ -178,24 +205,37 @@ def create_pipeline_figure() -> plt.Figure:
 
     # Title at the top
     ax.text(
-        8, 5.6, "NLP Pipeline — Duplicate Question Detection",
-        fontsize=14, fontweight="bold", color="#0F172A",
-        ha="center", va="center",
+        8,
+        5.6,
+        "NLP Pipeline — Duplicate Question Detection",
+        fontsize=14,
+        fontweight="bold",
+        color="#0F172A",
+        ha="center",
+        va="center",
     )
 
     # Subtitle
     ax.text(
-        8, 5.15, "From raw data collection to production-grade deployment across 5 weekly iterations",
-        fontsize=9, color="#64748B", ha="center", va="center",
+        8,
+        5.15,
+        "From raw data collection to production-grade deployment across 5 weekly iterations",
+        fontsize=9,
+        color="#64748B",
+        ha="center",
+        va="center",
     )
 
     # Bottom metrics summary
-    metrics_info = (
-        "📦 400k+ question pairs  |  🔤 4 model architectures  |  🎯 Best F1: 0.8996 (Week 4)  |  ⚡ Live inference in browser"
-    )
+    metrics_info = "📦 400k+ question pairs  |  🔤 4 model architectures  |  🎯 Best F1: 0.8996 (Week 4)  |  ⚡ Live inference in browser"
     ax.text(
-        8, 0.5, metrics_info,
-        fontsize=8.5, color="#64748B", ha="center", va="center",
+        8,
+        0.5,
+        metrics_info,
+        fontsize=8.5,
+        color="#64748B",
+        ha="center",
+        va="center",
         style="italic",
     )
 

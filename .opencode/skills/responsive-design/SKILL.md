@@ -253,4 +253,3 @@ p {
 - Use `aspect-ratio` CSS property for media containers instead of padding-bottom hacks.
 - For responsive SVGs, set `width="100%"` and `height="auto"` with `viewBox` defined.
 - Use CSS cascade layers (`@layer`) to manage responsive overrides systematically.
-

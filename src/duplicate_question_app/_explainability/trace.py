@@ -21,23 +21,21 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
-
+from duplicate_question_app.agreement_engine import get_agreement_report
 from duplicate_question_app.config import AppPaths, get_app_paths
-from duplicate_question_app.preprocessing import normalize_question
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
-from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
 from duplicate_question_app.embedding_models import (
-    predict_with_sentence_transformer,
     get_sentence_transformer_model,
 )
-from duplicate_question_app.agreement_engine import get_agreement_report, agreement_to_dict
+from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
 from duplicate_question_app.intelligent_ensemble import compute_adaptive_weights, get_adaptive_ensemble_prediction
+from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
 
 
 @dataclass
 class DecisionTrace:
     """Full decision trace for a single prediction."""
+
     # Input
     question1_original: str
     question2_original: str
@@ -45,21 +43,21 @@ class DecisionTrace:
     question2_normalized: str
 
     # Per-model scores
-    tfidf_similarity: float | None = None        # TF-IDF cosine similarity
-    bge_similarity: float | None = None           # BGE cosine similarity
-    e5_similarity: float | None = None            # E5 cosine similarity
-    mpnet_similarity: float | None = None         # MPNet cosine similarity
-    cross_encoder_score: float | None = None      # DeBERTa NLI entailment ratio
-    distilbert_w3_prob: float | None = None        # Week 3 probability
-    distilbert_w4_prob: float | None = None        # Week 4 probability
-    lr_prob: float | None = None                  # Logistic Regression probability
-    svm_prob: float | None = None                 # SVM probability
+    tfidf_similarity: float | None = None  # TF-IDF cosine similarity
+    bge_similarity: float | None = None  # BGE cosine similarity
+    e5_similarity: float | None = None  # E5 cosine similarity
+    mpnet_similarity: float | None = None  # MPNet cosine similarity
+    cross_encoder_score: float | None = None  # DeBERTa NLI entailment ratio
+    distilbert_w3_prob: float | None = None  # Week 3 probability
+    distilbert_w4_prob: float | None = None  # Week 4 probability
+    lr_prob: float | None = None  # Logistic Regression probability
+    svm_prob: float | None = None  # SVM probability
 
     # Lexical features
-    lexical_overlap: float = 0.0                  # Word overlap ratio
-    char_overlap: float = 0.0                     # Character n-gram overlap
-    word_count_diff: int = 0                      # Word count difference
-    char_count_diff: int = 0                      # Character count difference
+    lexical_overlap: float = 0.0  # Word overlap ratio
+    char_overlap: float = 0.0  # Character n-gram overlap
+    word_count_diff: int = 0  # Word count difference
+    char_count_diff: int = 0  # Character count difference
     top_tfidf_terms_q1: list[tuple[str, float]] = field(default_factory=list)
     top_tfidf_terms_q2: list[tuple[str, float]] = field(default_factory=list)
 
@@ -155,8 +153,8 @@ def extract_lexical_features(q1_norm: str, q2_norm: str) -> dict[str, Any]:
     word_overlap = len(intersection) / max(1, len(union))
 
     # Character 3-gram overlap
-    c1 = {q1_norm[i:i+3] for i in range(len(q1_norm) - 2)}
-    c2 = {q2_norm[i:i+3] for i in range(len(q2_norm) - 2)}
+    c1 = {q1_norm[i : i + 3] for i in range(len(q1_norm) - 2)}
+    c2 = {q2_norm[i : i + 3] for i in range(len(q2_norm) - 2)}
     char_union = c1 | c2
     char_intersection = c1 & c2
     char_overlap = len(char_intersection) / max(1, len(char_union))
@@ -177,9 +175,12 @@ def extract_semantic_features(q1: str, q2: str) -> dict[str, Any]:
 
     synonyms = set()
     synonym_pairs = [
-        ("learn", "study"), ("benefits", "advantages"),
-        ("tutorial", "guide"), ("difference", "distinction"),
-        ("explain", "what is"), ("how to", "way to"),
+        ("learn", "study"),
+        ("benefits", "advantages"),
+        ("tutorial", "guide"),
+        ("difference", "distinction"),
+        ("explain", "what is"),
+        ("how to", "way to"),
     ]
     q1_lower, q2_lower = q1.lower(), q2.lower()
     for w1, w2 in synonym_pairs:
@@ -207,10 +208,12 @@ def generate_decision_trace(
     final decision into a single DecisionTrace object.
     """
     import time
+
     start_time = time.time()
 
     if paths is None:
         from pathlib import Path
+
         paths = get_app_paths(Path(__file__).resolve().parents[2])
 
     q1_norm = normalize_question(q1, expand_abbrevs=True)
@@ -265,7 +268,6 @@ def generate_decision_trace(
 
     # Cross-encoder score
     try:
-        from duplicate_question_app.embedding_models import get_sentence_transformer_model
         ce = get_sentence_transformer_model("DeBERTa-v3 Cross-Encoder")
         scores = ce.predict([(q1_norm, q2_norm)], apply_softmax=True)[0]
         if len(scores) >= 3:
@@ -302,11 +304,12 @@ def generate_decision_trace(
     try:
         if all(check_week2_artifacts(paths).values()):
             w2 = Week2InferenceService(paths)
-            from scipy.sparse import vstack
+
             tfidf = w2._load_tfidf()
             v1 = tfidf.transform([q1_norm])
             v2 = tfidf.transform([q2_norm])
             from sklearn.metrics.pairwise import cosine_similarity
+
             trace.tfidf_similarity = float(cosine_similarity(v1, v2)[0, 0])
     except Exception:
         pass

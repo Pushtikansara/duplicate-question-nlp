@@ -5,9 +5,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from duplicate_question_app.error_logger import (
-    get_error_logger, load_error_log, analyze_error_log, mine_hard_examples
-)
+from duplicate_question_app.error_logger import analyze_error_log, get_error_logger, load_error_log, mine_hard_examples
 
 
 def render() -> None:
@@ -42,10 +40,14 @@ def render() -> None:
                 if pred_label != true_label:
                     logger = get_error_logger()
                     example = logger.log_error(
-                        question1=q1, question2=q2, predicted_label=pred_label,
-                        true_label=true_label, prob_duplicate=prob_dup,
-                        confidence=confidence, model_name=model_name,
-                        notes=notes
+                        question1=q1,
+                        question2=q2,
+                        predicted_label=pred_label,
+                        true_label=true_label,
+                        prob_duplicate=prob_dup,
+                        confidence=confidence,
+                        model_name=model_name,
+                        notes=notes,
                     )
                     st.success(f"Error logged: {example.q1[:50]}... vs {example.q2[:50]}...")
                 else:
@@ -63,19 +65,19 @@ def render() -> None:
                 else:
                     analysis = analyze_error_log(df)
                     col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("Total Errors", analysis['total_errors'])
-                    col2.metric("False Positives", analysis['false_positives'])
-                    col3.metric("False Negatives", analysis['false_negatives'])
+                    col1.metric("Total Errors", analysis["total_errors"])
+                    col2.metric("False Positives", analysis["false_positives"])
+                    col3.metric("False Negatives", analysis["false_negatives"])
                     col4.metric("Avg Confidence", f"{analysis['confidence_stats']['mean']:.2%}")
 
                     st.subheader("Error Categories")
-                    if analysis['error_categories']:
-                        cat_df = pd.DataFrame(list(analysis['error_categories'].items()), columns=["Category", "Count"])
+                    if analysis["error_categories"]:
+                        cat_df = pd.DataFrame(list(analysis["error_categories"].items()), columns=["Category", "Count"])
                         st.bar_chart(cat_df.set_index("Category"))
 
                     st.subheader("Top Confident Errors")
-                    if analysis['top_confident_errors']:
-                        st.dataframe(pd.DataFrame(analysis['top_confident_errors']), use_container_width=True)
+                    if analysis["top_confident_errors"]:
+                        st.dataframe(pd.DataFrame(analysis["top_confident_errors"]), use_container_width=True)
             except Exception as exc:
                 st.error(f"Analysis failed: {exc}")
 
@@ -95,6 +97,8 @@ def render() -> None:
                     st.dataframe(hard_df, use_container_width=True)
 
                     csv = hard_df.to_csv(index=False).encode()
-                    st.download_button("Download Hard Examples", data=csv, file_name="hard_examples_mined.csv", mime="text/csv")
+                    st.download_button(
+                        "Download Hard Examples", data=csv, file_name="hard_examples_mined.csv", mime="text/csv"
+                    )
             except Exception as exc:
                 st.error(f"Mining failed: {exc}")

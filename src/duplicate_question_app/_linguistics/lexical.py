@@ -8,9 +8,7 @@ on semantically different but lexically similar questions.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple, Optional
-from collections import Counter
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -29,105 +27,392 @@ class PenaltyType(Enum):
 @dataclass
 class LexicalPenaltyResult:
     """Result of lexical penalty analysis."""
+
     total_penalty: float  # 0-1, applied to duplicate probability
-    penalties: Dict[PenaltyType, float]
-    details: List[str]
-    q1_tokens: Dict[str, Set[str]]
-    q2_tokens: Dict[str, Set[str]]
-    overlap_scores: Dict[str, float]
+    penalties: dict[PenaltyType, float]
+    details: list[str]
+    q1_tokens: dict[str, set[str]]
+    q2_tokens: dict[str, set[str]]
+    overlap_scores: dict[str, float]
 
 
 # POS tagging patterns (simple heuristic-based)
-_NOUN_SUFFIXES: Set[str] = {
-    "tion", "sion", "ment", "ness", "ity", "ty", "ance", "ence", "ence",
-    "er", "or", "ist", "ant", "ent", "ee", "ism", "ship", "hood", "dom",
-    "age", "al", "ance", "ence", "ery", "ry", "cy", "sy", "ty", "ure",
+_NOUN_SUFFIXES: set[str] = {
+    "tion",
+    "sion",
+    "ment",
+    "ness",
+    "ity",
+    "ty",
+    "ance",
+    "ence",
+    "er",
+    "or",
+    "ist",
+    "ant",
+    "ent",
+    "ee",
+    "ism",
+    "ship",
+    "hood",
+    "dom",
+    "age",
+    "al",
+    "ery",
+    "ry",
+    "cy",
+    "sy",
+    "ure",
 }
 
-_VERB_SUFFIXES: Set[str] = {
-    "ize", "ise", "ate", "ify", "fy", "en", "ed", "ing", "s", "es",
+_VERB_SUFFIXES: set[str] = {
+    "ize",
+    "ise",
+    "ate",
+    "ify",
+    "fy",
+    "en",
+    "ed",
+    "ing",
+    "s",
+    "es",
 }
 
 # Programming language keywords
-_PROGRAMMING_LANGUAGES: Set[str] = {
-    "python", "java", "javascript", "typescript", "c++", "c#", "csharp",
-    "go", "golang", "rust", "swift", "kotlin", "scala", "ruby", "php",
-    "perl", "r", "matlab", "julia", "dart", "lua", "haskell", "clojure",
-    "erlang", "elixir", "f#", "vb.net", "objective-c", "assembly", "asm",
-    "sql", "html", "css", "bash", "powershell", "shell", "awk", "sed",
+_PROGRAMMING_LANGUAGES: set[str] = {
+    "python",
+    "java",
+    "javascript",
+    "typescript",
+    "c++",
+    "c#",
+    "csharp",
+    "go",
+    "golang",
+    "rust",
+    "swift",
+    "kotlin",
+    "scala",
+    "ruby",
+    "php",
+    "perl",
+    "r",
+    "matlab",
+    "julia",
+    "dart",
+    "lua",
+    "haskell",
+    "clojure",
+    "erlang",
+    "elixir",
+    "f#",
+    "vb.net",
+    "objective-c",
+    "assembly",
+    "asm",
+    "sql",
+    "html",
+    "css",
+    "bash",
+    "powershell",
+    "shell",
+    "awk",
+    "sed",
 }
 
 # Software/framework names
-_SOFTWARE_NAMES: Set[str] = {
-    "docker", "kubernetes", "k8s", "terraform", "ansible", "jenkins",
-    "gitlab", "github", "bitbucket", "jira", "confluence", "vscode",
-    "intellij", "pycharm", "webstorm", "clion", "rider", "goland",
-    "tensorflow", "pytorch", "keras", "jax", "scikit-learn", "xgboost",
-    "lightgbm", "catboost", "huggingface", "transformers", "langchain",
-    "llamaindex", "pandas", "numpy", "scipy", "matplotlib", "seaborn",
-    "plotly", "bokeh", "requests", "httpx", "aiohttp", "asyncio", "celery",
-    "redis", "sqlalchemy", "peewee", "tortoise-orm", "prisma", "typeorm",
-    "sequelize", "mongoose", "graphql", "apollo", "grpc", "protobuf",
-    "kafka", "rabbitmq", "prometheus", "grafana", "elk", "elasticsearch",
-    "logstash", "kibana", "jenkins", "gitlab ci", "github actions",
-    "circleci", "travis", "argo", "tekton", "vagrant", "helm", "istio",
-    "linkerd", "consul", "vault", "nomad", "packer", "aws", "gcp", "azure",
-    "digitalocean", "linode", "vultr", "heroku", "render", "vercel", "netlify",
-    "cloudflare", "mongodb", "postgresql", "mysql", "mariadb", "sqlite",
-    "cassandra", "dynamodb", "redis", "elasticsearch", "opensearch",
-    "meilisearch", "typesense", "clickhouse", "snowflake", "bigquery",
-    "redshift", "databricks", "spark", "flink", "kafka streams", "airflow",
-    "prefect", "dagster", "luigi", "dbt", "fivetran", "airbyte", "stitch",
-    "cuda", "cudnn", "tensorrt", "onnx", "onnxruntime", "openvino", "tflite",
-    "coreml", "mps", "rocm", "hip", "oneapi", "mkl", "mkl-dnn", "blas", "lapack",
+_SOFTWARE_NAMES: set[str] = {
+    "docker",
+    "kubernetes",
+    "k8s",
+    "terraform",
+    "ansible",
+    "jenkins",
+    "gitlab",
+    "github",
+    "bitbucket",
+    "jira",
+    "confluence",
+    "vscode",
+    "intellij",
+    "pycharm",
+    "webstorm",
+    "clion",
+    "rider",
+    "goland",
+    "tensorflow",
+    "pytorch",
+    "keras",
+    "jax",
+    "scikit-learn",
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "huggingface",
+    "transformers",
+    "langchain",
+    "llamaindex",
+    "pandas",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "bokeh",
+    "requests",
+    "httpx",
+    "aiohttp",
+    "asyncio",
+    "celery",
+    "redis",
+    "sqlalchemy",
+    "peewee",
+    "tortoise-orm",
+    "prisma",
+    "typeorm",
+    "sequelize",
+    "mongoose",
+    "graphql",
+    "apollo",
+    "grpc",
+    "protobuf",
+    "kafka",
+    "rabbitmq",
+    "prometheus",
+    "grafana",
+    "elk",
+    "elasticsearch",
+    "logstash",
+    "kibana",
+    "gitlab ci",
+    "github actions",
+    "circleci",
+    "travis",
+    "argo",
+    "tekton",
+    "vagrant",
+    "helm",
+    "istio",
+    "linkerd",
+    "consul",
+    "vault",
+    "nomad",
+    "packer",
+    "aws",
+    "gcp",
+    "azure",
+    "digitalocean",
+    "linode",
+    "vultr",
+    "heroku",
+    "render",
+    "vercel",
+    "netlify",
+    "cloudflare",
+    "mongodb",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "sqlite",
+    "cassandra",
+    "dynamodb",
+    "opensearch",
+    "meilisearch",
+    "typesense",
+    "clickhouse",
+    "snowflake",
+    "bigquery",
+    "redshift",
+    "databricks",
+    "spark",
+    "flink",
+    "kafka streams",
+    "airflow",
+    "prefect",
+    "dagster",
+    "luigi",
+    "dbt",
+    "fivetran",
+    "airbyte",
+    "stitch",
+    "cuda",
+    "cudnn",
+    "tensorrt",
+    "onnx",
+    "onnxruntime",
+    "openvino",
+    "tflite",
+    "coreml",
+    "mps",
+    "rocm",
+    "hip",
+    "oneapi",
+    "mkl",
+    "mkl-dnn",
+    "blas",
+    "lapack",
 }
 
 # Product names
-_PRODUCT_NAMES: Set[str] = {
-    "vscode", "visual studio", "intellij", "pycharm", "webstorm", "clion",
-    "rider", "goland", "datagrip", "rubymine", "phpstorm", "rider", "fleet",
-    "vim", "neovim", "emacs", "spacemacs", "doom emacs", "sublime text",
-    "atom", "brackets", "postman", "insomnia", "hoppscotch", "bruno", "httpie",
-    "curl", "wget", "terraform", "pulumi", "crossplane", "kustomize", "kpt",
-    "helm", "argocd", "flux", "tekton", "jira", "confluence", "notion",
-    "linear", "clickup", "asana", "trello", "monday", "slack", "discord",
-    "teams", "zoom", "meet", "webex", "mattermost", "rocketchat",
+_PRODUCT_NAMES: set[str] = {
+    "vscode",
+    "visual studio",
+    "intellij",
+    "pycharm",
+    "webstorm",
+    "clion",
+    "rider",
+    "goland",
+    "datagrip",
+    "rubymine",
+    "phpstorm",
+    "fleet",
+    "vim",
+    "neovim",
+    "emacs",
+    "spacemacs",
+    "doom emacs",
+    "sublime text",
+    "atom",
+    "brackets",
+    "postman",
+    "insomnia",
+    "hoppscotch",
+    "bruno",
+    "httpie",
+    "curl",
+    "wget",
+    "terraform",
+    "pulumi",
+    "crossplane",
+    "kustomize",
+    "kpt",
+    "helm",
+    "argocd",
+    "flux",
+    "tekton",
+    "jira",
+    "confluence",
+    "notion",
+    "linear",
+    "clickup",
+    "asana",
+    "trello",
+    "monday",
+    "slack",
+    "discord",
+    "teams",
+    "zoom",
+    "meet",
+    "webex",
+    "mattermost",
+    "rocketchat",
 }
 
 # Operating systems
-_OPERATING_SYSTEMS: Set[str] = {
-    "ubuntu", "debian", "fedora", "centos", "rhel", "arch", "manjaro",
-    "opensuse", "alpine", "linux", "windows", "macos", "mac os x", "osx",
-    "darwin", "freebsd", "openbsd", "netbsd", "android", "ios", "ipados",
-    "watchos", "tvos", "wsl", "wsl2", "cygwin", "mingw", "msys2",
+_OPERATING_SYSTEMS: set[str] = {
+    "ubuntu",
+    "debian",
+    "fedora",
+    "centos",
+    "rhel",
+    "arch",
+    "manjaro",
+    "opensuse",
+    "alpine",
+    "linux",
+    "windows",
+    "macos",
+    "mac os x",
+    "osx",
+    "darwin",
+    "freebsd",
+    "openbsd",
+    "netbsd",
+    "android",
+    "ios",
+    "ipados",
+    "watchos",
+    "tvos",
+    "wsl",
+    "wsl2",
+    "cygwin",
+    "mingw",
+    "msys2",
 }
 
 # Company names
-_COMPANIES: Set[str] = {
-    "google", "microsoft", "apple", "amazon", "meta", "facebook", "netflix",
-    "uber", "airbnb", "twitter", "x.com", "github", "gitlab", "bitbucket",
-    "atlassian", "jetbrains", "adobe", "salesforce", "oracle", "ibm",
-    "intel", "amd", "nvidia", "qualcomm", "cisco", "vmware", "red hat",
-    "canonical", "docker", "hashicorp", "mongodb", "redis", "elastic",
-    "confluent", "databricks", "snowflake", "stripe", "twilio", "sendgrid",
-    "mailgun", "postmark", "vercel", "netlify", "cloudflare", "digitalocean",
-    "linode", "vultr", "heroku", "render", "railway", "fly.io", "planetscale",
-    "supabase", "firebase",
+_COMPANIES: set[str] = {
+    "google",
+    "microsoft",
+    "apple",
+    "amazon",
+    "meta",
+    "facebook",
+    "netflix",
+    "uber",
+    "airbnb",
+    "twitter",
+    "x.com",
+    "github",
+    "gitlab",
+    "bitbucket",
+    "atlassian",
+    "jetbrains",
+    "adobe",
+    "salesforce",
+    "oracle",
+    "ibm",
+    "intel",
+    "amd",
+    "nvidia",
+    "qualcomm",
+    "cisco",
+    "vmware",
+    "red hat",
+    "canonical",
+    "docker",
+    "hashicorp",
+    "mongodb",
+    "redis",
+    "elastic",
+    "confluent",
+    "databricks",
+    "snowflake",
+    "stripe",
+    "twilio",
+    "sendgrid",
+    "mailgun",
+    "postmark",
+    "vercel",
+    "netlify",
+    "cloudflare",
+    "digitalocean",
+    "linode",
+    "vultr",
+    "heroku",
+    "render",
+    "railway",
+    "fly.io",
+    "planetscale",
+    "supabase",
+    "firebase",
 }
 
 
 @dataclass
 class TokenAnalysis:
     """Token analysis for a single question."""
-    nouns: Set[str]
-    verbs: Set[str]
-    entities: Set[str]
-    software: Set[str]
-    languages: Set[str]
-    products: Set[str]
-    versions: Set[str]
-    numbers: Set[str]
-    all_tokens: Set[str]
+
+    nouns: set[str]
+    verbs: set[str]
+    entities: set[str]
+    software: set[str]
+    languages: set[str]
+    products: set[str]
+    versions: set[str]
+    numbers: set[str]
+    all_tokens: set[str]
 
 
 def extract_tokens(text: str) -> TokenAnalysis:
@@ -190,7 +475,7 @@ def extract_tokens(text: str) -> TokenAnalysis:
     )
 
 
-def compute_overlap(set1: Set[str], set2: Set[str]) -> float:
+def compute_overlap(set1: set[str], set2: set[str]) -> float:
     """Compute Jaccard overlap between two sets."""
     if not set1 and not set2:
         return 1.0
@@ -206,7 +491,7 @@ def compute_lexical_penalty(q1: str, q2: str) -> LexicalPenaltyResult:
     t1 = extract_tokens(q1)
     t2 = extract_tokens(q2)
 
-    penalties: Dict[PenaltyType, float] = {}
+    penalties: dict[PenaltyType, float] = {}
     details = []
 
     # 1. Noun overlap
@@ -271,25 +556,40 @@ def compute_lexical_penalty(q1: str, q2: str) -> LexicalPenaltyResult:
         penalties=penalties,
         details=details,
         q1_tokens={
-            "nouns": t1.nouns, "verbs": t1.verbs, "entities": t1.entities,
-            "software": t1.software, "languages": t1.languages,
-            "products": t1.products, "versions": t1.versions, "numbers": t1.numbers,
+            "nouns": t1.nouns,
+            "verbs": t1.verbs,
+            "entities": t1.entities,
+            "software": t1.software,
+            "languages": t1.languages,
+            "products": t1.products,
+            "versions": t1.versions,
+            "numbers": t1.numbers,
         },
         q2_tokens={
-            "nouns": t2.nouns, "verbs": t2.verbs, "entities": t2.entities,
-            "software": t2.software, "languages": t2.languages,
-            "products": t2.products, "versions": t2.versions, "numbers": t2.numbers,
+            "nouns": t2.nouns,
+            "verbs": t2.verbs,
+            "entities": t2.entities,
+            "software": t2.software,
+            "languages": t2.languages,
+            "products": t2.products,
+            "versions": t2.versions,
+            "numbers": t2.numbers,
         },
         overlap_scores={
-            "noun": noun_overlap, "verb": verb_overlap, "entity": entity_overlap,
-            "software": software_overlap, "language": lang_overlap,
-            "product": product_overlap, "version": version_overlap,
-            "number": number_overlap, "total": total_overlap,
+            "noun": noun_overlap,
+            "verb": verb_overlap,
+            "entity": entity_overlap,
+            "software": software_overlap,
+            "language": lang_overlap,
+            "product": product_overlap,
+            "version": version_overlap,
+            "number": number_overlap,
+            "total": total_overlap,
         },
     )
 
 
-def get_lexical_penalty(q1: str, q2: str) -> Tuple[float, str]:
+def get_lexical_penalty(q1: str, q2: str) -> tuple[float, str]:
     """Get lexical penalty for ensemble scoring."""
     result = compute_lexical_penalty(q1, q2)
     if result.total_penalty > 0:

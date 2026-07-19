@@ -275,4 +275,3 @@ export default {
 - Use `data-*` variants for custom data attribute states: `data-[state=open]:`.
 - Use the `not-*` variant for negation: `not:first-child:mt-4`.
 - When using component libraries with Tailwind, ensure `content` paths include the library's source files.
-

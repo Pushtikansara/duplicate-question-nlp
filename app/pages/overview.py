@@ -5,7 +5,9 @@ import streamlit as st
 
 def render() -> None:
     st.title("Project Overview")
-    st.write("This project identifies whether two questions express the same intent. The workflow evolved from data cleaning and classical NLP baselines to transformer fine-tuning and advanced embedding models.")
+    st.write(
+        "This project identifies whether two questions express the same intent. The workflow evolved from data cleaning and classical NLP baselines to transformer fine-tuning and advanced embedding models."
+    )
 
     overview_col1, overview_col2 = st.columns([1.2, 1])
     with overview_col1:

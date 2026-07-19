@@ -12,7 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix, roc_auc_score
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score
 
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
@@ -43,6 +43,7 @@ BENCHMARK_MODELS = [
 
 def load_and_encode(model_name_or_path: str, texts: list[str], batch_size: int = 128, is_local: bool = False):
     from sentence_transformers import SentenceTransformer
+
     device = "cuda"
     if is_local:
         model = SentenceTransformer(model_name_or_path, device=device)
@@ -51,7 +52,7 @@ def load_and_encode(model_name_or_path: str, texts: list[str], batch_size: int =
 
     q1_enc = [f"query: {t}" for t in texts] if "e5" in model_name_or_path.lower() and not is_local else texts
     q2_enc = [f"passage: {t}" for t in texts] if "e5" in model_name_or_path.lower() and not is_local else texts
-    
+
     if is_local:
         q1_enc = [f"query: {t}" for t in texts]
         q2_enc = [f"passage: {t}" for t in texts]
@@ -62,31 +63,31 @@ def load_and_encode(model_name_or_path: str, texts: list[str], batch_size: int =
 
 
 def evaluate_model(name: str, model_name_or_path: str, is_local: bool, test_sets: dict):
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  MODEL: {name}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     for set_name, pairs, y_true in test_sets:
         try:
             start = time.time()
-            sims = load_and_encode(model_name_or_path, [p[0] for p in pairs] + [p[1] for p in pairs], 
-                                    is_local=is_local)
-            
+            sims = load_and_encode(model_name_or_path, [p[0] for p in pairs] + [p[1] for p in pairs], is_local=is_local)
+
             # Split the concatenated embeddings
-            n = len(pairs)
+            len(pairs)
             from sentence_transformers import SentenceTransformer
+
             device = "cuda"
             if is_local:
                 model = SentenceTransformer(model_name_or_path, device=device)
             else:
                 model = SentenceTransformer(model_name_or_path, device=device)
-                
+
             q1s = [normalize_question(p[0]) for p in pairs]
             q2s = [normalize_question(p[1]) for p in pairs]
-            
+
             prefix_q1 = [f"query: {q}" for q in q1s] if ("e5" in model_name_or_path.lower() or is_local) else q1s
             prefix_q2 = [f"passage: {q}" for q in q2s] if ("e5" in model_name_or_path.lower() or is_local) else q2s
-            
+
             emb1 = model.encode(prefix_q1, normalize_embeddings=True, batch_size=128, show_progress_bar=False)
             emb2 = model.encode(prefix_q2, normalize_embeddings=True, batch_size=128, show_progress_bar=False)
             sims = (emb1 * emb2).sum(axis=1)
@@ -109,14 +110,16 @@ def evaluate_model(name: str, model_name_or_path: str, is_local: bool, test_sets
             rec = recall_score(y_true, preds, zero_division=0)
             try:
                 roc = roc_auc_score(y_true, sims)
-            except:
+            except Exception:
                 roc = 0.0
             cm = confusion_matrix(y_true, preds)
             tn, fp, fn, tp = cm.ravel()
 
-            print(f"  {set_name:20s}  Acc={acc:.4f}  F1={f1:.4f}  P={prec:.4f}  R={rec:.4f}  "
-                  f"ROC={roc:.4f}  th={best_th:.2f}  TN={tn} FP={fp} FN={fn} TP={tp}  "
-                  f"({elapsed:.1f}s)")
+            print(
+                f"  {set_name:20s}  Acc={acc:.4f}  F1={f1:.4f}  P={prec:.4f}  R={rec:.4f}  "
+                f"ROC={roc:.4f}  th={best_th:.2f}  TN={tn} FP={fp} FN={fn} TP={tp}  "
+                f"({elapsed:.1f}s)"
+            )
 
         except Exception as e:
             print(f"  {set_name:20s}  ERROR: {e}")
@@ -144,7 +147,7 @@ def main():
             q1_col = [c for c in df.columns if "question1" in c.lower() or "q1" in c.lower()][0]
         if q2_col not in df.columns:
             q2_col = [c for c in df.columns if "question2" in c.lower() or "q2" in c.lower()][0]
-        pairs = list(zip(df[q1_col].astype(str), df[q2_col].astype(str)))
+        pairs = list(zip(df[q1_col].astype(str), df[q2_col].astype(str), strict=False))
         y_true = df[label_col].values
         test_sets.append((set_name, pairs, y_true))
         print(f"Loaded {set_name}: {len(pairs):,} samples")

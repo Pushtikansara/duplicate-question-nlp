@@ -4,12 +4,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from duplicate_question_app.config import MODEL_CHOICES
 from duplicate_question_app.confidence_calibration import calibrate_model_prediction
 from duplicate_question_app.confidence_calibration_v2 import (
-    CalibrationMethod, calibrate_predictions,
-    get_calibration_curve_data
+    CalibrationMethod,
+    calibrate_predictions,
+    get_calibration_curve_data,
 )
+from duplicate_question_app.config import MODEL_CHOICES
 
 
 def render() -> None:
@@ -50,9 +51,9 @@ def render() -> None:
         if uploaded:
             try:
                 df = pd.read_csv(uploaded)
-                if 'true_label' in df.columns and 'prob_duplicate' in df.columns:
-                    y_true = df['true_label'].values
-                    y_prob = df['prob_duplicate'].values
+                if "true_label" in df.columns and "prob_duplicate" in df.columns:
+                    y_true = df["true_label"].values
+                    y_prob = df["prob_duplicate"].values
 
                     results = {}
                     for method in [CalibrationMethod.TEMPERATURE, CalibrationMethod.PLATT, CalibrationMethod.ISOTONIC]:
@@ -82,18 +83,18 @@ def render() -> None:
         if uploaded:
             try:
                 df = pd.read_csv(uploaded)
-                if 'true_label' in df.columns and 'prob_duplicate' in df.columns:
-                    y_true = df['true_label'].values
-                    y_prob = df['prob_duplicate'].values
+                if "true_label" in df.columns and "prob_duplicate" in df.columns:
+                    y_true = df["true_label"].values
+                    y_prob = df["prob_duplicate"].values
 
                     curve_data = get_calibration_curve_data(y_prob, y_true)
 
                     fig, ax = plt.subplots(figsize=(6, 5))
-                    ax.plot([0, 1], [0, 1], 'k--', alpha=0.5, label='Perfect')
-                    ax.plot(curve_data['bin_centers'], curve_data['bin_accuracies'], 'o-', linewidth=2, markersize=8)
-                    ax.set_xlabel('Mean Predicted Probability')
-                    ax.set_ylabel('Fraction of Positives')
-                    ax.set_title('Calibration Curve')
+                    ax.plot([0, 1], [0, 1], "k--", alpha=0.5, label="Perfect")
+                    ax.plot(curve_data["bin_centers"], curve_data["bin_accuracies"], "o-", linewidth=2, markersize=8)
+                    ax.set_xlabel("Mean Predicted Probability")
+                    ax.set_ylabel("Fraction of Positives")
+                    ax.set_title("Calibration Curve")
                     ax.legend()
                     ax.grid(alpha=0.3)
                     st.pyplot(fig, clear_figure=True)

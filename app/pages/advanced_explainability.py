@@ -6,8 +6,10 @@ import streamlit as st
 from app.utils.constants import PATHS
 from duplicate_question_app.adaptive_ensemble_v2 import adaptive_ensemble_predict
 from duplicate_question_app.explainer import (
-    ExplanationLevel, generate_explanation, generate_counterfactual_explanation,
-    generate_feature_importance
+    ExplanationLevel,
+    generate_counterfactual_explanation,
+    generate_explanation,
+    generate_feature_importance,
 )
 
 
@@ -23,7 +25,7 @@ def render() -> None:
     with st.form("explainer_form"):
         q1 = st.text_area("Question 1", placeholder="Enter the first question", height=100)
         q2 = st.text_area("Question 2", placeholder="Enter the second question", height=100)
-        level = st.selectbox("Explanation level", [l.value for l in ExplanationLevel], index=1)
+        level = st.selectbox("Explanation level", [lev.value for lev in ExplanationLevel], index=1)
         submitted = st.form_submit_button("Generate Explanation", use_container_width=True)
 
     if submitted and q1.strip() and q2.strip():
@@ -43,7 +45,7 @@ def render() -> None:
         st.write(f"**Current**: {counterfactual['current_prediction']} ({counterfactual['current_probability']:.1%})")
         st.write(f"**Target**: {counterfactual['target_prediction']}")
         st.write(f"**Difficulty**: {counterfactual['difficulty']}")
-        for change in counterfactual['required_changes']:
+        for change in counterfactual["required_changes"]:
             st.write(f"• **{change['factor']}**: {change['current']} → {change['action']} (Impact: {change['impact']})")
 
         st.subheader("Feature Importance")

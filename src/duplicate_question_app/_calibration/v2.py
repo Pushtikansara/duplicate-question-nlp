@@ -9,18 +9,21 @@ Evaluates calibration using:
 
 from __future__ import annotations
 
-import numpy as np
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any, Callable
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 # Try to import sklearn
 try:
     from sklearn.isotonic import IsotonicRegression
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import train_test_split
+
     _SKLEARN_AVAILABLE = True
 except ImportError:
     _SKLEARN_AVAILABLE = False
@@ -36,14 +39,15 @@ class CalibrationMethod(Enum):
 @dataclass
 class CalibrationMetrics:
     """Calibration evaluation metrics."""
-    ece: float              # Expected Calibration Error
-    mce: float              # Maximum Calibration Error
-    brier_score: float      # Brier Score
-    nll: float              # Negative Log Likelihood
+
+    ece: float  # Expected Calibration Error
+    mce: float  # Maximum Calibration Error
+    brier_score: float  # Brier Score
+    nll: float  # Negative Log Likelihood
     n_samples: int
     n_bins: int = 10
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "ece": self.ece,
             "mce": self.mce,
@@ -57,13 +61,14 @@ class CalibrationMetrics:
 @dataclass
 class CalibrationResult:
     """Result of calibrating a set of predictions."""
+
     method: CalibrationMethod
     calibrated_probs: np.ndarray
     metrics_before: CalibrationMetrics
     metrics_after: CalibrationMetrics
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "method": self.method.value,
             "calibrated_probs": self.calibrated_probs.tolist(),
@@ -182,7 +187,7 @@ def temperature_scale(probs: np.ndarray, temperature: float) -> np.ndarray:
 def find_optimal_temperature(
     probs: np.ndarray,
     labels: np.ndarray,
-    temp_range: Tuple[float, float] = (0.1, 5.0),
+    temp_range: tuple[float, float] = (0.1, 5.0),
     n_steps: int = 100,
 ) -> float:
     """Find optimal temperature by minimizing NLL on validation set."""
@@ -202,7 +207,7 @@ def find_optimal_temperature(
 def platt_scale(
     probs: np.ndarray,
     labels: np.ndarray,
-) -> Tuple[Callable[[np.ndarray], np.ndarray], Dict[str, float]]:
+) -> tuple[Callable[[np.ndarray], np.ndarray], dict[str, float]]:
     """Fit Platt scaling (logistic regression on logits)."""
     if not _SKLEARN_AVAILABLE:
         # Fallback: simple sigmoid with learned parameters
@@ -236,7 +241,7 @@ def platt_scale(
     probs_clipped = np.clip(probs, eps, 1.0 - eps)
     logits = np.log(probs_clipped / (1.0 - probs_clipped)).reshape(-1, 1)
 
-    lr = LogisticRegression(solver='lbfgs', max_iter=1000)
+    lr = LogisticRegression(solver="lbfgs", max_iter=1000)
     lr.fit(logits, labels)
 
     def transform(p: np.ndarray) -> np.ndarray:
@@ -251,7 +256,7 @@ def platt_scale(
 def isotonic_regression(
     probs: np.ndarray,
     labels: np.ndarray,
-) -> Tuple[Callable[[np.ndarray], np.ndarray], Dict[str, Any]]:
+) -> tuple[Callable[[np.ndarray], np.ndarray], dict[str, Any]]:
     """Fit Isotonic Regression for calibration."""
     if not _SKLEARN_AVAILABLE:
         # Fallback: simple binning-based calibration
@@ -286,14 +291,16 @@ def isotonic_regression(
         return transform, {"bin_centers": bin_centers, "bin_probs": bin_probs.tolist()}
 
     # Use sklearn IsotonicRegression
-    ir = IsotonicRegression(out_of_bounds='clip', increasing=True)
-    calibrated = ir.fit_transform(probs, labels)
+    ir = IsotonicRegression(out_of_bounds="clip", increasing=True)
+    ir.fit_transform(probs, labels)
 
     def transform(p: np.ndarray) -> np.ndarray:
         return ir.predict(p)
 
-    return transform, {"thresholds": ir.X_thresholds_.tolist() if hasattr(ir, 'X_thresholds_') else [],
-                       "y_thresholds": ir.y_thresholds_.tolist() if hasattr(ir, 'y_thresholds_') else []}
+    return transform, {
+        "thresholds": ir.X_thresholds_.tolist() if hasattr(ir, "X_thresholds_") else [],
+        "y_thresholds": ir.y_thresholds_.tolist() if hasattr(ir, "y_thresholds_") else [],
+    }
 
 
 def calibrate_predictions(
@@ -333,13 +340,16 @@ def calibrate_predictions(
             probs, labels, test_size=val_split, random_state=random_state, stratify=labels
         )
     else:
-        probs_train, probs_val = probs, probs
-        labels_train, labels_val = labels, labels
+        probs_train, _probs_val = probs, probs
+        labels_train, _labels_val = labels, labels
 
     # Fit calibration on training set
     if method == CalibrationMethod.TEMPERATURE:
         temp = find_optimal_temperature(probs_train, labels_train)
-        transform = lambda p: temperature_scale(p, temp)
+
+        def transform(p):
+            return temperature_scale(p, temp)
+
         parameters = {"temperature": float(temp)}
 
     elif method == CalibrationMethod.PLATT:
@@ -371,7 +381,7 @@ def calibrate_predictions(
 def select_best_calibration(
     probs: np.ndarray,
     labels: np.ndarray,
-    methods: Optional[List[CalibrationMethod]] = None,
+    methods: list[CalibrationMethod] | None = None,
 ) -> CalibrationResult:
     """Try multiple calibration methods and return the best one (by ECE)."""
     if methods is None:
@@ -401,7 +411,7 @@ def get_calibration_curve_data(
     probs: np.ndarray,
     labels: np.ndarray,
     n_bins: int = 10,
-) -> Dict[str, np.ndarray]:
+) -> dict[str, np.ndarray]:
     """Get data for calibration curve (reliability diagram) plotting."""
     bin_boundaries = np.linspace(0, 1, n_bins + 1)
     bin_centers = []
@@ -446,7 +456,7 @@ def save_calibration_params(model_name: str, result: CalibrationResult, path: Pa
     path.write_text(json.dumps(data, indent=2))
 
 
-def load_calibration_params(path: Path) -> Optional[Dict[str, Any]]:
+def load_calibration_params(path: Path) -> dict[str, Any] | None:
     """Load calibration parameters from file."""
     if not path.exists():
         return None

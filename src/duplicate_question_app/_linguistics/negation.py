@@ -10,41 +10,42 @@ Detects: not, never, without, remove, disable, uninstall, delete, stop, prevent,
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import List, Set, Dict, Tuple, Optional
+from dataclasses import dataclass
 from enum import Enum
 
 
 class NegationScope(Enum):
-    LOCAL = "local"           # Negates single word/phrase
-    CLAUSAL = "clausal"       # Negates entire clause
-    QUESTION = "question"     # Negates the entire question intent
+    LOCAL = "local"  # Negates single word/phrase
+    CLAUSAL = "clausal"  # Negates entire clause
+    QUESTION = "question"  # Negates the entire question intent
 
 
 @dataclass
 class NegationMatch:
     """A detected negation in text."""
+
     text: str
     start: int
     end: int
     negation_type: str
     scope: NegationScope
     confidence: float
-    target: Optional[str] = None  # What is being negated
+    target: str | None = None  # What is being negated
 
 
 @dataclass
 class NegationResult:
     """Result of negation detection for a question pair."""
-    q1_negations: List[NegationMatch]
-    q2_negations: List[NegationMatch]
+
+    q1_negations: list[NegationMatch]
+    q2_negations: list[NegationMatch]
     has_negation_mismatch: bool
     mismatch_penalty: float
-    details: List[str]
+    details: list[str]
 
 
 # Explicit negation words
-_EXPLICIT_NEGATIONS: Dict[str, float] = {
+_EXPLICIT_NEGATIONS: dict[str, float] = {
     "not": 1.0,
     "never": 1.0,
     "no": 0.9,
@@ -68,7 +69,7 @@ _EXPLICIT_NEGATIONS: Dict[str, float] = {
 }
 
 # Action negation verbs
-_ACTION_NEGATIONS: Dict[str, float] = {
+_ACTION_NEGATIONS: dict[str, float] = {
     "remove": 0.95,
     "disable": 0.95,
     "uninstall": 0.95,
@@ -80,7 +81,6 @@ _ACTION_NEGATIONS: Dict[str, float] = {
     "deny": 0.9,
     "reject": 0.9,
     "revoke": 0.9,
-    "disable": 0.95,
     "turn off": 0.95,
     "switch off": 0.95,
     "shut down": 0.9,
@@ -97,7 +97,6 @@ _ACTION_NEGATIONS: Dict[str, float] = {
     "undo": 0.85,
     "revert": 0.85,
     "rollback": 0.85,
-    "uninstall": 0.95,
     "uninstalling": 0.95,
     "removing": 0.95,
     "disabling": 0.95,
@@ -112,7 +111,7 @@ _ACTION_NEGATIONS: Dict[str, float] = {
 }
 
 # Contraction negations
-_CONTRACTION_NEGATIONS: Dict[str, str] = {
+_CONTRACTION_NEGATIONS: dict[str, str] = {
     "can't": "cannot",
     "won't": "will not",
     "don't": "do not",
@@ -135,18 +134,31 @@ _CONTRACTION_NEGATIONS: Dict[str, str] = {
 }
 
 # Prefix negations
-_PREFIX_NEGATIONS: Set[str] = {
-    "un", "in", "im", "ir", "il", "dis", "non", "anti", "counter",
-    "de", "mis", "mal", "a", "an",  # a-/an- as in atypical, amoral
+_PREFIX_NEGATIONS: set[str] = {
+    "un",
+    "in",
+    "im",
+    "ir",
+    "il",
+    "dis",
+    "non",
+    "anti",
+    "counter",
+    "de",
+    "mis",
+    "mal",
+    "a",
+    "an",  # a-/an- as in atypical, amoral
 }
 
 # Suffix that might indicate negation
-_SUFFIX_NEGATIONS: Set[str] = {
-    "less", "free",  # careless, carefree
+_SUFFIX_NEGATIONS: set[str] = {
+    "less",
+    "free",  # careless, carefree
 }
 
 
-def _compile_negation_patterns() -> List[Tuple[re.Pattern, str, float]]:
+def _compile_negation_patterns() -> list[tuple[re.Pattern, str, float]]:
     """Compile regex patterns for negation detection."""
     patterns = []
 
@@ -159,18 +171,34 @@ def _compile_negation_patterns() -> List[Tuple[re.Pattern, str, float]]:
         patterns.append((re.compile(r"\b" + re.escape(word) + r"\b", re.IGNORECASE), word, conf))
 
     # Contractions
-    for contraction, expansion in _CONTRACTION_NEGATIONS.items():
-        patterns.append((re.compile(r"\b" + re.escape(contraction) + r"\b", re.IGNORECASE),
-                        contraction, 0.95))
+    for contraction, _expansion in _CONTRACTION_NEGATIONS.items():
+        patterns.append((re.compile(r"\b" + re.escape(contraction) + r"\b", re.IGNORECASE), contraction, 0.95))
 
     # Prefix negations (un-, in-, dis-, etc.) - only for known words
     # This is tricky, so we'll use a simpler approach: look for known prefix-negated words
     known_prefix_negated = {
-        "unable", "unavailable", "uninstall", "disable", "disconnect",
-        "invalid", "incorrect", "impossible", "illegal", "irregular",
-        "nonsense", "nonfunctional", "nonworking", "antivirus",
-        "counterproductive", "deactivate", "deinstall", "misconfigure",
-        "malfunction", "atypical", "amoral", "asymmetric",
+        "unable",
+        "unavailable",
+        "uninstall",
+        "disable",
+        "disconnect",
+        "invalid",
+        "incorrect",
+        "impossible",
+        "illegal",
+        "irregular",
+        "nonsense",
+        "nonfunctional",
+        "nonworking",
+        "antivirus",
+        "counterproductive",
+        "deactivate",
+        "deinstall",
+        "misconfigure",
+        "malfunction",
+        "atypical",
+        "amoral",
+        "asymmetric",
     }
     for word in known_prefix_negated:
         patterns.append((re.compile(r"\b" + re.escape(word) + r"\b", re.IGNORECASE), word, 0.8))
@@ -186,7 +214,7 @@ def _compile_negation_patterns() -> List[Tuple[re.Pattern, str, float]]:
 _COMPILED_NEGATION_PATTERNS = _compile_negation_patterns()
 
 
-def detect_negations(text: str) -> List[NegationMatch]:
+def detect_negations(text: str) -> list[NegationMatch]:
     """Detect all negations in a text."""
     matches = []
     text_lower = text.lower()
@@ -209,25 +237,27 @@ def detect_negations(text: str) -> List[NegationMatch]:
             # Find target (what is being negated)
             target = _extract_negation_target(text_lower, match.start(), match.end())
 
-            matches.append(NegationMatch(
-                text=matched_text,
-                start=match.start(),
-                end=match.end(),
-                negation_type=neg_type,
-                scope=scope,
-                confidence=confidence,
-                target=target,
-            ))
+            matches.append(
+                NegationMatch(
+                    text=matched_text,
+                    start=match.start(),
+                    end=match.end(),
+                    negation_type=neg_type,
+                    scope=scope,
+                    confidence=confidence,
+                    target=target,
+                )
+            )
 
     # Sort by position
     matches.sort(key=lambda m: m.start)
     return matches
 
 
-def _extract_negation_target(text: str, start: int, end: int, window: int = 30) -> Optional[str]:
+def _extract_negation_target(text: str, start: int, end: int, window: int = 30) -> str | None:
     """Extract what is being negated (the target word/phrase after negation)."""
     # Look ahead for the next meaningful word
-    after = text[end:end + window]
+    after = text[end : end + window]
     words = after.split()
     if words:
         # Skip stop words
@@ -316,7 +346,7 @@ def negation_mismatch(q1: str, q2: str) -> NegationResult:
     )
 
 
-def get_negation_penalty(q1: str, q2: str) -> Tuple[float, str]:
+def get_negation_penalty(q1: str, q2: str) -> tuple[float, str]:
     """Get negation penalty for ensemble scoring."""
     result = negation_mismatch(q1, q2)
     if result.has_negation_mismatch:

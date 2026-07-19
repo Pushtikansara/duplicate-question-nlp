@@ -85,8 +85,15 @@ class TestGoldenRegression:
     def test_result_dict_duplicate_frozen(self, golden_outputs):
         expected = golden_outputs["result_dict"]["prediction_duplicate"]
         result = _result_dict(
-            q1="test a", q2="test b", pred_label=1, prob_dup=0.85, prob_non=0.15,
-            threshold=0.5, model_name="E5", device="cpu", latency_ms=10,
+            q1="test a",
+            q2="test b",
+            pred_label=1,
+            prob_dup=0.85,
+            prob_non=0.15,
+            threshold=0.5,
+            model_name="E5",
+            device="cpu",
+            latency_ms=10,
         )
         assert result["predicted_label"] == expected["predicted_label"]
         assert result["prediction"] == expected["prediction"]
@@ -97,8 +104,15 @@ class TestGoldenRegression:
     def test_result_dict_non_duplicate_frozen(self, golden_outputs):
         expected = golden_outputs["result_dict"]["prediction_non_duplicate"]
         result = _result_dict(
-            q1="test a", q2="test b", pred_label=0, prob_dup=0.3, prob_non=0.7,
-            threshold=0.5, model_name="BGE", device="cpu", latency_ms=5,
+            q1="test a",
+            q2="test b",
+            pred_label=0,
+            prob_dup=0.3,
+            prob_non=0.7,
+            threshold=0.5,
+            model_name="BGE",
+            device="cpu",
+            latency_ms=5,
         )
         assert result["predicted_label"] == expected["predicted_label"]
         assert result["prediction"] == expected["prediction"]
@@ -107,4 +121,5 @@ class TestGoldenRegression:
     @pytest.mark.regression
     def test_model_choices_frozen(self, golden_outputs):
         from duplicate_question_app._config.settings import MODEL_CHOICES
-        assert MODEL_CHOICES == golden_outputs["model_choices_static"]
+
+        assert golden_outputs["model_choices_static"] == MODEL_CHOICES

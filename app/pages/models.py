@@ -3,8 +3,13 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from app.services.runtime import get_model_resolution, get_runtime_context, load_model_config, render_model_runtime_message
 from app.services.builder import build_model_status_table
+from app.services.runtime import (
+    get_model_resolution,
+    get_runtime_context,
+    load_model_config,
+    render_model_runtime_message,
+)
 from duplicate_question_app.config import is_new_embedding_model
 from duplicate_question_app.week2_inference import is_week2_model
 
@@ -24,7 +29,20 @@ def render() -> None:
         col1.metric("Active Model", selected_model)
         col2.metric("Decision Threshold", "0.50")
         col3.metric("Model Type", "Classical ML (TF-IDF + Linear Model)")
-        st.dataframe(pd.DataFrame([{"Model Type": "TF-IDF + Logistic Regression / Linear SVM", "Feature Extraction": "TF-IDF with ngram_range=(1,2), max_features=5000", "Training Data": "Full Quora dataset (404,290 pairs)", "Label": "is_duplicate (binary)"}]), use_container_width=True, hide_index=True)
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Model Type": "TF-IDF + Logistic Regression / Linear SVM",
+                        "Feature Extraction": "TF-IDF with ngram_range=(1,2), max_features=5000",
+                        "Training Data": "Full Quora dataset (404,290 pairs)",
+                        "Label": "is_duplicate (binary)",
+                    }
+                ]
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
     elif is_new_embedding_model(selected_model):
         col1, col2, col3 = st.columns(3)
         col1.metric("Active Model", selected_model)
@@ -45,7 +63,13 @@ def render() -> None:
             render_model_runtime_message(metadata)
             if model_config:
                 st.subheader("Architecture Summary")
-                config_subset = {"Architecture": ", ".join(model_config.get("architectures") or []), "Model Type": model_config.get("model_type"), "Number of Labels": model_config.get("num_labels"), "Vocabulary Size": model_config.get("vocab_size"), "Hidden Size": model_config.get("dim", model_config.get("hidden_size"))}
+                config_subset = {
+                    "Architecture": ", ".join(model_config.get("architectures") or []),
+                    "Model Type": model_config.get("model_type"),
+                    "Number of Labels": model_config.get("num_labels"),
+                    "Vocabulary Size": model_config.get("vocab_size"),
+                    "Hidden Size": model_config.get("dim", model_config.get("hidden_size")),
+                }
                 st.dataframe(pd.DataFrame([config_subset]), use_container_width=True, hide_index=True)
         else:
             st.info(f"Model info for {selected_model} is not yet available.")

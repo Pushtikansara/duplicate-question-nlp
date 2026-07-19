@@ -313,4 +313,3 @@ export function SharedLayout() {
 - Keep animation durations consistent: 200-300ms for micro-interactions, 300-500ms for element transitions, 500-800ms for emphasis.
 - Use `onDragEnd` with `velocity` to implement throw/snap gestures: `onDragEnd={(_, info) => handleThrow(info.velocity.x)}`.
 - Use `layoutScroll` when a layout animation's target is in a scrollable container.
-

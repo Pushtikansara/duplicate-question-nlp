@@ -38,14 +38,24 @@ def render() -> None:
 
         with tab1:
             if result.q1_entities:
-                df = pd.DataFrame([{"Type": e.entity_type, "Value": e.value, "Confidence": f"{e.confidence:.0%}"} for e in result.q1_entities])
+                df = pd.DataFrame(
+                    [
+                        {"Type": e.entity_type, "Value": e.value, "Confidence": f"{e.confidence:.0%}"}
+                        for e in result.q1_entities
+                    ]
+                )
                 st.dataframe(df, use_container_width=True, hide_index=True)
             else:
                 st.info("No entities detected in Question 1")
 
         with tab2:
             if result.q2_entities:
-                df = pd.DataFrame([{"Type": e.entity_type, "Value": e.value, "Confidence": f"{e.confidence:.0%}"} for e in result.q2_entities])
+                df = pd.DataFrame(
+                    [
+                        {"Type": e.entity_type, "Value": e.value, "Confidence": f"{e.confidence:.0%}"}
+                        for e in result.q2_entities
+                    ]
+                )
                 st.dataframe(df, use_container_width=True, hide_index=True)
             else:
                 st.info("No entities detected in Question 2")
@@ -54,7 +64,9 @@ def render() -> None:
             if result.entity_mismatch:
                 for etype, (q1_only, q2_only) in result.entity_mismatch.items():
                     if q1_only or q2_only:
-                        st.write(f"**{etype}**: Q1={sorted(q1_only) if q1_only else '—'} | Q2={sorted(q2_only) if q2_only else '—'}")
+                        st.write(
+                            f"**{etype}**: Q1={sorted(q1_only) if q1_only else '—'} | Q2={sorted(q2_only) if q2_only else '—'}"
+                        )
             if result.penalty_details:
                 st.subheader("Penalty Details")
                 for detail in result.penalty_details:

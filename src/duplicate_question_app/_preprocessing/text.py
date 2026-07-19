@@ -98,8 +98,7 @@ _ABBREVIATIONS: dict[str, str] = {
 
 # Compile all patterns once
 _ABBREV_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(pattern, re.IGNORECASE), expansion)
-    for pattern, expansion in _ABBREVIATIONS.items()
+    (re.compile(pattern, re.IGNORECASE), expansion) for pattern, expansion in _ABBREVIATIONS.items()
 ]
 
 
@@ -119,7 +118,7 @@ def expand_abbreviations(text: str) -> str:
     for pattern, expansion in _ABBREV_PATTERNS:
         match = pattern.search(result)
         if match and expansion not in seen:
-            abbr = match.group(0)
+            match.group(0)
             # Skip if expansion is already present in text (e.g. parenthetical)
             if expansion.lower() in result.lower():
                 seen.add(expansion)
@@ -155,12 +154,12 @@ def _strip_emoji(text: str) -> str:
     """Remove emoji and other special Unicode symbols."""
     emoji_pattern = re.compile(
         "["
-        "\U0001F600-\U0001F64F"  # emoticons
-        "\U0001F300-\U0001F5FF"  # symbols & pictographs
-        "\U0001F680-\U0001F6FF"  # transport & map symbols
-        "\U0001F1E0-\U0001F1FF"  # flags
-        "\U00002702-\U000027B0"  # dingbats
-        "\U000024C2-\U0001F251"  # misc
+        "\U0001f600-\U0001f64f"  # emoticons
+        "\U0001f300-\U0001f5ff"  # symbols & pictographs
+        "\U0001f680-\U0001f6ff"  # transport & map symbols
+        "\U0001f1e0-\U0001f1ff"  # flags
+        "\U00002702-\U000027b0"  # dingbats
+        "\U000024c2-\U0001f251"  # misc
         "]+",
         flags=re.UNICODE,
     )
@@ -226,8 +225,6 @@ _TYPO_MAP: dict[str, str] = {
     "doens": "does",
     "doesnt": "does not",
     "dosen't": "does not",
-    "dosen't": "does not",
-    "eigth": "eighth",
     "eigth": "eight",
     "embeded": "embedded",
     "embeding": "embedding",
@@ -235,7 +232,6 @@ _TYPO_MAP: dict[str, str] = {
     "enviornment": "environment",
     "enviorment": "environment",
     "envrionment": "environment",
-    "equiped": "equipped",
     "equiped": "equipped",
     "esential": "essential",
     "esentialy": "essentially",
@@ -247,12 +243,9 @@ _TYPO_MAP: dict[str, str] = {
     "existince": "existence",
     "existense": "existence",
     "experiance": "experience",
-    "experiance": "experience",
     "explaination": "explanation",
     "explanation": "explanation",
     "farenheit": "fahrenheit",
-    "farenheit": "fahrenheit",
-    "finaly": "finally",
     "finaly": "finally",
     "finetune": "fine-tune",
     "finetuned": "fine-tuned",
@@ -289,7 +282,6 @@ _TYPO_MAP: dict[str, str] = {
     "highlighed": "highlighted",
     "hinderance": "hindrance",
     "hinderence": "hindrance",
-    "histroy": "history",
     "histroy": "history",
     "honory": "honorary",
     "honour": "honor",
@@ -330,7 +322,6 @@ _TYPO_MAP: dict[str, str] = {
     "indespensable": "indispensable",
     "indispensible": "indispensable",
     "induction": "introduction",
-    "inevitible": "inevitable",
     "inevitible": "inevitable",
     "infomation": "information",
     "infromation": "information",
@@ -374,10 +365,7 @@ _TYPO_MAP: dict[str, str] = {
     "jus": "just",
     "knowlege": "knowledge",
     "knowlegeable": "knowledgeable",
-    "knowlegeable": "knowledgeable",
     "legitmate": "legitimate",
-    "legitmate": "legitimate",
-    "libary": "library",
     "libary": "library",
     "libguistic": "linguistic",
     "libguistics": "linguistics",
@@ -391,16 +379,12 @@ _TYPO_MAP: dict[str, str] = {
     "logest": "longest",
     "logicaly": "logically",
     "lonley": "lonely",
-    "lonley": "lonely",
     "lonleyness": "loneliness",
     "maintence": "maintenance",
     "maintainance": "maintenance",
     "maintenence": "maintenance",
     "managable": "manageable",
-    "managable": "manageable",
     "managment": "management",
-    "managment": "management",
-    "maneouvre": "maneuver",
     "maneouvre": "maneuver",
     "manisfest": "manifest",
     "manisfestation": "manifestation",
@@ -423,15 +407,12 @@ _TYPO_MAP: dict[str, str] = {
     "microsft": "microsoft",
     "microsoft": "microsoft",
     "millenium": "millennium",
-    "millenium": "millennium",
     "millon": "million",
     "millons": "millions",
     "minerial": "mineral",
     "miniscule": "minuscule",
     "miniture": "miniature",
-    "miniture": "miniature",
     "minute": "minute",
-    "miricle": "miracle",
     "miricle": "miracle",
     "mirror": "mirror",
     "misile": "missile",
@@ -453,13 +434,9 @@ _TYPO_MAP: dict[str, str] = {
     "monitering": "monitoring",
     "monniter": "monitor",
     "morgage": "mortgage",
-    "morgage": "mortgage",
     "morgaged": "mortgaged",
     "motivation": "motivation",
-    "motivation": "motivation",
     "motorcyle": "motorcycle",
-    "motorcyle": "motorcycle",
-    "mountian": "mountain",
     "mountian": "mountain",
     "mountins": "mountains",
     "movei": "movie",
@@ -467,8 +444,6 @@ _TYPO_MAP: dict[str, str] = {
     "msitake": "mistake",
     "msitakes": "mistakes",
     "mucuous": "mucous",
-    "mucuous": "mucous",
-    "muder": "murder",
     "muder": "murder",
     "muderer": "murderer",
     "muderous": "murderous",
@@ -478,15 +453,12 @@ _TYPO_MAP: dict[str, str] = {
     "muncipality": "municipality",
     "munnicipality": "municipality",
     "muscician": "musician",
-    "muscician": "musician",
     "muscicians": "musicians",
-    "musle": "muscle",
     "musle": "muscle",
     "mysterious": "mysterious",
     "myth": "myth",
     "myths": "myths",
     "nagevite": "negative",
-    "napoleon": "napoleon",
     "napoleon": "napoleon",
     "narcisism": "narcissism",
     "narrow": "narrow",
@@ -494,26 +466,19 @@ _TYPO_MAP: dict[str, str] = {
     "narrowing": "narrowing",
     "narrowly": "narrowly",
     "nascar": "nascar",
-    "nascar": "nascar",
     "nastional": "national",
-    "nastional": "national",
-    "naturaly": "naturally",
     "naturaly": "naturally",
     "naturely": "naturally",
-    "nead": "need",
     "nead": "need",
     "neaded": "needed",
     "neading": "needing",
     "neads": "needs",
     "necesarily": "necessarily",
-    "necesarily": "necessarily",
     "necesary": "necessary",
-    "necessiate": "necessitate",
     "necessiate": "necessitate",
     "necssarily": "necessarily",
     "necssary": "necessary",
     "neet": "neat",
-    "negitive": "negative",
     "negitive": "negative",
     "negociate": "negotiate",
     "negociated": "negotiated",
@@ -527,9 +492,7 @@ _TYPO_MAP: dict[str, str] = {
     "neigbourhood": "neighborhood",
     "neigbours": "neighbors",
     "neither": "neither",
-    "neither": "neither",
     "niether": "neither",
-    "ninteenth": "nineteenth",
     "ninteenth": "nineteenth",
     "nitice": "notice",
     "niticed": "noticed",
@@ -537,8 +500,6 @@ _TYPO_MAP: dict[str, str] = {
     "nint": "ninety",
     "ninty": "ninety",
     "nothern": "northern",
-    "nothern": "northern",
-    "noticable": "noticeable",
     "noticable": "noticeable",
     "noticably": "noticeably",
     "noticed": "noticed",
@@ -546,11 +507,8 @@ _TYPO_MAP: dict[str, str] = {
     "nott": "not",
     "nowdays": "nowadays",
     "nowe": "now",
-    "nowe": "now",
-    "nuisanse": "nuisance",
     "nuisanse": "nuisance",
     "numerous": "numerous",
-    "nutriton": "nutrition",
     "nutriton": "nutrition",
     "nutritous": "nutritious",
     "obediance": "obedience",
@@ -567,12 +525,10 @@ _TYPO_MAP: dict[str, str] = {
     "obligitory": "obligatory",
     "obnoxius": "obnoxious",
     "obsticle": "obstacle",
-    "obsticle": "obstacle",
     "obsticles": "obstacles",
     "obtain": "obtain",
     "obtainable": "obtainable",
     "obtaining": "obtaining",
-    "obvioulsy": "obviously",
     "obvioulsy": "obviously",
     "occassion": "occasion",
     "occassionally": "occasionally",
@@ -580,7 +536,6 @@ _TYPO_MAP: dict[str, str] = {
     "oclock": "o'clock",
     "october": "october",
     "ocuntry": "country",
-    "ocur": "occur",
     "ocur": "occur",
     "ocurred": "occurred",
     "ocurrence": "occurrence",
@@ -622,7 +577,6 @@ _TYPO_MAP: dict[str, str] = {
     "operational": "operational",
     "operator": "operator",
     "oppinion": "opinion",
-    "oppinion": "opinion",
     "opponent": "opponent",
     "oppononent": "opponent",
     "opporunity": "opportunity",
@@ -634,7 +588,6 @@ _TYPO_MAP: dict[str, str] = {
     "optinal": "optional",
     "optonal": "optional",
     "oracle": "oracle",
-    "oragnisation": "organization",
     "oragnisation": "organization",
     "oragnize": "organize",
     "oragnized": "organized",
@@ -658,7 +611,6 @@ _TYPO_MAP: dict[str, str] = {
     "oscilation": "oscillation",
     "oscilator": "oscillator",
     "osciloscope": "oscilloscope",
-    "osciloscope": "oscilloscope",
     "osmium": "osmium",
     "oth": "other",
     "othe": "other",
@@ -666,7 +618,6 @@ _TYPO_MAP: dict[str, str] = {
     "othwerwise": "otherwise",
     "otm": "atm",
     "otor": "motor",
-    "oubreak": "outbreak",
     "oubreak": "outbreak",
     "oubrk": "outbreak",
     "ould": "old",
@@ -676,7 +627,6 @@ _TYPO_MAP: dict[str, str] = {
     "outdoor": "outdoor",
     "outdoors": "outdoors",
     "outer": "outer",
-    "outisde": "outside",
     "outisde": "outside",
     "outof": "out of",
     "outpace": "outpace",
@@ -690,7 +640,6 @@ _TYPO_MAP: dict[str, str] = {
     "outshone": "outshone",
     "outside": "outside",
     "outskirt": "outskirt",
-    "outskirt": "outskirt",
     "outsoar": "outsoar",
     "outsoared": "outsoared",
     "outsoaring": "outsoaring",
@@ -700,15 +649,11 @@ _TYPO_MAP: dict[str, str] = {
     "outwit": "outwit",
     "outwitted": "outwitted",
     "overal": "overall",
-    "overal": "overall",
     "overated": "overrated",
     "overclok": "overclock",
     "overcloked": "overclocked",
     "overcloking": "overclocking",
-    "overclok": "overclock",
     "overide": "override",
-    "overriden": "overridden",
-    "overriden": "overridden",
     "overriden": "overridden",
     "overrride": "override",
     "overrriding": "overriding",
@@ -722,7 +667,6 @@ _TYPO_MAP: dict[str, str] = {
     "overthere": "over there",
     "overtime": "overtime",
     "overtuned": "overtuned",
-    "overwelming": "overwhelming",
     "overwelming": "overwhelming",
     "owenr": "owner",
     "owener": "owner",
@@ -742,10 +686,8 @@ _TYPO_MAP: dict[str, str] = {
     "preformance": "performance",
     "perfomance": "performance",
     "prefomance": "performance",
-    "perfomance": "performance",
     "overfiting": "overfitting",
     "overfittng": "overfitting",
-    "overfiting": "overfitting",
     "underfiting": "underfitting",
     "underfittng": "underfitting",
     "overfeating": "overfitting",
@@ -805,7 +747,6 @@ _TYPO_MAP: dict[str, str] = {
     "classifiaction": "classification",
     "regresion": "regression",
     "regresson": "regression",
-    "regresion": "regression",
     "clusterng": "clustering",
     "clusterring": "clustering",
     "dimensionlity": "dimensionality",
@@ -820,7 +761,6 @@ _TYPO_MAP: dict[str, str] = {
     "extrapoltation": "extrapolation",
     "hierarcy": "hierarchy",
     "hierchical": "hierarchical",
-    "hierchical": "hierarchical",
     "heterogenity": "heterogeneity",
     "homogenity": "homogeneity",
     "heterogenous": "heterogeneous",
@@ -829,7 +769,6 @@ _TYPO_MAP: dict[str, str] = {
     "architecure": "architecture",
     "archtecture": "architecture",
     "architechture": "architecture",
-    "replicaton": "replication",
     "replicaton": "replication",
     "propagation": "propagation",
     "propogation": "propagation",
@@ -879,7 +818,6 @@ _TYPO_MAP: dict[str, str] = {
     "convergence": "convergence",
     "covergence": "convergence",
     "divergance": "divergence",
-    "divergance": "divergence",
     "diveregence": "divergence",
     "overfited": "overfitted",
     "overfitted": "overfitted",
@@ -908,8 +846,7 @@ _TYPO_MAP: dict[str, str] = {
 
 # Compile typo patterns once
 _TYPO_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\b" + re.escape(typo) + r"\b", re.IGNORECASE), correct)
-    for typo, correct in _TYPO_MAP.items()
+    (re.compile(r"\b" + re.escape(typo) + r"\b", re.IGNORECASE), correct) for typo, correct in _TYPO_MAP.items()
 ]
 
 

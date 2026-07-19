@@ -15,33 +15,31 @@ Also includes performance optimizations:
 
 from __future__ import annotations
 
-import time
 import hashlib
 import threading
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any, Set
-from functools import lru_cache
+import time
 from collections import OrderedDict
+from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 
+from duplicate_question_app.agreement_engine import collect_all_votes
 from duplicate_question_app.config import AppPaths, get_app_paths
+from duplicate_question_app.contradiction_detector import get_contradiction_penalty
 from duplicate_question_app.embedding_models import (
-    get_sentence_transformer_model,
     predict_with_sentence_transformer,
 )
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
+from duplicate_question_app.entity_detector import get_entity_penalty
 from duplicate_question_app.inference import (
     DuplicateQuestionInferenceService,
     load_model_and_tokenizer,
 )
-from duplicate_question_app.agreement_engine import collect_all_votes, ModelVote
-from duplicate_question_app.intelligent_ensemble import compute_adaptive_weights, AdaptiveWeights
-from duplicate_question_app.entity_detector import analyze_entity_mismatch, get_entity_penalty
-from duplicate_question_app.intent_detector import get_intent_details, intent_mismatch_penalty
-from duplicate_question_app.negation_detector import get_negation_penalty
-from duplicate_question_app.contradiction_detector import get_contradiction_penalty
+from duplicate_question_app.intelligent_ensemble import compute_adaptive_weights
+from duplicate_question_app.intent_detector import intent_mismatch_penalty
 from duplicate_question_app.lexical_penalty import get_lexical_penalty
+from duplicate_question_app.negation_detector import get_negation_penalty
+from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
 
 
 # Thread-safe LRU cache for embeddings
@@ -58,7 +56,7 @@ class EmbeddingCache:
         text_hash = hashlib.md5(text.encode()).hexdigest()[:16]
         return f"{model_name}:{text_hash}"
 
-    def get(self, model_name: str, text: str) -> Optional[np.ndarray]:
+    def get(self, model_name: str, text: str) -> np.ndarray | None:
         key = self._make_key(model_name, text)
         with self._lock:
             if key in self._cache:
@@ -86,7 +84,7 @@ _embedding_cache = EmbeddingCache(max_size=10000)
 
 
 # Preprocessing cache
-_preprocessing_cache: Dict[str, str] = {}
+_preprocessing_cache: dict[str, str] = {}
 _preprocessing_cache_lock = threading.RLock()
 
 
@@ -97,6 +95,7 @@ def cached_normalize(text: str, expand_abbrevs: bool = True) -> str:
         if key in _preprocessing_cache:
             return _preprocessing_cache[key]
         from duplicate_question_app.preprocessing import normalize_question
+
         result = normalize_question(text, expand_abbrevs=expand_abbrevs)
         if len(_preprocessing_cache) < 5000:
             _preprocessing_cache[key] = result
@@ -106,6 +105,7 @@ def cached_normalize(text: str, expand_abbrevs: bool = True) -> str:
 @dataclass
 class EnsembleFeatures:
     """Features used for dynamic weight computation."""
+
     lexical_overlap: float
     semantic_depth: float
     entity_penalty: float
@@ -113,8 +113,8 @@ class EnsembleFeatures:
     negation_penalty: float
     contradiction_penalty: float
     lexical_penalty: float
-    abbreviations_detected: List[str]
-    synonyms_detected: List[str]
+    abbreviations_detected: list[str]
+    synonyms_detected: list[str]
     model_agreement: float
     prob_std: float
     is_borderline: bool
@@ -123,18 +123,19 @@ class EnsembleFeatures:
 @dataclass
 class AdaptiveWeightsV2:
     """Dynamic ensemble weights for each model group."""
+
     tfidf_weight: float = 0.15
     transformer_weight: float = 0.20
     embedding_weight: float = 0.30
     cross_encoder_weight: float = 0.35
 
     # Individual model weights (for detailed breakdown)
-    individual_weights: Dict[str, float] = field(default_factory=dict)
+    individual_weights: dict[str, float] = field(default_factory=dict)
 
     # Feature values used for weight computation
-    features: Optional[EnsembleFeatures] = None
+    features: EnsembleFeatures | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tfidf_weight": self.tfidf_weight,
             "transformer_weight": self.transformer_weight,
@@ -348,7 +349,7 @@ def get_model_predictions_batch(
     q1: str,
     q2: str,
     paths: AppPaths,
-) -> Dict[str, Tuple[int, float]]:
+) -> dict[str, tuple[int, float]]:
     """Get predictions from all models (cached where possible)."""
     results = {}
 
@@ -386,8 +387,8 @@ def get_model_predictions_batch(
 def adaptive_ensemble_predict(
     q1: str,
     q2: str,
-    paths: Optional[AppPaths] = None,
-) -> Dict[str, Any]:
+    paths: AppPaths | None = None,
+) -> dict[str, Any]:
     """Main entry point for Adaptive Ensemble V2 prediction."""
     start_time = time.time()
 
@@ -422,7 +423,7 @@ def adaptive_ensemble_predict(
     }
 
     # Fill in predictions
-    for model_name, (label, prob) in predictions.items():
+    for model_name, (_label, prob) in predictions.items():
         if model_name in tfidf_models:
             tfidf_models[model_name] = prob
         elif model_name in transformer_models:
@@ -433,7 +434,7 @@ def adaptive_ensemble_predict(
             cross_encoder_models[model_name] = prob
 
     # Compute weighted averages per group
-    def weighted_avg(probs_dict: Dict[str, float], weight: float) -> Tuple[float, Dict[str, float]]:
+    def weighted_avg(probs_dict: dict[str, float], weight: float) -> tuple[float, dict[str, float]]:
         valid = {k: v for k, v in probs_dict.items() if v > 0}
         if not valid:
             return 0.5, {}
@@ -450,19 +451,19 @@ def adaptive_ensemble_predict(
 
     # Combine
     ensemble_prob = (
-        tfidf_avg * weights.tfidf_weight +
-        trans_avg * weights.transformer_weight +
-        embed_avg * weights.embedding_weight +
-        cross_avg * weights.cross_encoder_weight
+        tfidf_avg * weights.tfidf_weight
+        + trans_avg * weights.transformer_weight
+        + embed_avg * weights.embedding_weight
+        + cross_avg * weights.cross_encoder_weight
     )
 
     # Apply penalties
     total_penalty = (
-        features.entity_penalty * 0.5 +
-        features.intent_penalty * 0.5 +
-        features.negation_penalty * 0.6 +
-        features.contradiction_penalty * 0.8 +
-        features.lexical_penalty * 0.4
+        features.entity_penalty * 0.5
+        + features.intent_penalty * 0.5
+        + features.negation_penalty * 0.6
+        + features.contradiction_penalty * 0.8
+        + features.lexical_penalty * 0.4
     )
 
     # Penalties reduce duplicate probability
@@ -530,7 +531,7 @@ def clear_caches():
         _preprocessing_cache.clear()
 
 
-def get_cache_stats() -> Dict[str, int]:
+def get_cache_stats() -> dict[str, int]:
     """Get cache statistics."""
     return {
         "embedding_cache_size": len(_embedding_cache._cache),

@@ -12,11 +12,10 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import sys
 import time
-import argparse
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import torch
@@ -26,11 +25,11 @@ SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
 from duplicate_question_app.data_loader import get_quora_splits
-from duplicate_question_app.preprocessing import normalize_question
 from duplicate_question_app.hard_negative_mining import (
-    mine_hard_negatives_combined,
     load_hard_negatives,
+    mine_hard_negatives_combined,
 )
+from duplicate_question_app.preprocessing import normalize_question
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "outputs" / "embedding_models"
 MODELS_DIR = Path(__file__).resolve().parents[1] / "models"
@@ -120,7 +119,7 @@ def train_with_contrastive_loss(
     Returns:
         Path to the saved model.
     """
-    from sentence_transformers import SentenceTransformer, losses, InputExample
+    from sentence_transformers import InputExample, SentenceTransformer, losses
     from sentence_transformers.evaluation import BinaryClassificationEvaluator
     from torch.utils.data import DataLoader
 
@@ -130,8 +129,9 @@ def train_with_contrastive_loss(
 
     # Prepare data
     print("\n[1/4] Preparing training data...")
-    train_q1s, train_q2s, train_labels, val_q1s, val_q2s, val_labels = \
-        prepare_training_data(max_train_samples=max_train_samples)
+    train_q1s, train_q2s, train_labels, val_q1s, val_q2s, val_labels = prepare_training_data(
+        max_train_samples=max_train_samples
+    )
 
     # Load base model
     print(f"\n[2/4] Loading base model: {model_name}...")
@@ -143,7 +143,7 @@ def train_with_contrastive_loss(
     # Duplicate pairs (label=1) = positive pairs
     # Non-duplicate pairs (label=0) = negative (used as in-batch negatives)
     train_examples = []
-    for q1, q2, label in zip(train_q1s, train_q2s, train_labels):
+    for q1, q2, label in zip(train_q1s, train_q2s, train_labels, strict=False):
         if label == 1:
             # For E5, we use query/passage prefixes
             anchor = f"query: {q1}"
@@ -151,11 +151,9 @@ def train_with_contrastive_loss(
             train_examples.append(InputExample(texts=[anchor, positive]))
 
     print(f"  Training examples: {len(train_examples):,}")
-    print(f"  (Non-duplicate pairs used as in-batch negatives)")
+    print("  (Non-duplicate pairs used as in-batch negatives)")
 
-    train_dataloader = DataLoader(
-        train_examples, batch_size=batch_size, shuffle=True, drop_last=True
-    )
+    train_dataloader = DataLoader(train_examples, batch_size=batch_size, shuffle=True, drop_last=True)
 
     # Loss function: MultipleNegativesRankingLoss
     # This is the standard loss for training embedding models on pairwise data.
@@ -183,7 +181,7 @@ def train_with_contrastive_loss(
     num_steps = len(train_dataloader) * num_epochs
     warmup_steps = int(num_steps * warmup_ratio)
 
-    print(f"\n[4/4] Starting training...")
+    print("\n[4/4] Starting training...")
     print(f"  Epochs: {num_epochs}")
     print(f"  Batch size: {batch_size}")
     print(f"  Learning rate: {learning_rate}")
@@ -205,22 +203,24 @@ def train_with_contrastive_loss(
         output_path=output_path if save_model else None,
         save_best_model=save_model,
         evaluation_steps=min(500, len(train_dataloader)),
-        use_amp=True if use_gpu else False,
+        use_amp=bool(use_gpu),
         show_progress_bar=True,
     )
 
     training_time = time.time() - start_time
-    print(f"\n✅ Training completed in {training_time:.1f}s ({training_time/60:.1f} min)")
+    print(f"\n✅ Training completed in {training_time:.1f}s ({training_time / 60:.1f} min)")
 
     # Evaluate on validation set
     print("\nFinal validation evaluation:")
-    val_emb1 = model.encode(val_sentences1[:5000], normalize_embeddings=True,
-                            batch_size=batch_size, show_progress_bar=False)
-    val_emb2 = model.encode(val_sentences2[:5000], normalize_embeddings=True,
-                            batch_size=batch_size, show_progress_bar=False)
+    val_emb1 = model.encode(
+        val_sentences1[:5000], normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False
+    )
+    val_emb2 = model.encode(
+        val_sentences2[:5000], normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False
+    )
     similarities = (val_emb1 * val_emb2).sum(axis=1)
 
-    from sklearn.metrics import f1_score, accuracy_score, roc_auc_score
+    from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
     # Find optimal threshold
     best_f1 = 0
@@ -262,19 +262,17 @@ def train_with_multitask_loss(
     Returns:
         Path to saved model.
     """
-    from sentence_transformers import SentenceTransformer, losses, InputExample
-    from sentence_transformers.evaluation import BinaryClassificationEvaluator
+    from sentence_transformers import InputExample, SentenceTransformer, losses
     from torch.utils.data import DataLoader
 
     device = "cuda" if kwargs.get("use_gpu") and torch.cuda.is_available() else "cpu"
     use_gpu = kwargs.get("use_gpu", False)
 
     # Prepare data
-    train_q1s, train_q2s, train_labels, val_q1s, val_q2s, val_labels = \
-        prepare_training_data(
-            max_train_samples=kwargs.get("max_train_samples", 200000),
-            include_hard_negatives=kwargs.get("include_hard_negatives", True),
-        )
+    train_q1s, train_q2s, train_labels, val_q1s, val_q2s, val_labels = prepare_training_data(
+        max_train_samples=kwargs.get("max_train_samples", 200000),
+        include_hard_negatives=kwargs.get("include_hard_negatives", True),
+    )
 
     model = SentenceTransformer(model_name, device=device)
 
@@ -282,7 +280,7 @@ def train_with_multitask_loss(
     mnrl_examples = []
     cosent_examples = []
 
-    for q1, q2, label in zip(train_q1s, train_q2s, train_labels):
+    for q1, q2, label in zip(train_q1s, train_q2s, train_labels, strict=False):
         anchor = f"query: {q1}"
         text = f"passage: {q2}"
         if label == 1:
@@ -291,17 +289,11 @@ def train_with_multitask_loss(
         cosent_examples.append(InputExample(texts=[anchor, text], label=float(label)))
 
     # Multi-task loss
-    mnrl_dataloader = DataLoader(
-        mnrl_examples,
-        batch_size=kwargs.get("batch_size", 64),
-        shuffle=True, drop_last=True
-    )
+    mnrl_dataloader = DataLoader(mnrl_examples, batch_size=kwargs.get("batch_size", 64), shuffle=True, drop_last=True)
     mnrl_loss = losses.MultipleNegativesRankingLoss(model)
 
     cosent_dataloader = DataLoader(
-        cosent_examples,
-        batch_size=kwargs.get("batch_size", 64),
-        shuffle=True, drop_last=True
+        cosent_examples, batch_size=kwargs.get("batch_size", 64), shuffle=True, drop_last=True
     )
     cosent_loss = losses.CoSENTLoss(model)
 
@@ -309,7 +301,7 @@ def train_with_multitask_loss(
     output_path = str(MODELS_DIR / output_name)
     num_epochs = kwargs.get("num_epochs", 3)
     warmup_ratio = kwargs.get("warmup_ratio", 0.1)
-    batch_size = kwargs.get("batch_size", 64)
+    kwargs.get("batch_size", 64)
     learning_rate = kwargs.get("learning_rate", 2e-5)
 
     model.fit(
@@ -322,7 +314,7 @@ def train_with_multitask_loss(
         optimizer_params={"lr": learning_rate},
         output_path=output_path,
         save_best_model=True,
-        use_amp=True if use_gpu else False,
+        use_amp=bool(use_gpu),
         show_progress_bar=True,
     )
 
@@ -336,12 +328,9 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=3, help="Number of epochs")
     parser.add_argument("--batch-size", type=int, default=64, help="Batch size")
     parser.add_argument("--lr", type=float, default=2e-5, help="Learning rate")
-    parser.add_argument("--max-samples", type=int, default=200000,
-                        help="Max training samples")
-    parser.add_argument("--multitask", action="store_true",
-                        help="Use multi-task loss (MNRL + CoSENT)")
-    parser.add_argument("--no-hard-negatives", action="store_true",
-                        help="Skip hard negative mining")
+    parser.add_argument("--max-samples", type=int, default=200000, help="Max training samples")
+    parser.add_argument("--multitask", action="store_true", help="Use multi-task loss (MNRL + CoSENT)")
+    parser.add_argument("--no-hard-negatives", action="store_true", help="Skip hard negative mining")
 
     args = parser.parse_args()
 

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
-
 
 TEST_CONFIGS: dict[str, dict[str, Any]] = {
     "app": {
@@ -142,7 +142,7 @@ TEST_CONFIGS: dict[str, dict[str, Any]] = {
 
 
 @pytest.fixture
-def temp_config_dir() -> Generator[Path, None, None]:
+def temp_config_dir() -> Generator[Path]:
     with tempfile.TemporaryDirectory() as tmpdir:
         config_dir = Path(tmpdir)
         for name, cfg in TEST_CONFIGS.items():
@@ -153,7 +153,7 @@ def temp_config_dir() -> Generator[Path, None, None]:
 
 
 @pytest.fixture
-def isolated_project_root(temp_config_dir: Path) -> Generator[Path, None, None]:
+def isolated_project_root(temp_config_dir: Path) -> Generator[Path]:
     with tempfile.TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
         (root / "configs").mkdir()

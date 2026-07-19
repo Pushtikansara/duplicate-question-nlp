@@ -195,6 +195,11 @@ def _get_week4_plot_paths(plot_signatures: tuple[str, ...]) -> list[Path]:
 def get_week4_plot_paths() -> list[Path]:
     plot_signatures = tuple(
         path_signature(PATHS.week4_results_dir / filename)
-        for filename in ("fig1_threshold_tuning.png", "fig2_error_analysis.png", "fig3_ablation_comparison.png", "fig4_roc_comparison.png")
+        for filename in (
+            "fig1_threshold_tuning.png",
+            "fig2_error_analysis.png",
+            "fig3_ablation_comparison.png",
+            "fig4_roc_comparison.png",
+        )
     )
     return _get_week4_plot_paths(plot_signatures)

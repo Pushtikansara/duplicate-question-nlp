@@ -45,10 +45,15 @@ def render() -> None:
         score_col.metric("Agreement Score", f"{agreement['agreement_score']:.0%}")
         unan_col.metric("Unanimous", "✅ Yes" if agreement["is_unanimous"] else "❌ No")
 
-        tab_models, tab_lexical, tab_semantic, tab_weights, tab_scores = st.tabs([
-            "Per-Model Scores", "Lexical Features", "Semantic Features",
-            "Adaptive Weights", "Per-Model Similarities",
-        ])
+        tab_models, tab_lexical, tab_semantic, tab_weights, tab_scores = st.tabs(
+            [
+                "Per-Model Scores",
+                "Lexical Features",
+                "Semantic Features",
+                "Adaptive Weights",
+                "Per-Model Similarities",
+            ]
+        )
 
         with tab_models:
             scores = td["per_model_scores"]
@@ -57,8 +62,11 @@ def render() -> None:
                 if prob is not None:
                     rows.append({"Model": name.replace("_", " ").title(), "Probability": prob})
             if rows:
-                st.dataframe(pd.DataFrame(rows).sort_values("Probability", ascending=False),
-                           use_container_width=True, hide_index=True)
+                st.dataframe(
+                    pd.DataFrame(rows).sort_values("Probability", ascending=False),
+                    use_container_width=True,
+                    hide_index=True,
+                )
             st.info("💡 Models with probability > 0.5 vote 'Duplicate', < 0.5 vote 'Non-Duplicate'.")
 
         with tab_lexical:
@@ -87,12 +95,15 @@ def render() -> None:
         with tab_weights:
             w = td["adaptive_weights"]
             if w:
-                weight_df = pd.DataFrame([
-                    ("Lexical (TF-IDF)", w.get("lexical", 0)),
-                    ("Transformer (DistilBERT)", w.get("transformer", 0)),
-                    ("Embedding (BGE/E5/MPNet)", w.get("embedding", 0)),
-                    ("Cross-Encoder (DeBERTa)", w.get("cross_encoder", 0)),
-                ], columns=["Model Group", "Weight"])
+                weight_df = pd.DataFrame(
+                    [
+                        ("Lexical (TF-IDF)", w.get("lexical", 0)),
+                        ("Transformer (DistilBERT)", w.get("transformer", 0)),
+                        ("Embedding (BGE/E5/MPNet)", w.get("embedding", 0)),
+                        ("Cross-Encoder (DeBERTa)", w.get("cross_encoder", 0)),
+                    ],
+                    columns=["Model Group", "Weight"],
+                )
                 st.bar_chart(weight_df.set_index("Model Group"))
                 st.dataframe(weight_df, use_container_width=True, hide_index=True)
                 st.info("💡 Weights adapt based on lexical overlap, abbreviation presence, and synonym detection.")
@@ -105,7 +116,9 @@ def render() -> None:
                     sim_data[k.replace("_", " ").title()] = v
             if any(v is not None for v in sim_data.values()):
                 st.dataframe(
-                    pd.DataFrame([(k, f"{v:.4f}") for k, v in sim_data.items() if v is not None],
-                                 columns=["Metric", "Value"]),
-                    use_container_width=True, hide_index=True,
+                    pd.DataFrame(
+                        [(k, f"{v:.4f}") for k, v in sim_data.items() if v is not None], columns=["Metric", "Value"]
+                    ),
+                    use_container_width=True,
+                    hide_index=True,
                 )

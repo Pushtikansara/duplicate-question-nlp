@@ -4,7 +4,6 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
 import yaml
 
 from duplicate_question_app._config.loader import (
@@ -17,7 +16,6 @@ from duplicate_question_app._config.loader import (
     load_all_configs,
 )
 from duplicate_question_app._config.settings import get_app_paths
-
 
 SAMPLE_APP_YAML = {
     "default_model": "E5-base-v2",
@@ -173,31 +171,37 @@ class TestConfigSettings:
 
     def test_model_choices_loaded(self):
         from duplicate_question_app._config.settings import MODEL_CHOICES
+
         assert "E5-base-v2" in MODEL_CHOICES
         assert "Semantic Ensemble" in MODEL_CHOICES
 
     def test_is_transformer_model(self):
         from duplicate_question_app._config.settings import is_transformer_model
+
         assert is_transformer_model("DistilBERT (Week 3)") is True
         assert is_transformer_model("E5-base-v2") is False
 
     def test_is_sentence_transformer_model(self):
         from duplicate_question_app._config.settings import is_sentence_transformer_model
+
         assert is_sentence_transformer_model("E5-base-v2") is True
         assert is_sentence_transformer_model("DistilBERT (Week 3)") is False
 
     def test_is_cross_encoder_model(self):
         from duplicate_question_app._config.settings import is_cross_encoder_model
+
         assert is_cross_encoder_model("DeBERTa-v3 Cross-Encoder") is True
         assert is_cross_encoder_model("E5-base-v2") is False
 
     def test_is_ensemble_model(self):
         from duplicate_question_app._config.settings import is_ensemble_model
+
         assert is_ensemble_model("Semantic Ensemble") is True
         assert is_ensemble_model("E5-base-v2") is False
 
     def test_is_new_embedding_model(self):
         from duplicate_question_app._config.settings import is_new_embedding_model
+
         assert is_new_embedding_model("E5-base-v2") is True
         assert is_new_embedding_model("DistilBERT (Week 3)") is False
         assert is_new_embedding_model("Semantic Ensemble") is True

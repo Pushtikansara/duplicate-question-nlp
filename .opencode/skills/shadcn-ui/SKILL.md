@@ -451,4 +451,3 @@ export function DataTableDemo({ data }: { data: Payment[] }) {
 - Color values must be in HSL format: `--primary: 240 5.9% 10%` (not hex or rgb).
 - Responsive variants should be applied via Tailwind's responsive prefixes, not JS breakpoints.
 - Use `@layer base { ... }` for defining base CSS variable values and global resets.
-

@@ -12,25 +12,29 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
+import json
 import sys
 import time
-import json
-import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader, Dataset
-from transformers import (
-    AutoTokenizer,
-    AutoModelForSequenceClassification,
-    get_linear_schedule_with_warmup,
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
 )
 from torch.optim import AdamW
-from sklearn.metrics import (
-    accuracy_score, f1_score, precision_score, recall_score,
-    roc_auc_score, confusion_matrix,
+from torch.utils.data import DataLoader, Dataset
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    get_linear_schedule_with_warmup,
 )
 
 # Add src to path
@@ -177,16 +181,16 @@ def train_cross_encoder(
         use_gpu = torch.cuda.is_available()
     device = torch.device("cuda" if use_gpu and torch.cuda.is_available() else "cpu")
     use_fp16 = (fp16 if fp16 is not None else True) and device.type == "cuda"
-    
+
     # ============================================================
     # CUDA OPTIMIZATIONS
     # ============================================================
     if device.type == "cuda":
-        torch.backends.cudnn.benchmark = True          # Auto-tune cuDNN kernels
-        torch.backends.cuda.matmul.allow_tf32 = True   # Enable TF32 on RTX 4060
+        torch.backends.cudnn.benchmark = True  # Auto-tune cuDNN kernels
+        torch.backends.cuda.matmul.allow_tf32 = True  # Enable TF32 on RTX 4060
         torch.backends.cudnn.allow_tf32 = True
-        torch.set_float32_matmul_precision('high')     # Use tensor cores
-        print(f"  🚀 GPU optimizations: cudnn.benchmark=True, TF32=True")
+        torch.set_float32_matmul_precision("high")  # Use tensor cores
+        print("  🚀 GPU optimizations: cudnn.benchmark=True, TF32=True")
 
     print(f"Device: {device}")
     print(f"Mixed Precision (FP16): {use_fp16}")
@@ -208,14 +212,14 @@ def train_cross_encoder(
         train_input_ids.append(item["input_ids"])
         train_attention_masks.append(item["attention_mask"])
         train_labels_list.append(item["labels"])
-    
+
     # Create tensor dataset (keeps tokenized data in memory, avoiding re-tokenization)
     train_tensor_dataset = torch.utils.data.TensorDataset(
         torch.stack(train_input_ids),
         torch.stack(train_attention_masks),
         torch.tensor(train_labels_list),
     )
-    
+
     print("  Pre-tokenizing validation data...")
     val_input_ids = []
     val_attention_masks = []
@@ -225,7 +229,7 @@ def train_cross_encoder(
         val_input_ids.append(item["input_ids"])
         val_attention_masks.append(item["attention_mask"])
         val_labels_list.append(item["labels"])
-    
+
     val_tensor_dataset = torch.utils.data.TensorDataset(
         torch.stack(val_input_ids),
         torch.stack(val_attention_masks),
@@ -235,16 +239,16 @@ def train_cross_encoder(
     # ============================================================
     # GPU-OPTIMIZED DATALOADER
     # ============================================================
-    num_cpus = torch.multiprocessing.cpu_count() if hasattr(torch.multiprocessing, 'cpu_count') else 4
+    num_cpus = torch.multiprocessing.cpu_count() if hasattr(torch.multiprocessing, "cpu_count") else 4
     data_num_workers = min(8, num_cpus // 2)  # Use half of available CPUs for data loading
-    
+
     train_loader = DataLoader(
         train_tensor_dataset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=data_num_workers,
-        pin_memory=device.type == "cuda",       # Pin memory for faster GPU transfer
-        persistent_workers=data_num_workers > 0, # Keep workers alive between epochs
+        pin_memory=device.type == "cuda",  # Pin memory for faster GPU transfer
+        persistent_workers=data_num_workers > 0,  # Keep workers alive between epochs
         prefetch_factor=2 if data_num_workers > 0 else None,
     )
     val_loader = DataLoader(
@@ -256,16 +260,14 @@ def train_cross_encoder(
         persistent_workers=data_num_workers > 0,
     )
 
-    print(f"  DataLoaders: num_workers={data_num_workers}, pin_memory={device.type=='cuda'}")
+    print(f"  DataLoaders: num_workers={data_num_workers}, pin_memory={device.type == 'cuda'}")
 
     # Load model
     print(f"\n[2/4] Loading {model_name}...")
-    raw_model = AutoModelForSequenceClassification.from_pretrained(
-        model_name, num_labels=2, torch_dtype=torch.float32
-    )
+    raw_model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2, torch_dtype=torch.float32)
     raw_model = raw_model.to(device, non_blocking=device.type == "cuda")
     raw_model = raw_model.float()
-    
+
     model = raw_model
 
     # Handle class imbalance with weighted loss
@@ -279,15 +281,14 @@ def train_cross_encoder(
     print(f"  Class weights: neg={weight_neg:.3f}, pos={weight_pos:.3f}")
 
     # Fused AdamW for GPU (faster CUDA kernel)
-    optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay,
-                      fused=(device.type == "cuda"))
+    optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay, fused=(device.type == "cuda"))
     total_steps = len(train_loader) * num_epochs // gradient_accumulation_steps
     warmup_steps = int(total_steps * warmup_ratio)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps
     )
 
-    print(f"\n[3/4] Starting training...")
+    print("\n[3/4] Starting training...")
     print(f"  Epochs: {num_epochs}")
     print(f"  Batch size: {batch_size}")
     print(f"  Gradient accumulation: {gradient_accumulation_steps}")
@@ -295,21 +296,25 @@ def train_cross_encoder(
     print(f"  Steps per epoch: {len(train_loader):,}")
     print(f"  Total steps: {total_steps:,}")
     print(f"  Warmup steps: {warmup_steps}")
-    print(f"  GPU memory (pre-training): {torch.cuda.memory_allocated()/1024**3:.2f} GB / {torch.cuda.memory_reserved()/1024**3:.2f} GB reserved" if device.type == "cuda" else "")
+    print(
+        f"  GPU memory (pre-training): {torch.cuda.memory_allocated() / 1024**3:.2f} GB / {torch.cuda.memory_reserved() / 1024**3:.2f} GB reserved"
+        if device.type == "cuda"
+        else ""
+    )
 
     # ============================================================
     # DEVICE VERIFICATION — verify every tensor is on CUDA
     # ============================================================
-    print(f"\n  📊 Device verification:")
+    print("\n  📊 Device verification:")
     print(f"    Model device: {next(model.parameters()).device}")
     print(f"    Optimizer on: {device}")
     sample_batch = next(iter(train_loader))
     sample_ids, sample_mask, sample_labels = sample_batch
-    print(f"    input_ids device: CPU (moved to GPU per-batch)")
+    print("    input_ids device: CPU (moved to GPU per-batch)")
     print(f"    Loss function weights device: {class_weights.device}")
     if device.type == "cuda":
-        print(f"    ✅ All tensors will be on CUDA during training")
-        print(f"    🎯 GPU: {torch.cuda.get_device_name(0)} ({torch.cuda.memory_reserved()/1024**3:.2f}GB reserved)")
+        print("    ✅ All tensors will be on CUDA during training")
+        print(f"    🎯 GPU: {torch.cuda.get_device_name(0)} ({torch.cuda.memory_reserved() / 1024**3:.2f}GB reserved)")
 
     # Training loop
     best_val_f1 = 0.0
@@ -328,7 +333,7 @@ def train_cross_encoder(
         for step, batch in enumerate(train_loader):
             # Unpack pre-tokenized batch (TensorDataset returns tuple)
             input_ids, attention_mask, labels = batch
-            
+
             # Move to GPU with non_blocking for async transfer
             input_ids = input_ids.to(device, non_blocking=True)
             attention_mask = attention_mask.to(device, non_blocking=True)
@@ -373,8 +378,10 @@ def train_cross_encoder(
                     alloc = torch.cuda.memory_allocated() / 1024**3
                     reserved = torch.cuda.memory_reserved() / 1024**3
                     gpu_info = f"GPU: {alloc:.2f}GB/{reserved:.2f}GB"
-                print(f"  Epoch {epoch+1} Step {step+1}/{len(train_loader)} "
-                      f"Loss: {avg_loss:.4f} LR: {scheduler.get_last_lr()[0]:.2e} {gpu_info}")
+                print(
+                    f"  Epoch {epoch + 1} Step {step + 1}/{len(train_loader)} "
+                    f"Loss: {avg_loss:.4f} LR: {scheduler.get_last_lr()[0]:.2e} {gpu_info}"
+                )
 
         # Validation
         model.eval()
@@ -412,7 +419,7 @@ def train_cross_encoder(
             alloc = torch.cuda.memory_allocated() / 1024**3
             reserved = torch.cuda.memory_reserved() / 1024**3
             gpu_report = f"GPU: {alloc:.2f}GB/{reserved:.2f}GB"
-        print(f"\n  Epoch {epoch+1} — Val Loss: {val_loss/len(val_loader):.4f}")
+        print(f"\n  Epoch {epoch + 1} — Val Loss: {val_loss / len(val_loader):.4f}")
         print(f"    Accuracy: {val_acc:.4f}  F1: {val_f1:.4f}")
         print(f"    Precision: {val_prec:.4f}  Recall: {val_rec:.4f}")
         print(f"    ROC-AUC: {val_roc:.4f}  Time: {epoch_time:.0f}s {gpu_report}")
@@ -422,7 +429,7 @@ def train_cross_encoder(
             best_val_f1 = val_f1
             best_epoch = epoch
             patience_counter = 0
-            print(f"    → New best F1! Saving model...")
+            print("    → New best F1! Saving model...")
 
             output_path.mkdir(parents=True, exist_ok=True)
             model.save_pretrained(output_path)
@@ -432,11 +439,11 @@ def train_cross_encoder(
         else:
             patience_counter += 1
             if patience_counter >= patience:
-                print(f"\n  Early stopping at epoch {epoch+1} (best epoch {best_epoch+1})")
+                print(f"\n  Early stopping at epoch {epoch + 1} (best epoch {best_epoch + 1})")
                 break
 
     # Load best model
-    print(f"\n[4/4] Loading best model from epoch {best_epoch+1}...")
+    print(f"\n[4/4] Loading best model from epoch {best_epoch + 1}...")
     best_model = AutoModelForSequenceClassification.from_pretrained(output_path)
     best_model.to(device, non_blocking=device.type == "cuda")
 
@@ -450,7 +457,7 @@ def train_cross_encoder(
     tokenizer = AutoTokenizer.from_pretrained("microsoft/deberta-v3-base")
     test_input_ids = []
     test_attention_masks = []
-    for q1, q2 in zip(test_q1s, test_q2s):
+    for q1, q2 in zip(test_q1s, test_q2s, strict=False):
         enc = tokenizer(q1, q2, max_length=128, padding="max_length", truncation=True, return_tensors="pt")
         test_input_ids.append(enc["input_ids"].squeeze(0))
         test_attention_masks.append(enc["attention_mask"].squeeze(0))
@@ -498,16 +505,16 @@ def train_cross_encoder(
     test_roc = roc_auc_score(test_labels, test_probs)
     cm = confusion_matrix(test_labels, test_preds_opt)
 
-    print(f"\n{'='*60}")
-    print(f"  TEST SET RESULTS — Cross-Encoder (DeBERTa-v3)")
+    print(f"\n{'=' * 60}")
+    print("  TEST SET RESULTS — Cross-Encoder (DeBERTa-v3)")
     print(f"  Best threshold: {best_thresh:.3f}")
     print(f"  Accuracy:  {test_acc:.4f}")
     print(f"  F1:        {test_f1:.4f}")
     print(f"  Precision: {test_prec:.4f}")
     print(f"  Recall:    {test_rec:.4f}")
     print(f"  ROC-AUC:   {test_roc:.4f}")
-    print(f"  Confusion: TN={cm[0,0]} FP={cm[0,1]} FN={cm[1,0]} TP={cm[1,1]}")
-    print(f"{'='*60}")
+    print(f"  Confusion: TN={cm[0, 0]} FP={cm[0, 1]} FN={cm[1, 0]} TP={cm[1, 1]}")
+    print(f"{'=' * 60}")
 
     # Save test results
     results = {
@@ -538,8 +545,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=3, help="Number of epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size (increase for GPU)")
     parser.add_argument("--lr", type=float, default=2e-5, help="Learning rate")
-    parser.add_argument("--max-samples", type=int, default=200000,
-                        help="Max training samples")
+    parser.add_argument("--max-samples", type=int, default=200000, help="Max training samples")
     parser.add_argument("--max-length", type=int, default=128, help="Max sequence length")
     args = parser.parse_args()
 
@@ -554,7 +560,7 @@ if __name__ == "__main__":
     print(f"  Max length: {args.max_length}")
     print(f"  FP16: {'AUTO-ENABLED on GPU' if not args.no_fp16 else 'DISABLED'}")
     print(f"  torch.compile: {'ENABLED' if not args.no_compile else 'DISABLED'}")
-    print(f"  Data: Quora train/val/test (stratified 80/10/10)")
+    print("  Data: Quora train/val/test (stratified 80/10/10)")
     print("=" * 60)
 
     output = train_cross_encoder(

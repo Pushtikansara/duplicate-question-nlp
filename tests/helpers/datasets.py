@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-
 SAMPLE_PAIRS = [
     ("How to learn Python?", "How can I learn Python programming?"),
     ("What is the capital of France?", "What is the largest city in Germany?"),
