@@ -1,0 +1,11 @@
+# Evaluation configuration
+# Environment overrides: DQD_<KEY>
+
+metrics:
+  ece_bins: 10
+  default_roc_auc: true
+
+baseline_models:
+  - "E5-base-v2"
+  - "BGE-base-v1.5"
+  - "MPNet-base-v2"

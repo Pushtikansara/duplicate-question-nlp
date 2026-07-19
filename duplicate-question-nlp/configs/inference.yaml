@@ -1,0 +1,37 @@
+# Inference configuration
+# Environment overrides: DQD_<KEY>
+
+default_model: "Improved DistilBERT (Week 4)"
+default_device: "cpu"  # "cpu" or "cuda"
+auto_device: true      # auto-detect CUDA if available (used by embedding models)
+
+max_length: 128
+default_threshold: 0.5
+
+# Per-model thresholds (optimal F1 thresholds on validation set)
+per_model_thresholds:
+  "Cross-Encoder-Quora (Trained)": 0.10
+  "E5-quora-finetuned": 0.40
+  "E5-base-v2": 0.35
+  "BGE-quora-finetuned": 0.38
+  "BGE-base-en-v1.5": 0.30
+  "MPNet-base-v2": 0.36
+
+# Sigmoid calibration parameters: (steepness, midpoint)
+sigmoid_params:
+  "E5-quora-finetuned": [10.0, 0.73]
+  "E5-base-v2": [8.0, 0.82]
+  "BGE-quora-finetuned": [12.0, 0.88]
+  "BGE-base-en-v1.5": [15.6755, 0.8591]
+  "MPNet-base-v2": [11.5976, 0.8133]
+  "default": [15.0, 0.50]
+
+# Batch sizes by context
+batch_sizes:
+  transformer_inference: 32
+  embedding_inference: 64
+  lr_head_inference: 256
+  cross_encoder_inference: 128
+  hard_mining: 256
+  hard_mining_lexical: 5000
+  cache_max_size: 10000

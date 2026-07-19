@@ -1,0 +1,24 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include pyproject.toml
+recursive-include configs *.yaml
+recursive-include assets *
+recursive-include app *.py
+graft app
+graft configs
+graft assets
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude .env
+global-exclude .venv
+prune .github
+prune .opencode
+prune .streamlit
+prune .venv
+prune notebooks
+prune outputs
+prune models
+prune data
+prune tools
+prune tests

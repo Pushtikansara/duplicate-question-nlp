@@ -1,0 +1,37 @@
+# Logging configuration
+# Environment overrides: DQD_<KEY>
+
+version: 1
+
+# Default log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+level: INFO
+
+# Format
+format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+datefmt: "%Y-%m-%d %H:%M:%S"
+
+# Console handler
+console:
+  enabled: true
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+# File handler
+file:
+  enabled: false
+  level: DEBUG
+  path: logs/duplicate_question_app.log
+  format: "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+
+# Module-specific log levels (overrides)
+modules:
+  duplicate_question_app: INFO
+  duplicate_question_app._config: INFO
+  duplicate_question_app._models: INFO
+  duplicate_question_app._inference: INFO
+  duplicate_question_app._training: INFO
+  duplicate_question_app._evaluation: INFO
+  duplicate_question_app._preprocessing: WARNING
+  app: INFO

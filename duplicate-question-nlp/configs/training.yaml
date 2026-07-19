@@ -1,0 +1,34 @@
+# Training configuration
+# Environment overrides: DQD_<KEY>
+# DO NOT change training behaviour; values match current hardcoded defaults.
+
+seed: 42
+
+# Dataset splits
+split:
+  val_ratio: 0.1
+  test_ratio: 0.1
+  calibration_val_split: 0.2
+
+# Transformer training defaults
+transformer:
+  num_epochs: 3
+  learning_rate: 0.00002
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  max_train_samples: 200000
+  num_labels: 2
+
+# Embedding model training defaults
+embedding:
+  num_epochs: 3
+  learning_rate: 0.00002
+  warmup_ratio: 0.1
+  max_train_samples: 200000
+
+# MLP classifier head training defaults
+mlp_head:
+  epochs: 15
+  learning_rate: 0.001
+  batch_size: 256
+  max_train_samples: 150000

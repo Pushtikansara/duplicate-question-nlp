@@ -1,0 +1,153 @@
+# Model registry configuration
+# Environment overrides: DQD_<KEY>
+
+models:
+  # Classical ML models (Week 2)
+  - display_name: "TF-IDF + Logistic Regression (Week 2)"
+    version_key: week2_lr
+    week: week2
+    model_type: classical-ml
+    framework: joblib
+    source: local
+    device: cpu
+    description: "Logistic Regression with TF-IDF n-gram features (1,2). Classical baseline."
+
+  - display_name: "TF-IDF + Linear SVM (Week 2)"
+    version_key: week2_svm
+    week: week2
+    model_type: classical-ml
+    framework: joblib
+    source: local
+    device: cpu
+    description: "Linear SVM with TF-IDF n-gram features. Handles high-dimensional sparse data well."
+
+  # Transformer models (Week 3 & 4)
+  - display_name: "DistilBERT (Week 3)"
+    version_key: week3
+    week: week3
+    model_type: transformer
+    framework: pytorch
+    source: local
+    device: cpu
+
+  - display_name: "Improved DistilBERT (Week 4)"
+    version_key: week4
+    week: week4
+    model_type: transformer
+    framework: pytorch
+    source: local
+    device: cpu
+
+  # Phase 2 models
+  - display_name: "BGE-base-en-v1.5"
+    version_key: bge
+    week: phase2
+    model_type: bi-encoder
+    framework: sentence-transformers
+    source: huggingface
+    device: cpu
+
+  - display_name: "E5-base-v2"
+    version_key: e5
+    week: phase2
+    model_type: bi-encoder
+    framework: sentence-transformers
+    source: huggingface
+    device: cpu
+
+  - display_name: "E5-quora-finetuned"
+    version_key: e5_ft
+    week: phase2
+    model_type: bi-encoder
+    framework: sentence-transformers
+    source: local
+    device: cpu
+
+  - display_name: "MPNet-base-v2"
+    version_key: mpnet
+    week: phase2
+    model_type: bi-encoder
+    framework: sentence-transformers
+    source: huggingface
+    device: cpu
+
+  - display_name: "DeBERTa-v3 Cross-Encoder"
+    version_key: deberta
+    week: phase2
+    model_type: cross-encoder
+    framework: sentence-transformers
+    source: huggingface
+    device: cpu
+
+  - display_name: "Cross-Encoder-Quora (Trained)"
+    version_key: ce_quora
+    week: phase2
+    model_type: cross-encoder
+    framework: sentence-transformers
+    source: local
+    device: cpu
+
+  - display_name: "Semantic Ensemble"
+    version_key: ensemble
+    week: phase2
+    model_type: ensemble
+    framework: ensemble
+    source: built-in
+    device: cpu
+
+model_choices:
+  - "TF-IDF + Logistic Regression (Week 2)"
+  - "TF-IDF + Linear SVM (Week 2)"
+  - "DistilBERT (Week 3)"
+  - "Improved DistilBERT (Week 4)"
+  - "BGE-base-en-v1.5"
+  - "E5-base-v2"
+  - "E5-quora-finetuned"
+  - "MPNet-base-v2"
+  - "DeBERTa-v3 Cross-Encoder"
+  - "Cross-Encoder-Quora (Trained)"
+  - "Semantic Ensemble"
+
+model_version_short:
+  "TF-IDF + Logistic Regression (Week 2)": week2_lr
+  "TF-IDF + Linear SVM (Week 2)": week2_svm
+  "DistilBERT (Week 3)": week3
+  "Improved DistilBERT (Week 4)": week4
+  "BGE-base-en-v1.5": bge
+  "E5-base-v2": e5
+  "E5-quora-finetuned": e5_ft
+  "MPNet-base-v2": mpnet
+  "DeBERTa-v3 Cross-Encoder": deberta
+  "Cross-Encoder-Quora (Trained)": ce_quora
+  "Semantic Ensemble": ensemble
+
+backends:
+  transformer_models:
+    - "DistilBERT (Week 3)"
+    - "Improved DistilBERT (Week 4)"
+  sentence_transformer_models:
+    - "BGE-base-en-v1.5"
+    - "E5-base-v2"
+    - "E5-quora-finetuned"
+    - "MPNet-base-v2"
+  cross_encoder_models:
+    - "DeBERTa-v3 Cross-Encoder"
+    - "Cross-Encoder-Quora (Trained)"
+  finetuned_embedding_models:
+    - "E5-quora-finetuned"
+    - "BGE-quora-finetuned"
+
+# HF model names (hub keys)
+hub_names:
+  BGE-base-en-v1.5: "BAAI/bge-base-en-v1.5"
+  E5-base-v2: "intfloat/e5-base-v2"
+  MPNet-base-v2: "sentence-transformers/all-mpnet-base-v2"
+  DeBERTa-v3: "cross-encoder/nli-deberta-v3-base"
+  DeBERTa-v3-Cross-Encoder: "cross-encoder/nli-deberta-v3-base"
+  MiniLM: "sentence-transformers/all-MiniLM-L12-v2"
+
+# LR head model mappings
+lr_head_models:
+  E5-base-v2: e5_base_v2_lr_head.pkl
+  BAAI/bge-base-en-v1.5: bge_lr_head.pkl
+  sentence-transformers/all-mpnet-base-v2: all_mpnet_base_v2_lr_head.pkl

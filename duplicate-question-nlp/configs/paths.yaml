@@ -1,0 +1,32 @@
+# Paths configuration
+# Environment overrides: DQD_<KEY> (e.g. DQD_DATA_DIR, DQD_MODELS_DIR)
+# All paths are relative to project_root unless absolute.
+
+project_root: null  # auto-detected; override via DQD_PROJECT_ROOT
+
+data_dir: data
+models_dir: models
+results_dir: outputs
+notebooks_dir: notebooks
+
+week3_model_dir: models/saved_transformer_model
+week4_model_dir: models/week4_improved_model
+
+transformer_results_dir: outputs/transformer_model
+week4_results_dir: outputs/week4_improvement
+baseline_results_dir: outputs/baseline_model
+
+# Phase 2 model directories
+bge_model_dir: models/bge_base_en_v1_5
+e5_model_dir: models/e5_base_v2
+mpnet_model_dir: models/mpnet_base_v2
+deberta_model_dir: models/deberta_v3_cross_encoder
+
+# Fine-tuned model directories
+finetuned_e5_dir: models/e5-quora-finetuned
+finetuned_bge_dir: models/bge-quora-finetuned
+finetuned_cross_encoder_dir: models/cross-encoder-quora
+
+# Cache paths
+hf_cache_dir: null  # defaults to ~/.cache/huggingface/hub
+st_cache_dir: null  # defaults to ~/.cache/torch/sentence_transformers

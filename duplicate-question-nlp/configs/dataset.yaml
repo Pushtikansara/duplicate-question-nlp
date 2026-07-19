@@ -1,0 +1,20 @@
+# Dataset configuration
+# Environment overrides: DQD_<KEY>
+
+# Default dataset file
+default_file: cleaned_quora.parquet
+fallback_file: cleaned_quora.csv
+
+# Column name mappings
+columns:
+  question1: q1
+  question2: q2
+  label: label
+  is_duplicate: is_duplicate
+  sentence1: sentence1
+  sentence2: sentence2
+
+# Hard negative mining
+hard_negatives:
+  top_k: 15000
+  default_model: "BAAI/bge-base-en-v1.5"

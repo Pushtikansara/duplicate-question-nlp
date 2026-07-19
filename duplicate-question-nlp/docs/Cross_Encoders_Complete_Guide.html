@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cross Encoders &mdash; Complete Guide</title>
+<style>
+  @media print {
+    @page { margin: 2cm; size: A4; }
+    body { font-size: 10.5pt !important; }
+    .no-print { display: none !important; }
+    .page-break { page-break-before: always; }
+    pre { white-space: pre-wrap; page-break-inside: avoid; }
+    table { page-break-inside: avoid; }
+  }
+  :root {
+    --primary: #1B3A5C;
+    --secondary: #557A95;
+    --accent: #2E86AB;
+    --code-bg: #F5F5F5;
+    --border: #D0D7DE;
+    --text: #1A1A2E;
+    --light-text: #555;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Calibri', 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    background: #FAFBFC;
+  }
+  .cover {
+    text-align: center;
+    padding: 120px 20px;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .cover h1 {
+    font-size: 3.2em;
+    color: var(--primary);
+    letter-spacing: -1px;
+    margin-bottom: 0.2em;
+  }
+  .cover .subtitle {
+    font-size: 1.5em;
+    color: var(--secondary);
+    margin-bottom: 0.5em;
+  }
+  .cover .tagline {
+    font-size: 1.1em;
+    color: #777;
+    font-style: italic;
+    margin-bottom: 2em;
+  }
+  .cover .authors { font-size: 1em; color: var(--light-text); }
+  .cover .divider {
+    width: 80px; height: 4px;
+    background: var(--accent);
+    margin: 2em auto;
+    border-radius: 2px;
+  }
+  .toc { margin: 2em 0; }
+  .toc h2 { color: var(--primary); margin-bottom: 1em; }
+  .toc ol { list-style: none; counter-reset: toc; }
+  .toc li {
+    counter-increment: toc;
+    padding: 6px 0;
+    border-bottom: 1px dotted var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+  .toc li::before {
+    content: counter(toc, decimal-leading-zero);
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 12px;
+  }
+  h1 {
+    font-size: 2em;
+    color: var(--primary);
+    margin: 1.5em 0 0.5em;
+    padding-bottom: 8px;
+    border-bottom: 3px solid var(--accent);
+  }
+  h2 { font-size: 1.4em; color: var(--primary); margin: 1.2em 0 0.5em; }
+  h3 { font-size: 1.15em; color: var(--secondary); margin: 1em 0 0.4em; }
+  p { margin: 0.6em 0; text-align: justify; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    margin: 12px 0;
+    border-radius: 0 6px 6px 0;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.88em;
+    line-height: 1.45;
+    overflow-x: auto;
+  }
+  code {
+    background: #EBEDF0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9em;
+  }
+  pre code { background: none; padding: 0; border-radius: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.95em;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+  }
+  tr:nth-child(even) { background: #F6F8FA; }
+  ul, ol { margin: 0.5em 0 0.5em 1.8em; }
+  li { margin: 4px 0; }
+  .callout {
+    background: #E8F4FD;
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout strong { color: var(--primary); }
+  .page-break { margin-top: 3em; padding-top: 2em; border-top: 2px dashed var(--border); }
+  .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    margin-right: 6px;
+  }
+  @media (max-width: 700px) {
+    body { padding: 16px; }
+    .cover h1 { font-size: 2.2em; }
+    th, td { padding: 5px 8px; font-size: 0.85em; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <h1>Cross Encoders</h1>
+  <div class="divider"></div>
+  <p class="subtitle">From Absolute Beginner to Research Level</p>
+  <p class="tagline">With Applications to Duplicate Question Detection</p>
+  <p class="authors">Om Mistry &bull; Disu Makadiya &bull; Pushti Kansara</p>
+  <p style="margin-top:3em;font-size:0.9em;color:#999;">July 2026</p>
+</div>
+
+<div class="page-break"></div>
+
+<!-- TOC -->
+<h2>Table of Contents</h2>
+<div class="toc"><ol>
+  <li><span>Part 1: Why Cross Encoder Exists</span><span>3</span></li>
+  <li><span>Part 2: Transformers Recap</span><span>6</span></li>
+  <li><span>Part 3: Inside a Cross Encoder</span><span>10</span></li>
+  <li><span>Part 4: Tokenization in Detail</span><span>12</span></li>
+  <li><span>Part 5: Attention Mathematics</span><span>14</span></li>
+  <li><span>Part 6: Why Cross Encoder is Different</span><span>17</span></li>
+  <li><span>Part 7: The [CLS] Token</span><span>19</span></li>
+  <li><span>Part 8: Classification Head</span><span>21</span></li>
+  <li><span>Part 9: Training Pipeline</span><span>23</span></li>
+  <li><span>Part 10: Your Project in Detail</span><span>27</span></li>
+  <li><span>Part 11: Visualizations</span><span>30</span></li>
+  <li><span>Part 12: Common Mistakes</span><span>33</span></li>
+  <li><span>Part 13: Advanced Topics</span><span>36</span></li>
+  <li><span>Part 14: Research Level</span><span>40</span></li>
+  <li><span>Part 15: Code Walkthrough</span><span>43</span></li>
+  <li><span>Appendix: Quick Reference</span><span>50</span></li>
+</ol></div>
+
+<div class="page-break"></div>
+
+<h1>Part 1: Why Cross Encoder Exists</h1>
+
+<h2>The Problem: Semantic Similarity</h2>
+<p>You have two questions:</p>
+<pre>Q1: "What is Artificial Intelligence?"
+Q2: "Explain AI."</pre>
+<p>A human instantly knows these are duplicates. They ask the same thing. But to a computer, these are just strings of characters. <strong>Lexical similarity</strong> gives zero. <strong>Semantic similarity</strong> &mdash; the meaning &mdash; is high.</p>
+
+<h2>Bi-Encoder: The First Solution</h2>
+<p>Two identical transformers run independently:</p>
+<pre>Q1 &rarr; Transformer &rarr; Vector A (768-dim)
+Q2 &rarr; Transformer &rarr; Vector B (768-dim)
+Similarity = cosine(A, B)</pre>
+<p><strong>Why invented:</strong> Scalability. Encode 10M questions once, compare new query against all with FAISS.</p>
+<p><strong>What it cannot solve:</strong> The two questions never see each other. "Explain" never knows "What is" expresses the same intent.</p>
+
+<h2>Why Cosine Similarity Fails</h2>
+<ul>
+  <li><strong>Homonyms:</strong> "What is Python?" &mdash; snake vs language. Same vector.</li>
+  <li><strong>Negation:</strong> "enable" vs "disable" notifications &mdash; similar vectors, opposite meanings.</li>
+  <li><strong>Fine-grained:</strong> "GPU for gaming" vs "GPU for deep learning" &mdash; different intent.</li>
+</ul>
+
+<h2>Cross-Encoder: The Precision Solution</h2>
+<pre>[CLS] What is AI? [SEP] Explain AI. [SEP]
+                    &darr;
+              One Transformer
+                    &darr;
+           Classification Head
+                    &darr;
+           Probability: 0.97</pre>
+<p><strong>Why invented:</strong> Bi-Encoder loses cross-text interaction. Cross-Encoder allows every word in Q1 to attend to every word in Q2.</p>
+
+<h2>Comparison</h2>
+<table>
+  <tr><th>Property</th><th>Bi-Encoder</th><th>Cross-Encoder</th></tr>
+  <tr><td>Accuracy</td><td>Good</td><td>Excellent</td></tr>
+  <tr><td>Speed per pair</td><td>~1ms</td><td>10-100ms</td></tr>
+  <tr><td>Scalability</td><td>Billion-scale</td><td>Thousand-scale</td></tr>
+  <tr><td>Cross-attention</td><td>No</td><td>Yes</td></tr>
+</table>
+<p>In your project, the Cross-Encoder serves as the <strong>reranker</strong>.</p>
+
+<div class="page-break"></div>
+<h1>Part 2: Transformers Recap</h1>
+<p>A Cross-Encoder IS a Transformer with a classification head. The "cross-encoding" comes from input formatting.</p>
+
+<h2>2.1 Embedding Layer</h2>
+<pre>Embedding Matrix: [vocab_size x hidden_dim] = [128000 x 768]</pre>
+<p>A lookup table &mdash; the only place where tokens become vectors.</p>
+
+<h2>2.2 Tokenization</h2>
+<pre>"What is Artificial Intelligence?"
+    &darr; SentencePiece
+[2054, 2003, 19204, 1385, 1029]</pre>
+<p>DeBERTa-v3 uses <strong>SentencePiece</strong> (vocab: ~128,000).</p>
+
+<h2>2.3 Special Tokens</h2>
+<table>
+  <tr><th>Token</th><th>DeBERTa ID</th><th>Purpose</th></tr>
+  <tr><td>[CLS]</td><td>1</td><td>Classification &mdash; aggregates sequence info</td></tr>
+  <tr><td>[SEP]</td><td>2</td><td>Separates sentences</td></tr>
+  <tr><td>[PAD]</td><td>0</td><td>Padding to max length</td></tr>
+</table>
+
+<h2>2.4 Position Embeddings</h2>
+<p>DeBERTa uses <strong>relative position</strong> (disentangled attention). The model knows how far apart tokens are, not just absolute positions.</p>
+
+<h2>2.5 Attention (Single Head)</h2>
+<pre>Attention(Q, K, V) = softmax(Q x K^T / &radic;d_k) x V
+
+Q = X x W_Q  (Query: what is this token looking for?)
+K = X x W_K  (Key: what information does this token have?)
+V = X x W_V  (Value: the actual information to pass along)</pre>
+<p>"Explain" in Q2 attends to "What is" in Q1 &rarr; this is why Cross-Encoder works.</p>
+
+<h2>2.6 Multi-Head Attention</h2>
+<p>DeBERTa-v3-base: <strong>12 heads</strong>, each with d_k=64. Each head specializes:</p>
+<ul>
+  <li>Head 2: Semantic similarity ("Explain" &harr; "What is")</li>
+  <li>Head 3: Abbreviation recognition ("AI" &harr; "Artificial Intelligence")</li>
+  <li>Head 4: Negation detection</li>
+</ul>
+
+<h2>2.7 Feed-Forward + Residual + LayerNorm</h2>
+<pre>FFN(x) = GELU(x x W1 + b1) x W2 + b2   [768 &rarr; 3072 &rarr; 768]
+output = LayerNorm(x + Attention(x))
+output = LayerNorm(output + FFN(output))</pre>
+
+<h2>2.8 Encoder Stack</h2>
+<p>Layer 0: Embedding &rarr; Layers 1-12: Attention + FFN + Residual + LayerNorm</p>
+<ul>
+  <li>Early: Surface patterns, local syntax</li>
+  <li>Middle: Semantic roles</li>
+  <li>Late: High-level meaning, cross-sentence relationships</li>
+</ul>
+
+<div class="page-break"></div>
+<h1>Part 3: Inside a Cross Encoder</h1>
+<h2>The Complete Pipeline</h2>
+<pre>Question 1: "What is Artificial Intelligence?"
+Question 2: "Explain AI."
+
+         &darr;
+normalize_question (abbreviation expansion, typo fix, lowercase)
+         &darr;
+[CLS] what is AI (Artificial Intelligence) [SEP] explain AI [SEP]
+         &darr;
+Token IDs: [1, 10534, 322, 16723, 5826, ..., 2]
+         &darr;
+Embedding Matrix lookup &rarr; [18 x 768]
+         &darr;
+12 Layers of Multi-Head Self-Attention + FFN
+  "explain" attends to "what", "is", "AI", "Artificial Intelligence"
+         &darr;
+Final Hidden State: [18 x 768]
+         &darr;
+[CLS] vector (position 0): [1 x 768]
+         &darr;
+Linear(768 &rarr; 2) &rarr; logits: [-3.2, 1.8] &rarr; Softmax &rarr; [0.0067, 0.9933]
+         &darr;
+Probability: 0.9933 (duplicate)</pre>
+
+<div class="callout">
+<strong>Key Insight:</strong> Every token in Q2 attends to every token in Q1 through all 12 layers. The [CLS] token attends to ALL tokens from BOTH questions. In a Bi-Encoder, the [CLS] vectors are created in isolation.
+</div>
+
+<div class="page-break"></div>
+<h1>Part 4: Tokenization in Detail</h1>
+<h2>Approximate Tokenization</h2>
+<table>
+  <tr><th>Index</th><th>ID</th><th>Text</th></tr>
+  <tr><td>0</td><td>1</td><td>[CLS]</td></tr>
+  <tr><td>1</td><td>10534</td><td>what</td></tr>
+  <tr><td>2</td><td>322</td><td>is</td></tr>
+  <tr><td>3</td><td>16723</td><td>artificial</td></tr>
+  <tr><td>4</td><td>5826</td><td>intelligence</td></tr>
+  <tr><td>5</td><td>7</td><td>(</td></tr>
+  <tr><td>6</td><td>16723</td><td>artificial</td></tr>
+  <tr><td>7</td><td>5826</td><td>intelligence</td></tr>
+  <tr><td>8</td><td>8</td><td>)</td></tr>
+  <tr><td>9</td><td>2</td><td>[SEP]</td></tr>
+  <tr><td>10</td><td>8192</td><td>explain</td></tr>
+  <tr><td>11</td><td>365</td><td>ai</td></tr>
+  <tr><td>12</td><td>5</td><td>.</td></tr>
+  <tr><td>13</td><td>7</td><td>(</td></tr>
+  <tr><td>14</td><td>16723</td><td>artificial</td></tr>
+  <tr><td>15</td><td>5826</td><td>intelligence</td></tr>
+  <tr><td>16</td><td>8</td><td>)</td></tr>
+  <tr><td>17</td><td>2</td><td>[SEP]</td></tr>
+</table>
+
+<h2>Attention Mask</h2>
+<pre>[1, 1, ..., 1, 0, 0, ..., 0]
+ 18 real tokens   110 padding</pre>
+
+<h2>Final Tensors</h2>
+<pre>input_ids:      torch.Size([1, 128])
+attention_mask: torch.Size([1, 128])
+labels:         torch.Size([1]) &rarr; tensor([1])</pre>
+
+<h2>How tokenizer() Works</h2>
+<pre>encoding = tokenizer(q1, q2, max_length=128,
+    padding="max_length", truncation=True, return_tensors="pt")</pre>
+<p>Internally: [CLS] + q1 tokens + [SEP] + q2 tokens + [SEP] + [PAD] x remaining</p>
+
+<div class="page-break"></div>
+<h1>Part 5: Attention Mathematics</h1>
+
+<h2>Step 1: Create Q, K, V</h2>
+<pre>Q = X x W_Q    [18x768] x [768x64] = [18x64]
+K = X x W_K    [18x768] x [768x64] = [18x64]
+V = X x W_V    [18x768] x [768x64] = [18x64]</pre>
+
+<h2>Step 2-5: Score, Scale, Mask, Softmax</h2>
+<pre>Scores = Q x K^T / &radic;64         [18x18]
+Scores[mask==0] = -inf          (ignore padding)
+Weights = softmax(Scores, dim=1)  (each row sums to 1)</pre>
+
+<h2>Step 6: Weighted Sum</h2>
+<pre>Context_i = &Sigma;_j Weights[i][j] x V[j]</pre>
+
+<h2>Concrete: Attention from "explain"</h2>
+<table>
+  <tr><th>Token</th><th>Weight</th><th>Meaning</th></tr>
+  <tr><td>"what"</td><td>0.15</td><td rowspan="2">Matches intent</td></tr>
+  <tr><td>"is"</td><td>0.12</td></tr>
+  <tr><td>"explain" (self)</td><td>0.20</td><td>Self-attention</td></tr>
+  <tr><td>"ai"</td><td>0.10</td><td>Topic recognition</td></tr>
+  <tr><td>"artificial"+"intelligence"</td><td>0.16</td><td>Abbreviation match</td></tr>
+</table>
+<p>Through 12 layers: [CLS] encodes the full relationship.</p>
+
+<div class="page-break"></div>
+<h1>Part 6: Why Cross Encoder is Different</h1>
+
+<h2>Bi-Encoder</h2>
+<pre>Q1 &rarr; Transformer &rarr; [CLS]_1 = f(Q1)   &mdash; knows NOTHING about Q2
+Q2 &rarr; Transformer &rarr; [CLS]_2 = f(Q2)   &mdash; knows NOTHING about Q1
+Similarity = cosine([CLS]_1, [CLS]_2)</pre>
+
+<h2>Cross-Encoder</h2>
+<pre>[CLS] Q1 [SEP] Q2 [SEP] &rarr; Transformer &rarr; [CLS]_joint
+[CLS] attends to ALL tokens from BOTH questions
+[CLS]_joint = f(Q1, Q2) &mdash; encodes the RELATIONSHIP</pre>
+
+<h2>Two-Stage Architecture</h2>
+<pre>Stage 1 (Bi-Encoder): 10M docs &rarr; FAISS &rarr; 100 candidates
+Stage 2 (Cross-Encoder): Rerank 100 candidates &rarr; top-10</pre>
+<p>Your project uses this exact pattern: E5/BGE/MPNet retrieve, Cross-Encoder reranks.</p>
+
+<div class="page-break"></div>
+<h1>Part 7: The [CLS] Token</h1>
+
+<p>[CLS] is a special token at position 0. Initially a random vector. Through training, it learns to aggregate information via attention.</p>
+
+<h2>Flow Through Layers</h2>
+<pre>Layer 1:   [CLS] nearby attention &rarr; local syntax
+Layer 2-3: [CLS] attends entities &rarr; "AI", "Artificial Intelligence"
+Layer 4-6: [CLS] attends intent words &rarr; "What is", "Explain"
+Layer 7-9: [CLS] cross-sentence relationships
+Layer 10-12: [CLS] refines &rarr; final classification features</pre>
+
+<h2>Why [CLS] Not Mean Pooling</h2>
+<ul>
+  <li><strong>Selective:</strong> [CLS] learns to emphasize task-relevant words</li>
+  <li><strong>Relationship encoding:</strong> Captures cross-question intent matching</li>
+  <li><strong>No dilution:</strong> Mean pooling dilutes the "AI"&harr;"Artificial Intelligence" signal</li>
+</ul>
+
+<div class="page-break"></div>
+<h1>Part 8: Classification Head</h1>
+
+<pre>[CLS] [768]
+  &darr;
+Dropout(p=0.1)
+  &darr;
+Linear(768 &rarr; 2): logits = x W^T + b
+  &darr;
+Softmax &rarr; [p_non, p_dup]
+  &darr;
+predicted = argmax &rarr; 0 or 1
+prob_dup &gt;= threshold &rarr; binary prediction</pre>
+
+<h2>Softmax Example</h2>
+<pre>logits = [-3.2, 1.8]
+softmax[0] = exp(-3.2) / (exp(-3.2) + exp(1.8)) = 0.0067
+softmax[1] = exp(1.8) / (exp(-3.2) + exp(1.8)) = 0.9933</pre>
+
+<h2>Threshold Tuning</h2>
+<pre>for thresh in np.linspace(0.1, 0.9, 81):
+    preds = (probs &gt;= thresh).astype(int)
+    f1 = f1_score(true_labels, preds)
+    if f1 &gt; best_f1: best_f1 = f1; best_thresh = thresh</pre>
+
+<div class="page-break"></div>
+<h1>Part 9: Training Pipeline</h1>
+
+<h2>Dataset</h2>
+<table>
+  <tr><th>Split</th><th>Ratio</th><th>Samples</th></tr>
+  <tr><td>Train</td><td>80%</td><td>~320k</td></tr>
+  <tr><td>Validation</td><td>10%</td><td>~40k</td></tr>
+  <tr><td>Test</td><td>10%</td><td>~40k</td></tr>
+</table>
+
+<h2>Example Pairs</h2>
+<pre>Positive: "How to learn Python?" / "Best way to learn Python?" &rarr; 1
+Negative: "How to learn Python?" / "Capital of France?" &rarr; 0
+Hard Neg: "Install TF on Windows" / "Install TF on Mac" &rarr; 0</pre>
+
+<h2>Loss</h2>
+<pre>CrossEntropyLoss = -&Sigma; y_c log(p_c)
+class_weights = [1.0, n_neg/n_pos]  &rarr; counters imbalance</pre>
+
+<h2>AdamW Optimizer</h2>
+<pre>optimizer = AdamW(model.parameters(), lr=2e-5, weight_decay=0.01, fused=True)</pre>
+
+<h2>Linear Warmup Scheduler</h2>
+<pre>total_steps = len(train_loader) * epochs // grad_accum_steps
+warmup_steps = int(total_steps * 0.1)
+scheduler = get_linear_schedule_with_warmup(optimizer, ...)</pre>
+
+<h2>Training Loop</h2>
+<pre>for epoch in range(num_epochs):
+    for batch in train_loader:
+        loss = loss_fn(model(batch).logits, batch.labels) / grad_accum
+        loss.backward()
+        if step % grad_accum == 0:
+            clip_grad_norm_(1.0)
+            optimizer.step()
+            scheduler.step()
+            optimizer.zero_grad()
+
+    # Validate
+    model.eval()
+    with torch.no_grad():
+        compute_metrics(val_loader)
+    if val_f1 > best_val_f1:
+        model.save_pretrained(output_path)</pre>
+
+<div class="page-break"></div>
+<h1>Part 10: Your Project in Detail</h1>
+
+<h2>Data Flow</h2>
+<pre>cleaned_quora.parquet &rarr; get_quora_splits() &rarr; train/val/test
+  &darr;
+normalize_question() each q1, q2:
+  - Lowercase, abbrev expansion, typo fix, punctuation normalize
+  &darr;
+tokenizer(q1, q2, max_length=128) &rarr; input_ids, attention_mask
+  &darr;
+Pre-tokenize &rarr; TensorDataset &rarr; DataLoader(batch=16)
+  &darr;
+GPU forward/backward loop</pre>
+
+<h2>How Weights Update</h2>
+<p>Gradient flows through all 12 layers + embedding + classification head. Each of the ~184M parameters gets an AdamW update. The classification head (randomly initialized) learns fastest.</p>
+
+<h2>Why Each Hyperparameter Matters</h2>
+<ul>
+  <li><strong>max_length=128:</strong> Quora avg ~40 tokens. Too small &rarr; truncation. Too large &rarr; 4x GPU memory.</li>
+  <li><strong>batch_size=16:</strong> Small &rarr; noisy gradients. Large &rarr; sharp minima.</li>
+  <li><strong>lr=2e-5:</strong> Pre-trained DeBERTa needs small updates. 5e-4 destroys knowledge.</li>
+  <li><strong>weight_decay=0.01:</strong> L2 regularization. Prevents overfitting.</li>
+</ul>
+
+<h2>Why Preprocessing Matters</h2>
+<ul>
+  <li><strong>Abbreviation expansion:</strong> "AI" &rarr; "AI (Artificial Intelligence)". Lets model match "AI" to "Artificial Intelligence". Without it: model sees different tokens.</li>
+  <li><strong>Typo fixing:</strong> "artifical" &rarr; "artificial". Without it: subword fragmentation.</li>
+  <li><strong>Consistency:</strong> Training and inference must use identical preprocessing.</li>
+</ul>
+
+<div class="page-break"></div>
+<h1>Part 11: Visualizations</h1>
+
+<h2>Training Pipeline</h2>
+<pre>Data &rarr; normalize &rarr; tokenize &rarr; TensorDataset &rarr; DataLoader
+  &darr;
+GPU: forward &rarr; loss &rarr; backward &rarr; optimizer.step() &rarr; scheduler.step()
+  &darr;
+Validate each epoch &rarr; save if best F1
+  &darr;
+Final: evaluate on test set, save metrics JSON</pre>
+
+<h2>Inference Pipeline</h2>
+<pre>q1, q2 &rarr; normalize &rarr; tokenize &rarr; model() &rarr; softmax &rarr; prob_dup
+  &darr;
+prob_dup &gt;= threshold &rarr; "Duplicate" / "Non-Duplicate"</pre>
+
+<h2>Loss Calculation</h2>
+<table>
+  <tr><th></th><th>Predicted Non-Dup</th><th>Predicted Dup</th></tr>
+  <tr><td>Actual Non-Dup</td><td>TN (loss=0.01)</td><td>FP (loss=4.61)</td></tr>
+  <tr><td>Actual Dup</td><td>FN (loss=4.61)</td><td>TP (loss=0.01)</td></tr>
+</table>
+
+<h2>Checkpoint Strategy</h2>
+<pre>Epoch 1: Val F1=0.82 &rarr; save (best so far)
+Epoch 2: Val F1=0.84 &rarr; save (new best)
+Epoch 3: Val F1=0.83 &rarr; no save, patience-- &rarr; early stop
+Final model = epoch 2 checkpoint</pre>
+
+<div class="page-break"></div>
+<h1>Part 12: Common Mistakes</h1>
+
+<h2>Impact Summary</h2>
+<table>
+  <tr><th>Mistake</th><th>Impact</th><th>Why</th></tr>
+  <tr><td>Overfitting</td><td>-5% F1</td><td>Memorizes, does not generalize</td></tr>
+  <tr><td>Threshold on test</td><td>+1-2% F1 (optimistic)</td><td>Leaks test info into decision</td></tr>
+  <tr><td>Data leakage</td><td>+5-10% F1 (optimistic)</td><td>Model sees test during training</td></tr>
+  <tr><td>Wrong preprocessing</td><td>-10-20% F1</td><td>Token distributions mismatch</td></tr>
+  <tr><td>Wrong tokenizer</td><td>Model breaks</td><td>Different vocabulary</td></tr>
+  <tr><td>Wrong checkpoint</td><td>-3-10% F1</td><td>Uses pre-trained not fine-tuned</td></tr>
+  <tr><td>No model.eval()</td><td>-1-3% F1</td><td>Dropout randomness during inference</td></tr>
+</table>
+
+<h2>Key Rules</h2>
+<ul>
+  <li>Never tune threshold on test set &mdash; use validation</li>
+  <li>Always use identical preprocessing in training and inference</li>
+  <li>Always load fine-tuned checkpoint, not base model</li>
+  <li>Always call model.eval() + torch.no_grad() for inference</li>
+</ul>
+
+<div class="page-break"></div>
+<h1>Part 13: Advanced Topics</h1>
+
+<h2>Layer-wise Learning Rate Decay</h2>
+<pre>Embedding:     lr x 0.1   (almost frozen)
+Layers 1-6:    lr x 0.5   (syntax)
+Layers 7-11:   lr x 0.9   (task-specific)
+Layer 12:      lr x 1.0   (fine-tune)
+Classifier:    lr x 10.0  (random init, needs fast learning)</pre>
+
+<h2>Mixed Precision (FP16)</h2>
+<p>40% less memory, 2-3x speedup. Uses GradScaler to prevent underflow (gradients &lt; 6e-8 become 0 in FP16).</p>
+
+<h2>Gradient Checkpointing</h2>
+<p>50% memory reduction at 20% speed cost. Recomputed activations during backward instead of storing them.</p>
+
+<h2>EMA (Exponential Moving Average)</h2>
+<p>shadow = decay * shadow + (1-decay) * weights. Smooths trajectory, finds flatter minima. +0.5-1% F1.</p>
+
+<h2>Temperature Scaling</h2>
+<pre>softmax(logits / T)   T=1: default
+T>1: softer (less confident)
+T<1: sharper (more confident)</pre>
+
+<h2>Label Smoothing</h2>
+<p>Label 1 &rarr; [0.05, 0.95] instead of [0, 1]. Prevents overconfidence. +0.5-1% F1.</p>
+
+<h2>Hard Negative Mining</h2>
+<p>Strategies: BM25 top-100 non-duplicates, Bi-Encoder high-similarity non-duplicates, model mistakes. Without hard negatives, model cheats with word overlap.</p>
+
+<h2>Knowledge Distillation</h2>
+<p>Teacher (DeBERTa-v3-large, 304M) &rarr; Student (MiniLM-L6, 80M). Loss = CE(student, label) + KL(student/T, teacher/T). Soft labels contain more information.</p>
+
+<h2>Technique Selection Guide</h2>
+<table>
+  <tr><th>Technique</th><th>When</th><th>Gain</th></tr>
+  <tr><td>Layer-wise LR</td><td>Fine-tuning large models</td><td>+1-2% F1</td></tr>
+  <tr><td>Mixed precision</td><td>GPU with Tensor Cores</td><td>2x speed</td></tr>
+  <tr><td>EMA</td><td>End of training</td><td>+0.5-1% F1</td></tr>
+  <tr><td>Hard negatives</td><td>Subtle distinctions</td><td>+2-5% F1</td></tr>
+  <tr><td>Distillation</td><td>Need fast inference</td><td>10x speed, -1-2% F1</td></tr>
+</table>
+
+<div class="page-break"></div>
+<h1>Part 14: Research Level</h1>
+
+<h2>Google</h2>
+<p>Two-stage search: Bi-Encoder retrieves 1000 candidates, Cross-Encoder (T5/PaLM) reranks. Trained on user click data rather than hand labels.</p>
+
+<h2>Microsoft (DeBERTa)</h2>
+<p><strong>Disentangled attention:</strong> A_ij = content_attention + relative_position_attention. Attention weight depends on BOTH content and distance. DeBERTa-v3 uses ELECTRA-style pre-training (replaced token detection).</p>
+
+<h2>OpenAI</h2>
+<p>Content filtering: (query, safety_policy) &rarr; violation score. Reward modeling: (prompt, response) &rarr; helpfulness score for RLHF.</p>
+
+<h2>Meta</h2>
+<p>Recommendation: [CLS] user-watching-X [SEP] recommended-Y [SEP] &rarr; likelihood score. Trained on engagement data.</p>
+
+<h2>Production Architecture</h2>
+<pre>                    LOAD BALANCER
+                         |
+                    QUERY PARSER
+                  (normalize, expand)
+                         |
+              +----------+----------+
+              |      RETRIEVAL      |
+              | Bi-Encoder + FAISS  |
+              | 10M &rarr; 100 cands    |
+              +----------+----------+
+                         |
+              +----------+----------+
+              | CROSS-ENC RERANKER  |
+              | 100 &rarr; top-10      |
+              | 4xA100, batch inf   |
+              +----------+----------+
+                         |
+                     RESULTS</pre>
+
+<h2>Inference Optimizations</h2>
+<ul>
+  <li>Batching: process 100 candidates in one forward pass</li>
+  <li>ONNX/TensorRT: 2-5x speedup</li>
+  <li>INT8 quantization: 4x memory reduction, &lt;1% accuracy loss</li>
+  <li>KV-cache: cache intermediate representations for real-time</li>
+</ul>
+
+<div class="page-break"></div>
+<h1>Part 15: Code Walkthrough</h1>
+<p>Complete line-by-line analysis of <code>scripts/train_cross_encoder.py</code>.</p>
+
+<h2>Imports (Lines 1-41)</h2>
+<pre>from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from torch.optim import AdamW
+from sklearn.metrics import accuracy_score, f1_score, ...</pre>
+<p>Key: AutoModelForSequenceClassification adds a classification head (num_labels=2). AutoTokenizer loads DeBERTa-v3's SentencePiece tokenizer.</p>
+
+<h2>QuoraPairDataset (Lines 49-87)</h2>
+<pre>class QuoraPairDataset(Dataset):
+    def __getitem__(self, idx):
+        encoding = tokenizer(q1, q2, max_length=128,
+            padding="max_length", truncation=True, return_tensors="pt")
+        return {"input_ids": encoding["input_ids"].squeeze(0),
+                "attention_mask": encoding["attention_mask"].squeeze(0),
+                "labels": torch.tensor(label, dtype=torch.long)}</pre>
+<p>The tokenizer(q1, q2) call creates [CLS] q1 [SEP] q2 [SEP] format. squeeze(0) removes batch dimension. If removed, DataLoader creates [batch, 1, 128] instead of [batch, 128].</p>
+
+<h2>prepare_data (Lines 90-133)</h2>
+<pre>train_q1s = [normalize_question(q, expand_abbrevs=True) for q in train_df["q1"]]</pre>
+<p>Critical: normalize_question with expand_abbrevs=True. Without it, "AI" and "Artificial Intelligence" would have different token IDs. Expect 2-5% F1 drop.</p>
+
+<h2>Pre-tokenization (Lines 200-233)</h2>
+<pre>train_input_ids = []
+for i in range(len(train_dataset)):
+    train_input_ids.append(train_dataset[i]["input_ids"])
+train_tensor_dataset = TensorDataset(torch.stack(train_input_ids), ...)</pre>
+<p>Pre-tokenizes ALL data into GPU memory. Without this: each epoch re-tokenizes 200k pairs (CPU bottleneck). Training 2-3x slower.</p>
+
+<h2>GPU Optimizations (Lines 184-188)</h2>
+<pre>torch.backends.cudnn.benchmark = True
+torch.backends.cuda.matmul.allow_tf32 = True</pre>
+<p>cudnn.benchmark: auto-tunes convolution algorithms. TF32: 19-bit precision on Ampere GPUs. Without: 20-40% slower.</p>
+
+<h2>Class-Weighted Loss (Lines 271-278)</h2>
+<pre>weight_pos = n_neg / n_pos    # e.g., 1.70
+class_weights = torch.tensor([1.0, weight_pos])
+loss_fn = CrossEntropyLoss(weight=class_weights)</pre>
+<p>Counters class imbalance. Errors on duplicate pairs penalized 1.7x more. Without: model biased toward majority class.</p>
+
+<h2>Training Loop (Lines 322-367)</h2>
+<pre>for epoch in range(num_epochs):
+    for step, batch in enumerate(train_loader):
+        loss = loss_fn(outputs.logits, labels) / gradient_accumulation_steps
+        loss.backward()
+        if (step + 1) % gradient_accumulation_steps == 0:
+            clip_grad_norm_(1.0)    # prevents gradient explosion
+            optimizer.step()
+            scheduler.step()
+            optimizer.zero_grad()</pre>
+<p>Gradient clipping at 1.0: if gradient norm > 1.0, scale down. Without: one bad batch can destabilize training. gradient_accumulation simulates larger batch size.</p>
+
+<h2>Validation (Lines 380-418)</h2>
+<pre>model.eval()       # disable dropout
+with torch.no_grad():    # no gradient computation
+    probs = torch.softmax(outputs.logits, dim=1)</pre>
+<p>model.eval(): Without it, dropout active &rarr; different results each run. torch.no_grad(): Without it, 2x memory usage for computation graph.</p>
+
+<h2>Model Saving (Lines 421-431)</h2>
+<pre>if val_f1 > best_val_f1:
+    model.save_pretrained(output_path)
+    tokenizer.save_pretrained(output_path)</pre>
+<p>Saves only when validation F1 improves. The tokenizer must be saved alongside the model for inference to work.</p>
+
+<h2>Test Evaluation (Lines 483-498)</h2>
+<pre>for thresh in np.linspace(0.1, 0.9, 81):
+    preds = (np.array(test_probs) >= thresh).astype(int)
+    f1 = f1_score(test_labels, preds)</pre>
+<p>Finds threshold that maximizes F1 on test set. <strong>Note:</strong> This leaks test information. For strict evaluation, tune threshold on validation set and evaluate once on test.</p>
+
+<h2>CLI Entry Point (Lines 533-576)</h2>
+<pre>python scripts/train_cross_encoder.py --epochs 5 --batch-size 16 --lr 3e-5</pre>
+<p>All hyperparameters configurable from command line. No hardcoded values hidden in the code.</p>
+
+<div class="page-break"></div>
+<h1>Appendix: Quick Reference</h1>
+
+<h2>Key Equations</h2>
+<pre>Attention(Q,K,V) = softmax(QxK^T/&radic;d_k)xV
+FFN(x) = GELU(xW1+b1)W2+b2
+CrossEntropy = -&Sigma; y log(p)
+AdamW: &theta; = &theta; - lr x m/(&radic;v+&epsilon;) - lr x &lambda; x &theta;</pre>
+
+<h2>Recommended Hyperparameters (DeBERTa-v3-base)</h2>
+<table>
+  <tr><th>Parameter</th><th>Value</th><th>Range</th></tr>
+  <tr><td>Learning rate</td><td>2e-5</td><td>1e-5 to 5e-5</td></tr>
+  <tr><td>Batch size</td><td>16-32</td><td>With gradient accumulation</td></tr>
+  <tr><td>Epochs</td><td>3-5</td><td>Early stop when val plateaus</td></tr>
+  <tr><td>Warmup</td><td>10%</td><td>Of total steps</td></tr>
+  <tr><td>Weight decay</td><td>0.01</td><td>L2 strength</td></tr>
+  <tr><td>Max length</td><td>128</td><td>Quora avg ~40 tokens</td></tr>
+  <tr><td>Grad clipping</td><td>1.0</td><td>Prevents explosion</td></tr>
+</table>
+
+<h2>Expected Metrics (Quora)</h2>
+<table>
+  <tr><th>Model</th><th>Test F1</th></tr>
+  <tr><td>TF-IDF + LR/SVM</td><td>~0.72</td></tr>
+  <tr><td>DistilBERT</td><td>~0.83</td></tr>
+  <tr><td>E5-base-v2 + LR head</td><td>~0.80</td></tr>
+  <tr><td>BGE-base-en-v1.5 + LR head</td><td>~0.82</td></tr>
+  <tr><td>MPNet-base-v2 + LR head</td><td>~0.82</td></tr>
+  <tr><td>Cross-Encoder (DeBERTa-v3)</td><td><strong>~0.84-0.88</strong></td></tr>
+  <tr><td>Ensemble (all models)</td><td>~0.86-0.90</td></tr>
+</table>
+
+<h2>Training Progress Tracking</h2>
+<pre>Loss trajectory (CrossEntropy):
+  Start: ~0.69 (random, = ln(2))
+  Epoch 1: ~0.35-0.45
+  Epoch 3: ~0.15-0.25
+
+Val F1 (DeBERTa-v3 Cross-Encoder):
+  Epoch 1: ~0.78-0.82
+  Epoch 2: ~0.82-0.86
+  Epoch 3: ~0.83-0.87</pre>
+
+<h2>Files Created</h2>
+<pre>models/cross-encoder-quora/
+  +-- config.json           (model configuration)
+  +-- model.safetensors     (trained weights)
+  +-- tokenizer.json        (SentencePiece model)
+  +-- tokenizer_config.json (tokenizer settings)
+results/embedding_models/
+  +-- cross_encoder_metrics.json (test metrics)</pre>
+
+<div style="text-align:center;margin:4em 0;color:#999;">
+<p><em>End of Guide</em></p>
+<p style="font-size:0.85em;margin-top:2em;">Generated July 2026 for the Duplicate Question NLP project</p>
+</div>
+
+</body>
+</html>
