@@ -11,7 +11,7 @@ class TestStreamlitSmoke:
     def test_app_module_imports(self):
         import importlib
 
-        import app.app as app_module
+        import app._entry as app_module
 
         importlib.reload(app_module)
         assert app_module is not None
@@ -159,6 +159,6 @@ class TestStreamlitSmoke:
             with patch("streamlit.markdown"):
                 with patch("streamlit.selectbox", return_value="Home"):
                     with patch("streamlit.info"):
-                        import app.app
+                        import app._entry
 
-                        assert app.app is not None
+                        assert app._entry is not None

@@ -30,13 +30,13 @@ def run_app() -> None:
     _ensure_project_root()
     import subprocess
 
-    app_path = Path(__file__).resolve().parent.parent.parent / "app" / "app.py"
-    if not app_path.exists():
-        print(f"Error: app.py not found at {app_path}")
+    entry_path = Path(__file__).resolve().parent.parent.parent / "app" / "_entry.py"
+    if not entry_path.exists():
+        print(f"Error: app entry point not found at {entry_path}")
         sys.exit(1)
 
-    print(f"Starting Streamlit dashboard from {app_path}...")
-    cmd = [sys.executable, "-m", "streamlit", "run", str(app_path)]
+    print(f"Starting Streamlit dashboard from {entry_path}...")
+    cmd = [sys.executable, "-m", "streamlit", "run", str(entry_path)]
     subprocess.run(cmd)
 
 
