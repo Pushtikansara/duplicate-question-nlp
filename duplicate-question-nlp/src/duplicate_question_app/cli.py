@@ -95,7 +95,7 @@ def predict() -> None:
         print(f"Predictions saved to {output_path}")
     else:
         result_df.to_csv(input_path.parent / f"{input_path.stem}_predictions.csv", index=False)
-        print(f"Predictions saved to {input_path.parent / input_path.stem + '_predictions.csv'}")
+        print(f"Predictions saved to {input_path.parent / f'{input_path.stem}_predictions.csv'}")
 
     acc = None
     if "label" in df.columns:

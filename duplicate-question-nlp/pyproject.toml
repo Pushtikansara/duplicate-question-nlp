@@ -207,4 +207,33 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short -p no:warnings"
+addopts = "-v --tb=short -p no:warnings --strict-markers"
+markers = [
+    "fast: Quick unit tests (default)",
+    "slow: Tests that may take longer to run",
+    "gpu: Tests requiring GPU hardware",
+    "integration: Tests that cross module boundaries",
+    "smoke: Lightweight smoke/sanity checks",
+    "regression: Golden-output regression tests",
+    "streamlit: Streamlit-specific smoke tests",
+    "cli: Command-line interface tests",
+]
+
+[tool.coverage.run]
+source = ["src/duplicate_question_app"]
+omit = [
+    "src/duplicate_question_app/__init__.py",
+    "src/duplicate_question_app/_version.py",
+]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+ignore_errors = true
