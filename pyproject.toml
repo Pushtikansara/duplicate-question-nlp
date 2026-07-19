@@ -95,6 +95,10 @@ dqd = "duplicate_question_app.cli:main"
 dqd-app = "duplicate_question_app.cli:run_app"
 dqd-predict = "duplicate_question_app.cli:predict"
 dqd-benchmark = "duplicate_question_app.cli:benchmark"
+dqd-doctor = "duplicate_question_app.cli:_run_doctor"
+dqd-health = "duplicate_question_app.cli:_run_health"
+dqd-validate = "duplicate_question_app.cli:_run_validate"
+dqd-config = "duplicate_question_app.cli:_run_config"
 
 [tool.setuptools.packages.find]
 where = ["src"]

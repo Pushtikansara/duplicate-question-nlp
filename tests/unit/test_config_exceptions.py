@@ -155,6 +155,9 @@ class TestExceptionHierarchy:
             "PreprocessingError",
             "ArtifactError",
             "LinguistError",
+            "ValidationError",
+            "CacheError",
+            "RuntimeDiagnosticsError",
         }
         assert exc_names == expected
 

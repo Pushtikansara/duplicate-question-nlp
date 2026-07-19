@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import logging
 import logging.handlers
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from duplicate_question_app._config.loader import ENV_PREFIX, get_config
 
@@ -40,12 +42,18 @@ def configure_logging(config_dir: Path | None = None, project_root: Path | None 
         console_level = getattr(logging, console_level_name, logging.INFO)
         ch = logging.StreamHandler(sys.stdout)
         ch.setLevel(console_level)
-        ch.setFormatter(
-            logging.Formatter(
-                console_cfg.get("format", fmt),
-                datefmt=datefmt,
+
+        # Allow JSON format
+        console_format = console_cfg.get("format", fmt)
+        if console_cfg.get("json", False):
+            ch.setFormatter(_JsonFormatter(console_format, datefmt=datefmt))
+        else:
+            ch.setFormatter(
+                logging.Formatter(
+                    console_format,
+                    datefmt=datefmt,
+                )
             )
-        )
         root_logger.addHandler(ch)
 
     # File handler
@@ -64,12 +72,18 @@ def configure_logging(config_dir: Path | None = None, project_root: Path | None 
             backupCount=backup_count,
         )
         fh.setLevel(file_level)
-        fh.setFormatter(
-            logging.Formatter(
-                file_cfg.get("format", fmt),
-                datefmt=datefmt,
+
+        # Allow JSON format for file handler too
+        file_format = file_cfg.get("format", fmt)
+        if file_cfg.get("json", False):
+            fh.setFormatter(_JsonFormatter(file_format, datefmt=datefmt))
+        else:
+            fh.setFormatter(
+                logging.Formatter(
+                    file_format,
+                    datefmt=datefmt,
+                )
             )
-        )
         root_logger.addHandler(fh)
 
     # Module-specific levels
@@ -77,6 +91,39 @@ def configure_logging(config_dir: Path | None = None, project_root: Path | None 
     for module_name, module_level_name in modules_cfg.items():
         module_level = getattr(logging, module_level_name.upper(), logging.INFO)
         logging.getLogger(module_name).setLevel(module_level)
+
+
+class _JsonFormatter(logging.Formatter):
+    """JSON log formatter for structured logging.
+
+    Produces machine-parseable JSON log lines:
+    {"timestamp": "...", "level": "INFO", "logger": "...", "message": "...", ...}
+
+    Enable in configs/logging.yaml by setting `json: true` on a handler.
+    """
+
+    def __init__(self, fmt: str, datefmt: str | None = None):
+        super().__init__(fmt, datefmt=datefmt)
+        self._fmt = fmt
+
+    def format(self, record: logging.LogRecord) -> str:
+        log_entry: dict[str, Any] = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+        }
+        if record.exc_info and record.exc_info[0]:
+            log_entry["exception"] = {
+                "type": record.exc_info[0].__name__,
+                "message": str(record.exc_info[1]),
+            }
+        if hasattr(record, "context") and record.context:
+            log_entry["context"] = record.context
+        return json.dumps(log_entry, default=str)
 
 
 def _basic_fallback() -> None:

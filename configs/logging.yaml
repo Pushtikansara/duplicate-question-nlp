@@ -15,13 +15,17 @@ console:
   enabled: true
   level: INFO
   format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  # Set json: true to enable structured JSON output (machine-parseable)
+  json: false
 
-# File handler
+# File handler (disabled by default — enable by setting enabled: true)
 file:
   enabled: false
   level: DEBUG
   path: logs/duplicate_question_app.log
   format: "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s"
+  # Set json: true to enable JSON-format log files
+  json: false
   max_bytes: 10485760  # 10MB
   backup_count: 5
 
