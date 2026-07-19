@@ -53,7 +53,7 @@ class EmbeddingCache:
 
     def _make_key(self, model_name: str, text: str) -> str:
         """Create cache key from model name and text hash."""
-        text_hash = hashlib.md5(text.encode()).hexdigest()[:16]
+        text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
         return f"{model_name}:{text_hash}"
 
     def get(self, model_name: str, text: str) -> np.ndarray | None:

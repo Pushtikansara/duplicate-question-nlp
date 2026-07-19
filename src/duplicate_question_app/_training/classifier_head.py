@@ -413,7 +413,7 @@ def predict_with_mlp(
     if mlp_head is None and weights_path is not None:
         input_dim = features.shape[1]
         mlp_head = EmbeddingMLP(input_dim=input_dim).to(device)
-        mlp_head.load_state_dict(torch.load(weights_path, map_location=device))
+        mlp_head.load_state_dict(torch.load(weights_path, map_location=device, weights_only=True))
 
     if mlp_head is None:
         raise ValueError("Either mlp_head or weights_path must be provided")
@@ -462,7 +462,7 @@ def batch_predict_with_mlp(
     if mlp_model is None and weights_path is not None:
         input_dim = 3072
         mlp_model = EmbeddingMLP(input_dim=input_dim).to(device)
-        mlp_model.load_state_dict(torch.load(weights_path, map_location=device))
+        mlp_model.load_state_dict(torch.load(weights_path, map_location=device, weights_only=True))
 
     if mlp_model is None:
         raise ValueError("Either mlp_head or weights_path must be provided")

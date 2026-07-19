@@ -100,7 +100,7 @@ class EmbeddingCache:
 
     def _make_key(self, model_name: str, text: str, normalize: bool = True) -> str:
         """Create cache key from model name and text hash."""
-        text_hash = hashlib.md5(text.encode()).hexdigest()[:16]
+        text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
         return f"{model_name}:{text_hash}:{int(normalize)}"
 
     def get_embedding(
@@ -205,7 +205,7 @@ class PreprocessingCache:
         # Hash text + options
         options_str = "".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
         content = f"{text}|{options_str}"
-        return hashlib.md5(content.encode()).hexdigest()
+        return hashlib.sha256(content.encode()).hexdigest()
 
     def stats(self) -> CacheStats:
         return self._cache.stats()
@@ -355,7 +355,7 @@ def memoize(maxsize: int = 128):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            key = hashlib.md5(f"{args}|{kwargs}".encode()).hexdigest()
+            key = hashlib.sha256(f"{args}|{kwargs}".encode()).hexdigest()
             cached = cache.get(key)
             if cached is not None:
                 return cached

@@ -61,7 +61,7 @@ def _get_hf_cache_path(model_key: str) -> str | None:
         for repo in cache.repos:
             if model_key.replace("/", "--") in str(repo.repo_id) or model_key in str(repo.repo_id):
                 return str(repo.repo_path)
-    except Exception:
+    except (OSError, ImportError):
         pass
     # Try common cache locations with config overrides
     home = Path.home()
@@ -93,7 +93,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         from duplicate_question_app.config import resolve_model_selection
 
         resolution = resolve_model_selection(paths)
-    except Exception:
+    except (FileNotFoundError, RuntimeError):
         pass
 
     # Check HF cache for sentence transformer models

@@ -13,7 +13,11 @@ from duplicate_question_app.config import (
     is_new_embedding_model,
     resolve_model_selection,
 )
-from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
+from duplicate_question_app.inference import (
+    DuplicateQuestionInferenceService,
+    ModelArtifactsNotFoundError,
+    load_model_and_tokenizer,
+)
 from duplicate_question_app.week2_inference import Week2InferenceService, is_week2_model
 
 
@@ -80,17 +84,44 @@ def get_inference_service(_cache_key: str = "default") -> tuple[Any, Any]:
     try:
         model, tokenizer, metadata = load_model_and_tokenizer(PATHS, model_version=selected)
     except (ValueError, FileNotFoundError):
-        model, tokenizer, metadata = load_model_and_tokenizer(PATHS)
+        try:
+            model, tokenizer, metadata = load_model_and_tokenizer(PATHS)
+        except (FileNotFoundError, ModelArtifactsNotFoundError):
+            fallback_metadata = {
+                "model_label": "No model available",
+                "model_version": "none",
+                "decision_threshold": _default_th,
+                "threshold_source": f"Default {_default_th:.2f} threshold (no artifacts)",
+                "device": _device,
+                "fallback_reason": "No loadable model artifacts found on disk.",
+                "load_errors": ("Week 4 and Week 3 directories are both missing or incomplete",),
+                "model_name": "",
+            }
+            _model_cache[cache_lookup_key] = (None, fallback_metadata)
+            return None, fallback_metadata
     service = DuplicateQuestionInferenceService(model=model, tokenizer=tokenizer, metadata=metadata)
     _model_cache[cache_lookup_key] = (service, metadata)
     return service, metadata
 
 
-def get_transformer_service(selected: str) -> tuple[DuplicateQuestionInferenceService, Any]:
+def get_transformer_service(selected: str) -> tuple[DuplicateQuestionInferenceService | None, Any]:
     try:
         model, tokenizer, metadata = load_model_and_tokenizer(PATHS, model_version=selected)
     except (ValueError, FileNotFoundError):
-        model, tokenizer, metadata = load_model_and_tokenizer(PATHS)
+        try:
+            model, tokenizer, metadata = load_model_and_tokenizer(PATHS)
+        except (FileNotFoundError, ModelArtifactsNotFoundError):
+            fallback_metadata: dict[str, Any] = {
+                "model_label": "No model available",
+                "model_version": "none",
+                "decision_threshold": _get_default_threshold(),
+                "threshold_source": "No model artifacts",
+                "device": "cpu",
+                "fallback_reason": "No loadable model artifacts found on disk.",
+                "load_errors": ("Week 4 and Week 3 directories are both missing or incomplete",),
+                "model_name": "",
+            }
+            return None, fallback_metadata
     service = DuplicateQuestionInferenceService(model=model, tokenizer=tokenizer, metadata=metadata)
     return service, metadata
 

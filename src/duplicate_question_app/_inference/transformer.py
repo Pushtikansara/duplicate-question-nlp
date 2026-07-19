@@ -78,8 +78,11 @@ def _resolve_threshold(paths: AppPaths) -> tuple[float, str]:
 
 
 def _load_hugging_face_artifacts(model_dir: Path) -> tuple[AutoModelForSequenceClassification, AutoTokenizer]:
-    tokenizer = AutoTokenizer.from_pretrained(model_dir)
-    model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+    # Load from local filesystem — no remote code execution needed.
+    # trust_remote_code=False prevents loading arbitrary HF Hub code.
+    # An explicit revision is not required for local directories.
+    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=False)
+    model = AutoModelForSequenceClassification.from_pretrained(model_dir, trust_remote_code=False)
     return model, tokenizer
 
 

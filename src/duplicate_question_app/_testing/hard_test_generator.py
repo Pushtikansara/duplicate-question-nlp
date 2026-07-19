@@ -1102,7 +1102,7 @@ def generate_hard_dataset(
             try:
                 generated = generator(category, templates, per_generator)
                 cat_pairs.extend(generated)
-            except Exception:
+            except (KeyError, ValueError):
                 continue
 
         # Also add some paraphrases (duplicates) for balance

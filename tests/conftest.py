@@ -25,7 +25,7 @@ def _model_artifacts_available() -> bool:
     try:
         paths = get_app_paths()
         return model_dir_has_artifacts(paths.week4_model_dir) or model_dir_has_artifacts(paths.week3_model_dir)
-    except Exception:
+    except (FileNotFoundError, OSError):
         return False
 
 

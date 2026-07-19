@@ -150,7 +150,7 @@ def _build_fingerprint(paths: list[Path]) -> str:
     payload = "|".join(
         f"{path.name}:{path.stat().st_size}:{path.stat().st_mtime_ns}" for path in sorted(existing_paths)
     )
-    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
 
 def inspect_model_dir(model_dir: Path, label: str) -> ModelDirectoryStatus:

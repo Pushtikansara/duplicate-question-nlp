@@ -247,7 +247,7 @@ def generate_decision_trace(
         emb = st_model.encode(q1_norm, normalize_embeddings=True)
         emb2 = st_model.encode(q2_norm, normalize_embeddings=True)
         trace.bge_similarity = float(emb @ emb2)
-    except Exception:
+    except (ImportError, RuntimeError):
         pass
 
     try:
@@ -255,7 +255,7 @@ def generate_decision_trace(
         emb = st_model.encode(f"query: {q1_norm}", normalize_embeddings=True)
         emb2 = st_model.encode(f"passage: {q2_norm}", normalize_embeddings=True)
         trace.e5_similarity = float(emb @ emb2)
-    except Exception:
+    except (ImportError, RuntimeError):
         pass
 
     try:
@@ -263,7 +263,7 @@ def generate_decision_trace(
         emb = st_model.encode(q1_norm, normalize_embeddings=True)
         emb2 = st_model.encode(q2_norm, normalize_embeddings=True)
         trace.mpnet_similarity = float(emb @ emb2)
-    except Exception:
+    except (ImportError, RuntimeError):
         pass
 
     # Cross-encoder score
@@ -273,7 +273,7 @@ def generate_decision_trace(
         if len(scores) >= 3:
             contra, entail = float(scores[0]), float(scores[2])
             trace.cross_encoder_score = entail / (contra + entail) if (contra + entail) > 0.01 else 0.5
-    except Exception:
+    except (ImportError, RuntimeError):
         pass
 
     # Week 2 models
@@ -284,7 +284,7 @@ def generate_decision_trace(
             trace.lr_prob = prob_dup
             _, prob_dup = w2.predict_proba(q1, q2, "TF-IDF + Linear SVM (Week 2)")
             trace.svm_prob = prob_dup
-    except Exception:
+    except FileNotFoundError:
         pass
 
     # Week 3/4 transformer models
@@ -297,7 +297,7 @@ def generate_decision_trace(
                 trace.distilbert_w3_prob = prob_dup
             else:
                 trace.distilbert_w4_prob = prob_dup
-        except Exception:
+        except (FileNotFoundError, RuntimeError):
             pass
 
     # TF-IDF similarity (cosine similarity between TF-IDF vectors)
@@ -311,7 +311,7 @@ def generate_decision_trace(
             from sklearn.metrics.pairwise import cosine_similarity
 
             trace.tfidf_similarity = float(cosine_similarity(v1, v2)[0, 0])
-    except Exception:
+    except FileNotFoundError:
         pass
 
     # Adaptive weights
@@ -324,7 +324,7 @@ def generate_decision_trace(
             "cross_encoder": weights.cross_encoder_weight,
         }
         trace.semantic_depth = weights.semantic_depth
-    except Exception:
+    except (ImportError, RuntimeError):
         pass
 
     # Agreement analysis
@@ -336,7 +336,7 @@ def generate_decision_trace(
         trace.agreement_score = report.agreement_score
         trace.is_unanimous = report.unanimous
         trace.is_borderline = report.is_borderline
-    except Exception:
+    except FileNotFoundError:
         pass
 
     # Final decision (use adaptive ensemble)
@@ -347,14 +347,14 @@ def generate_decision_trace(
         trace.confidence = ensemble_result["confidence"]
         trace.threshold = ensemble_result["threshold"]
         trace.ensemble_method = "adaptive-weighted"
-    except Exception:
+    except FileNotFoundError:
         # Fall back to trimmed mean
         try:
             report = get_agreement_report(q1, q2, paths)
             trace.final_probability = report.ensemble_prob
             trace.final_prediction = "Duplicate" if report.majority_label == 1 else "Non-Duplicate"
             trace.confidence = report.confidence_mean
-        except Exception:
+        except FileNotFoundError:
             pass
 
     trace.latency_ms = (time.time() - start_time) * 1000

@@ -401,7 +401,7 @@ def select_best_calibration(
             if result.metrics_after.ece < best_ece:
                 best_ece = result.metrics_after.ece
                 best_result = result
-        except Exception:
+        except ValueError:
             continue
 
     return best_result or calibrate_predictions(probs, labels, CalibrationMethod.NONE)
