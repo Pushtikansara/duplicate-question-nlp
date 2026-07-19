@@ -81,8 +81,13 @@ def _load_hugging_face_artifacts(model_dir: Path) -> tuple[AutoModelForSequenceC
     # Load from local filesystem — no remote code execution needed.
     # trust_remote_code=False prevents loading arbitrary HF Hub code.
     # An explicit revision is not required for local directories.
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=False)
-    model = AutoModelForSequenceClassification.from_pretrained(model_dir, trust_remote_code=False)
+    # Model directories are guaranteed local: resolved from AppPaths which only
+    # contains Path objects derived from project_root or configs/paths.yaml.
+    # Bandit B615 is a false positive here — from_pretrained receives a pathlib.Path
+    # pointing to a local fine-tuned model directory, never a remote Hub model ID.
+    model_path: str = str(model_dir)  # explicit local path string
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=False)  # nosec B615 — local Path only
+    model = AutoModelForSequenceClassification.from_pretrained(model_path, trust_remote_code=False)  # nosec B615 — local Path only
     return model, tokenizer
 
 

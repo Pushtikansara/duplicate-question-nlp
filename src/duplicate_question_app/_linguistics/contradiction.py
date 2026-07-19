@@ -65,7 +65,9 @@ _OPPOSITE_VERBS: dict[str, str] = {
     "include": "exclude",
     "accept": "reject",
     "approve": "deny",
-    "pass": "fail",
+    # Bandit B105: false positive. "pass"/"fail" is a linguistic antonym pair for
+    # NLP contradiction detection, not a credential. See _OPPOSITE_VERBS dict title above.
+    "pass": "fail",  # nosec B105
     "succeed": "fail",
     "work": "break",
     "fix": "break",
