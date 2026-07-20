@@ -6,100 +6,43 @@ Replaces the simple weighted average with dynamic confidence routing:
 - Contradiction detected → heavily weight cross-encoder & negation detection
 - Entity mismatch → penalize embedding models, boost symbolic models
 - Weights computed dynamically per prediction
-
-Also includes performance optimizations:
-- Embedding caching
-- Batch encoding
-- Preprocessing memoization
 """
 
 from __future__ import annotations
 
-import hashlib
-import threading
 import time
-from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 
-from duplicate_question_app.agreement_engine import collect_all_votes
-from duplicate_question_app.config import AppPaths, get_app_paths
-from duplicate_question_app.contradiction_detector import get_contradiction_penalty
-from duplicate_question_app.embedding_models import (
-    predict_with_sentence_transformer,
+from app.services.cache import cached_preprocessing
+from app.services.cache import get_cache as get_global_cache
+from duplicate_question_app._config.settings import (
+    MODEL_CHOICES,
+    AppPaths,
+    get_app_paths,
+    is_cross_encoder_model,
+    is_ensemble_model,
+    is_sentence_transformer_model,
 )
-from duplicate_question_app.entity_detector import get_entity_penalty
-from duplicate_question_app.inference import (
-    DuplicateQuestionInferenceService,
-    load_model_and_tokenizer,
-)
-from duplicate_question_app.intelligent_ensemble import compute_adaptive_weights
-from duplicate_question_app.intent_detector import intent_mismatch_penalty
-from duplicate_question_app.lexical_penalty import get_lexical_penalty
-from duplicate_question_app.negation_detector import get_negation_penalty
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
-
-
-# Thread-safe LRU cache for embeddings
-class EmbeddingCache:
-    """Thread-safe LRU cache for model embeddings."""
-
-    def __init__(self, max_size: int = 10000):
-        self.max_size = max_size
-        self._cache: OrderedDict[str, np.ndarray] = OrderedDict()
-        self._lock = threading.RLock()
-
-    def _make_key(self, model_name: str, text: str) -> str:
-        """Create cache key from model name and text hash."""
-        text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
-        return f"{model_name}:{text_hash}"
-
-    def get(self, model_name: str, text: str) -> np.ndarray | None:
-        key = self._make_key(model_name, text)
-        with self._lock:
-            if key in self._cache:
-                self._cache.move_to_end(key)
-                return self._cache[key]
-        return None
-
-    def put(self, model_name: str, text: str, embedding: np.ndarray) -> None:
-        key = self._make_key(model_name, text)
-        with self._lock:
-            if key in self._cache:
-                self._cache.move_to_end(key)
-            else:
-                if len(self._cache) >= self.max_size:
-                    self._cache.popitem(last=False)
-                self._cache[key] = embedding
-
-    def clear(self) -> None:
-        with self._lock:
-            self._cache.clear()
-
-
-# Global embedding cache
-_embedding_cache = EmbeddingCache(max_size=10000)
-
-
-# Preprocessing cache
-_preprocessing_cache: dict[str, str] = {}
-_preprocessing_cache_lock = threading.RLock()
+from duplicate_question_app._ensemble.agreement import collect_all_votes
+from duplicate_question_app._ensemble.v1 import compute_adaptive_weights
+from duplicate_question_app._linguistics.contradiction import get_contradiction_penalty
+from duplicate_question_app._linguistics.entity import get_entity_penalty
+from duplicate_question_app._linguistics.intent import intent_mismatch_penalty
+from duplicate_question_app._linguistics.lexical import get_lexical_penalty
+from duplicate_question_app._linguistics.negation import get_negation_penalty
+from duplicate_question_app._models.week2 import is_week2_model
 
 
 def cached_normalize(text: str, expand_abbrevs: bool = True) -> str:
-    """Normalize question with caching."""
-    key = f"{text}|{expand_abbrevs}"
-    with _preprocessing_cache_lock:
-        if key in _preprocessing_cache:
-            return _preprocessing_cache[key]
-        from duplicate_question_app.preprocessing import normalize_question
+    from duplicate_question_app._preprocessing import normalize_question
 
-        result = normalize_question(text, expand_abbrevs=expand_abbrevs)
-        if len(_preprocessing_cache) < 5000:
-            _preprocessing_cache[key] = result
-        return result
+    return cached_preprocessing(
+        f"{text}|{expand_abbrevs}",
+        lambda: normalize_question(text, expand_abbrevs=expand_abbrevs),
+    )
 
 
 @dataclass
@@ -350,38 +293,9 @@ def get_model_predictions_batch(
     q2: str,
     paths: AppPaths,
 ) -> dict[str, tuple[int, float]]:
-    """Get predictions from all models (cached where possible)."""
-    results = {}
-
-    # Week 2 models
-    if all(check_week2_artifacts(paths).values()):
-        w2 = Week2InferenceService(paths)
-        for m_name in ["TF-IDF + Logistic Regression (Week 2)", "TF-IDF + Linear SVM (Week 2)"]:
-            try:
-                _, prob_dup = w2.predict_proba(q1, q2, m_name)
-                results[m_name] = (1 if prob_dup >= 0.5 else 0, prob_dup)
-            except Exception:
-                results[m_name] = (0, 0.5)
-
-    # Week 3/4 transformer models
-    for m_name in ["DistilBERT (Week 3)", "Improved DistilBERT (Week 4)"]:
-        try:
-            model, tok, meta = load_model_and_tokenizer(paths, model_version=m_name)
-            svc = DuplicateQuestionInferenceService(model, tok, meta)
-            _, prob_dup = svc.predict_proba(q1, q2)
-            results[m_name] = (1 if prob_dup >= meta.decision_threshold else 0, prob_dup)
-        except Exception:
-            results[m_name] = (0, 0.5)
-
-    # Phase 2 embedding / cross-encoder models
-    for m_name in ["BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2", "DeBERTa-v3 Cross-Encoder"]:
-        try:
-            result = predict_with_sentence_transformer(m_name, q1, q2)
-            results[m_name] = (result["predicted_label"], result["prob_duplicate"])
-        except Exception:
-            results[m_name] = (0, 0.5)
-
-    return results
+    """Get predictions from all models, delegating to collect_all_votes()."""
+    votes = collect_all_votes(q1, q2, paths)
+    return {v.model_name: (v.predicted_label, v.prob_duplicate) for v in votes if v.error is None}
 
 
 def adaptive_ensemble_predict(
@@ -404,23 +318,20 @@ def adaptive_ensemble_predict(
     # Get all model predictions
     predictions = get_model_predictions_batch(q1, q2, paths)
 
-    # Group predictions by model type
-    tfidf_models = {
-        "TF-IDF + Logistic Regression (Week 2)": 0.0,
-        "TF-IDF + Linear SVM (Week 2)": 0.0,
-    }
-    transformer_models = {
-        "DistilBERT (Week 3)": 0.0,
-        "Improved DistilBERT (Week 4)": 0.0,
-    }
-    embedding_models = {
-        "BGE-base-en-v1.5": 0.0,
-        "E5-base-v2": 0.0,
-        "MPNet-base-v2": 0.0,
-    }
-    cross_encoder_models = {
-        "DeBERTa-v3 Cross-Encoder": 0.0,
-    }
+    # Group predictions by model type — built dynamically from MODEL_CHOICES
+    tfidf_models: dict[str, float] = {}
+    transformer_models: dict[str, float] = {}
+    embedding_models: dict[str, float] = {}
+    cross_encoder_models: dict[str, float] = {}
+    for m_name in MODEL_CHOICES:
+        if is_week2_model(m_name) and not is_ensemble_model(m_name):
+            tfidf_models[m_name] = 0.0
+        elif is_sentence_transformer_model(m_name) and not is_ensemble_model(m_name):
+            embedding_models[m_name] = 0.0
+        elif is_cross_encoder_model(m_name) and not is_ensemble_model(m_name):
+            cross_encoder_models[m_name] = 0.0
+        elif not is_ensemble_model(m_name):
+            transformer_models[m_name] = 0.0
 
     # Fill in predictions
     for model_name, (_label, prob) in predictions.items():
@@ -524,16 +435,12 @@ def adaptive_ensemble_predict(
 
 
 def clear_caches():
-    """Clear all caches (useful for testing or memory management)."""
-    global _embedding_cache, _preprocessing_cache
-    _embedding_cache.clear()
-    with _preprocessing_cache_lock:
-        _preprocessing_cache.clear()
+    get_global_cache().clear_all()
 
 
 def get_cache_stats() -> dict[str, int]:
-    """Get cache statistics."""
+    stats = get_global_cache().stats()
     return {
-        "embedding_cache_size": len(_embedding_cache._cache),
-        "preprocessing_cache_size": len(_preprocessing_cache),
+        "embedding_cache_size": stats["embedding"].size,
+        "preprocessing_cache_size": stats["preprocessing"].size,
     }

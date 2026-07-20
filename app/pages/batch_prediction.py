@@ -5,7 +5,7 @@ import streamlit as st
 
 from app.services.runtime import get_runtime_context
 from app.utils.constants import _detect_question_columns, run_batch_prediction
-from duplicate_question_app.visuals import create_batch_summary_figure
+from duplicate_question_app._visualization.plots import create_batch_summary_figure
 
 
 def render() -> None:

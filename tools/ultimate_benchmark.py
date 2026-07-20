@@ -17,7 +17,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precisio
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._preprocessing import normalize_question
 
 CSV_DIR = Path.home() / "Downloads"
 

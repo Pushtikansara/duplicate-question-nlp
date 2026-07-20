@@ -9,15 +9,15 @@ import pandas as pd
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from duplicate_question_app.artifacts import load_week4_threshold_analysis
-from duplicate_question_app.config import (
+from duplicate_question_app._artifacts import load_week4_threshold_analysis
+from duplicate_question_app._config.settings import (
     AppPaths,
     ModelDirectoryStatus,
     get_config,
     is_transformer_model,
     resolve_model_selection,
 )
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._preprocessing import normalize_question
 
 
 class ModelArtifactsNotFoundError(FileNotFoundError):

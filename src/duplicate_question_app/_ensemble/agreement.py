@@ -13,16 +13,20 @@ from typing import Any
 
 import numpy as np
 
-from duplicate_question_app.config import (
+from duplicate_question_app._config.settings import (
+    MODEL_CHOICES,
     AppPaths,
     get_app_paths,
+    is_cross_encoder_model,
+    is_ensemble_model,
+    is_sentence_transformer_model,
 )
-from duplicate_question_app.embedding_models import predict_with_sentence_transformer
-from duplicate_question_app.inference import (
+from duplicate_question_app._inference.transformer import (
     DuplicateQuestionInferenceService,
     load_model_and_tokenizer,
 )
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
+from duplicate_question_app._models.embeddings import predict_with_sentence_transformer
+from duplicate_question_app._models.week2 import Week2InferenceService, check_week2_artifacts, is_week2_model
 
 
 @dataclass
@@ -64,6 +68,21 @@ class AgreementReport:
     latency_ms: float
 
 
+def _get_models_by_group() -> dict[str, list[str]]:
+    """Dynamically build model groups from MODEL_CHOICES."""
+    groups: dict[str, list[str]] = {"week2": [], "transformer": [], "sentence": []}
+    for m in MODEL_CHOICES:
+        if is_ensemble_model(m):
+            continue
+        if is_week2_model(m):
+            groups["week2"].append(m)
+        elif not is_sentence_transformer_model(m) and not is_cross_encoder_model(m):
+            groups["transformer"].append(m)
+        else:
+            groups["sentence"].append(m)
+    return groups
+
+
 def collect_all_votes(
     q1: str,
     q2: str,
@@ -71,11 +90,12 @@ def collect_all_votes(
 ) -> list[ModelVote]:
     """Collect predictions from every available model."""
     votes: list[ModelVote] = []
+    groups = _get_models_by_group()
 
     # Week 2 models
-    if all(check_week2_artifacts(paths).values()):
+    if groups["week2"] and all(check_week2_artifacts(paths).values()):
         w2 = Week2InferenceService(paths)
-        for m in ["TF-IDF + Logistic Regression (Week 2)", "TF-IDF + Linear SVM (Week 2)"]:
+        for m in groups["week2"]:
             try:
                 t0 = time.time()
                 _, prob_dup = w2.predict_proba(q1, q2, m)
@@ -104,8 +124,8 @@ def collect_all_votes(
                     )
                 )
 
-    # Week 3 / Week 4 transformer models
-    for m in ["DistilBERT (Week 3)", "Improved DistilBERT (Week 4)"]:
+    # Transformer models (Week 3/4 DistilBERT)
+    for m in groups["transformer"]:
         try:
             t0 = time.time()
             model, tok, meta = load_model_and_tokenizer(paths, model_version=m)
@@ -136,8 +156,8 @@ def collect_all_votes(
                 )
             )
 
-    # Phase 2 embedding / cross-encoder models
-    for m in ["BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2", "DeBERTa-v3 Cross-Encoder"]:
+    # Phase 2 embedding / cross-encoder models (dynamically from MODEL_CHOICES)
+    for m in groups["sentence"]:
         try:
             t0 = time.time()
             result = predict_with_sentence_transformer(m, q1, q2)
@@ -273,7 +293,7 @@ def get_agreement_report(
     if paths is None:
         from pathlib import Path
 
-        paths = get_app_paths(Path(__file__).resolve().parents[2])
+        paths = get_app_paths(Path(__file__).resolve().parents[3])
     votes = collect_all_votes(q1, q2, paths)
     return analyze_agreement(votes, q1, q2)
 

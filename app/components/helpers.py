@@ -1,3 +1,9 @@
+"""Professional theme and styling for the DQD application.
+
+Provides a consistent design system with CSS variables,
+professional cards, navigation styling, and responsive layout.
+"""
+
 from __future__ import annotations
 
 import streamlit as st
@@ -7,34 +13,239 @@ def inject_styles() -> None:
     st.markdown(
         """
         <style>
-        .block-container {padding-top: 1rem; padding-bottom: 2rem; max-width: 1200px;}
+        /* ===== Design System ===== */
+        :root {
+            --primary: #2563EB;
+            --primary-light: #3B82F6;
+            --primary-dark: #1D4ED8;
+            --primary-bg: rgba(37,99,235,0.08);
+            --primary-border: rgba(37,99,235,0.15);
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --text-primary: #0F172A;
+            --text-secondary: #475569;
+            --text-muted: #64748B;
+            --bg-card: rgba(255,255,255,0.8);
+            --bg-page: #F8FAFC;
+            --border-light: rgba(148,163,184,0.2);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        /* ===== Layout ===== */
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 1200px;
+        }
         .stApp header {background: transparent !important;}
+
+        /* ===== Navigation Styling ===== */
+        div[data-testid="stSidebar"] {
+            background: #FFFFFF;
+            border-right: 1px solid var(--border-light);
+        }
+        div[data-testid="stSidebar"] .stButton button {
+            text-align: left;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.85rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            transition: all 0.15s ease;
+            font-weight: 400;
+            margin-bottom: 1px;
+        }
+        div[data-testid="stSidebar"] .stButton button:hover {
+            background: var(--primary-bg);
+            color: var(--primary);
+        }
+        div[data-testid="stSidebar"] .stButton button[type="primary"] {
+            background: var(--primary-bg);
+            color: var(--primary);
+            font-weight: 500;
+        }
+        div[data-testid="stSidebar"] .stButton button[kind="primary"]:hover {
+            background: rgba(37,99,235,0.15);
+        }
+        div[data-testid="stSidebar"] .stSelectbox {
+            margin-bottom: 0.5rem;
+        }
+
+        /* ===== Cards ===== */
         .hero-card {
             padding: 1.5rem 1.8rem;
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             background: linear-gradient(135deg, rgba(37,99,235,0.10), rgba(14,165,233,0.06));
-            border: 1px solid rgba(37,99,235,0.15);
+            border: 1px solid var(--primary-border);
             margin-bottom: 1.2rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            box-shadow: var(--shadow-sm);
         }
         .dashboard-card {
             padding: 1.2rem 1.4rem;
-            border-radius: 16px;
-            border: 1px solid rgba(148,163,184,0.2);
-            background: rgba(255,255,255,0.5);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+            background: var(--bg-card);
             margin-bottom: 0.8rem;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-            transition: box-shadow 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s ease, transform 0.15s ease;
         }
-        .dashboard-card:hover {box-shadow: 0 4px 12px rgba(0,0,0,0.06);}
-        .metric-value {font-size: 1.8rem; font-weight: 700; color: #1E293B;}
-        .metric-label {font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;}
-        .small-note {color: #64748B; font-size: 0.88rem;}
-        .section-header {font-size: 1.1rem; font-weight: 600; color: #0F172A; margin: 1.2rem 0 0.6rem 0;}
-        .status-badge {display: inline-block; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.78rem; font-weight: 500;}
-        .status-ready {background: #DCFCE7; color: #166534;}
-        .status-missing {background: #FEE2E2; color: #991B1B;}
-        .status-download {background: #DBEAFE; color: #1E40AF;}
+        .dashboard-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        .feature-card {
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+            background: var(--bg-card);
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .feature-card:hover {
+            border-color: var(--primary-border);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        .feature-card .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .feature-card .title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .feature-card .desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* ===== Metrics ===== */
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ===== Typography ===== */
+        .small-note {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        .section-header {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.75rem 0;
+            padding-bottom: 0.35rem;
+            border-bottom: 2px solid var(--primary-bg);
+        }
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        .page-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        /* ===== Status Badges ===== */
+        .status-badge {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-ready {
+            background: #DCFCE7;
+            color: #166534;
+        }
+        .status-missing {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+        .status-download {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        /* ===== DataFrames ===== */
+        div[data-testid="stDataFrame"] {
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+        }
+        div[data-testid="stDataFrame"] thead tr th {
+            background: var(--primary-bg);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* ===== Tabs ===== */
+        button[data-baseweb="tab"] {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* ===== Buttons ===== */
+        .stButton button[kind="primary"] {
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+        }
+        .stButton button[kind="secondary"] {
+            border-radius: var(--radius-sm);
+        }
+
+        /* ===== Expandable Sections ===== */
+        .streamlit-expanderHeader {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .block-container {
+                padding-top: 1rem !important;
+            }
+            .hero-card {
+                padding: 1rem;
+            }
+            .feature-card {
+                padding: 1rem;
+            }
+        }
+
+        /* ===== Form Spacing ===== */
+        div[data-testid="stForm"] {
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            background: var(--bg-card);
+        }
+
+        /* ===== Success/Info/Warning/Error ===== */
+        div[data-testid="stAlert"] {
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+        }
         </style>
         """,
         unsafe_allow_html=True,

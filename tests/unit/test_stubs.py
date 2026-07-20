@@ -1,148 +1,7 @@
 from __future__ import annotations
 
 
-class TestBackwardCompatStubs:
-    def test_config_stub_exports_app_paths(self):
-        from duplicate_question_app.config import AppPaths
-
-        assert AppPaths is not None
-
-    def test_config_stub_exports_model_choices(self):
-        from duplicate_question_app.config import MODEL_CHOICES
-
-        assert isinstance(MODEL_CHOICES, list)
-        assert len(MODEL_CHOICES) > 0
-
-    def test_config_stub_exports_get_config(self):
-        from duplicate_question_app.config import get_config
-
-        cfg = get_config("app")
-        assert isinstance(cfg, dict)
-
-    def test_config_stub_exports_get_env(self):
-        from duplicate_question_app.config import get_env
-
-        env = get_env()
-        assert isinstance(env, str)
-
-    def test_config_stub_exports_clear_cache(self):
-        from duplicate_question_app.config import clear_config_cache
-
-        clear_config_cache()
-
-    def test_config_stub_exports_exceptions(self):
-        from duplicate_question_app.config import ConfigurationError, DuplicateQuestionAppError
-
-        assert issubclass(ConfigurationError, DuplicateQuestionAppError)
-
-    def test_config_stub_exports_model_status(self):
-        from duplicate_question_app.config import ModelDirectoryStatus, ModelResolution
-
-        assert ModelDirectoryStatus is not None
-        assert ModelResolution is not None
-
-    def test_embedding_models_stub_exports(self):
-        from duplicate_question_app.embedding_models import _get_sigmoid_params, _resolve_device
-
-        assert callable(_get_sigmoid_params)
-        assert callable(_resolve_device)
-
-    def test_inference_stub_exports(self):
-        from duplicate_question_app.inference import (
-            DuplicateQuestionInferenceService,
-        )
-
-        assert DuplicateQuestionInferenceService is not None
-
-    def test_data_loader_stub_exports(self):
-        from duplicate_question_app.data_loader import get_quora_splits, load_quora_data
-
-        assert callable(get_quora_splits)
-        assert callable(load_quora_data)
-
-    def test_preprocessing_stub_exports(self):
-        from duplicate_question_app.preprocessing import normalize_question
-
-        assert callable(normalize_question)
-
-    def test_model_registry_stub_exports(self):
-        from duplicate_question_app.model_registry import build_registry
-
-        assert callable(build_registry)
-
-    def test_confidence_calibration_stub_exports(self):
-        from duplicate_question_app.confidence_calibration import (
-            calibrate_duplicate_probs,
-        )
-
-        assert callable(calibrate_duplicate_probs)
-
-    def test_confidence_calibration_v2_stub_exports(self):
-        from duplicate_question_app.confidence_calibration_v2 import (
-            compute_brier_score,
-        )
-
-        assert callable(compute_brier_score)
-
-    def test_intelligent_ensemble_stub_exports(self):
-        from duplicate_question_app.intelligent_ensemble import (
-            get_adaptive_ensemble_prediction,
-        )
-
-        assert callable(get_adaptive_ensemble_prediction)
-
-    def test_adaptive_ensemble_v2_stub_exports(self):
-        from duplicate_question_app.adaptive_ensemble_v2 import adaptive_ensemble_predict
-
-        assert callable(adaptive_ensemble_predict)
-
-    def test_evaluation_stub_exports(self):
-        from duplicate_question_app.evaluation import (
-            generate_evaluation_report,
-        )
-
-        assert callable(generate_evaluation_report)
-
-    def test_explainability_stub_exports(self):
-        from duplicate_question_app.explainability import generate_decision_trace
-
-        assert callable(generate_decision_trace)
-
-    def test_explainer_stub_exports(self):
-        from duplicate_question_app.explainer import generate_explanation
-
-        assert callable(generate_explanation)
-
-    def test_error_analyzer_stub_exports(self):
-        from duplicate_question_app.error_analyzer import categorize_error
-
-        assert callable(categorize_error)
-
-    def test_hard_negative_mining_stub_exports(self):
-        from duplicate_question_app.hard_negative_mining import mine_hard_negatives_embedding
-
-        assert callable(mine_hard_negatives_embedding)
-
-    def test_error_logger_stub_exports(self):
-        from duplicate_question_app.error_logger import (
-            get_error_logger,
-            log_prediction_error,
-        )
-
-        assert callable(get_error_logger)
-        assert callable(log_prediction_error)
-
-    def test_hard_test_generator_stub_exports(self):
-        from duplicate_question_app.hard_test_generator import generate_hard_dataset
-
-        assert callable(generate_hard_dataset)
-
-    def test_config_module_re_exports(self):
-        from duplicate_question_app._config import configure_logging, get_config
-
-        assert callable(get_config)
-        assert callable(configure_logging)
-
+class TestCanonicalImports:
     def test_package_version(self):
         from duplicate_question_app import __version__
 
@@ -154,3 +13,73 @@ class TestBackwardCompatStubs:
         assert hasattr(dqa, "DuplicateQuestionInferenceService")
         assert hasattr(dqa, "AppPaths")
         assert hasattr(dqa, "MODEL_CHOICES")
+
+    def test_config_canonical(self):
+        from duplicate_question_app._config.settings import (
+            MODEL_CHOICES,
+            AppPaths,
+            get_app_paths,
+            get_config,
+        )
+
+        assert AppPaths is not None
+        assert isinstance(MODEL_CHOICES, list)
+        assert len(MODEL_CHOICES) > 0
+        assert callable(get_config)
+        assert callable(get_app_paths)
+
+    def test_preprocessing_canonical(self):
+        from duplicate_question_app._preprocessing import normalize_question
+
+        assert callable(normalize_question)
+
+    def test_week2_canonical(self):
+        from duplicate_question_app._models.week2 import (
+            check_week2_artifacts,
+            is_week2_model,
+        )
+
+        assert callable(check_week2_artifacts)
+        assert callable(is_week2_model)
+
+    def test_embeddings_canonical(self):
+        from duplicate_question_app._models.embeddings import (
+            _get_sigmoid_params,
+            _resolve_device,
+        )
+
+        assert callable(_get_sigmoid_params)
+        assert callable(_resolve_device)
+
+    def test_ensemble_canonical(self):
+        from duplicate_question_app._ensemble.v1 import get_adaptive_ensemble_prediction
+
+        assert callable(get_adaptive_ensemble_prediction)
+
+    def test_inference_transformer_canonical(self):
+        from duplicate_question_app._inference.transformer import (
+            DuplicateQuestionInferenceService,
+        )
+
+        assert DuplicateQuestionInferenceService is not None
+
+    def test_registry_canonical(self):
+        from duplicate_question_app._models.registry import build_registry
+
+        assert callable(build_registry)
+
+    def test_dataset_loader_canonical(self):
+        from duplicate_question_app._dataset.loader import get_quora_splits, load_quora_data
+
+        assert callable(get_quora_splits)
+        assert callable(load_quora_data)
+
+    def test_explainability_canonical(self):
+        from duplicate_question_app._explainability.trace import generate_decision_trace
+
+        assert callable(generate_decision_trace)
+
+    def test_evaluation_metrics_canonical(self):
+        from duplicate_question_app._evaluation.metrics import generate_evaluation_report
+
+        assert callable(generate_evaluation_report)

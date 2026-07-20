@@ -135,7 +135,6 @@ backends:
     - "Cross-Encoder-Quora (Trained)"
   finetuned_embedding_models:
     - "E5-quora-finetuned"
-    - "BGE-quora-finetuned"
 
 # HF model names (hub keys)
 hub_names:
@@ -144,7 +143,7 @@ hub_names:
   MPNet-base-v2: "sentence-transformers/all-mpnet-base-v2"
   DeBERTa-v3: "cross-encoder/nli-deberta-v3-base"
   DeBERTa-v3-Cross-Encoder: "cross-encoder/nli-deberta-v3-base"
-  MiniLM: "sentence-transformers/all-MiniLM-L12-v2"
+  # MiniLM: "sentence-transformers/all-MiniLM-L12-v2"
 
 # LR head model mappings
 lr_head_models:

@@ -13,14 +13,14 @@ from __future__ import annotations
 import hashlib
 import threading
 import time
-from collections import OrderedDict
 from collections.abc import Callable
 from contextlib import contextmanager, suppress
-from dataclasses import dataclass
 from functools import wraps
 from typing import Any
 
 import numpy as np
+
+from duplicate_question_app._inference.cache import CacheStats, LRUCache
 
 try:
     from sentence_transformers import CrossEncoder, SentenceTransformer
@@ -28,66 +28,6 @@ try:
     _ST_AVAILABLE = True
 except ImportError:
     _ST_AVAILABLE = False
-
-
-@dataclass
-class CacheStats:
-    """Cache performance statistics."""
-
-    hits: int = 0
-    misses: int = 0
-    evictions: int = 0
-    size: int = 0
-    max_size: int = 0
-
-    @property
-    def hit_rate(self) -> float:
-        total = self.hits + self.misses
-        return self.hits / total if total > 0 else 0.0
-
-
-class LRUCache:
-    """Thread-safe LRU cache with size limit."""
-
-    def __init__(self, max_size: int = 10000):
-        self.max_size = max_size
-        self._cache: OrderedDict[str, Any] = OrderedDict()
-        self._lock = threading.RLock()
-        self._stats = CacheStats(max_size=max_size)
-
-    def get(self, key: str) -> Any | None:
-        with self._lock:
-            if key in self._cache:
-                self._cache.move_to_end(key)
-                self._stats.hits += 1
-                return self._cache[key]
-            self._stats.misses += 1
-            return None
-
-    def put(self, key: str, value: Any) -> None:
-        with self._lock:
-            if key in self._cache:
-                self._cache.move_to_end(key)
-            else:
-                if len(self._cache) >= self.max_size:
-                    self._cache.popitem(last=False)
-                    self._stats.evictions += 1
-            self._cache[key] = value
-            self._stats.size = len(self._cache)
-
-    def clear(self) -> None:
-        with self._lock:
-            self._cache.clear()
-            self._stats = CacheStats(max_size=self.max_size)
-
-    def stats(self) -> CacheStats:
-        with self._lock:
-            self._stats.size = len(self._cache)
-            return self._stats
-
-    def __contains__(self, key: str) -> bool:
-        with self._lock:
-            return key in self._cache
 
 
 class EmbeddingCache:
@@ -340,7 +280,7 @@ def cached_normalize(text: str, **kwargs) -> str:
     if cached is not None:
         return cached
 
-    from duplicate_question_app.preprocessing import normalize_question
+    from duplicate_question_app._preprocessing import normalize_question
 
     result = normalize_question(text, **kwargs)
     _preprocessing_cache.put(text, result, **kwargs)

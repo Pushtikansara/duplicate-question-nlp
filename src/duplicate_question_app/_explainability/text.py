@@ -15,13 +15,13 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from duplicate_question_app.agreement_dashboard import analyze_model_agreement
-from duplicate_question_app.config import AppPaths, get_app_paths
-from duplicate_question_app.contradiction_detector import get_contradiction_penalty
-from duplicate_question_app.entity_detector import analyze_entity_mismatch
-from duplicate_question_app.intent_detector import get_intent_details
-from duplicate_question_app.lexical_penalty import get_lexical_penalty
-from duplicate_question_app.negation_detector import get_negation_penalty
+from duplicate_question_app._config.settings import AppPaths, get_app_paths
+from duplicate_question_app._explainability.agreement_dashboard import analyze_model_agreement
+from duplicate_question_app._linguistics.contradiction import get_contradiction_penalty
+from duplicate_question_app._linguistics.entity import analyze_entity_mismatch
+from duplicate_question_app._linguistics.intent import get_intent_details
+from duplicate_question_app._linguistics.lexical import get_lexical_penalty
+from duplicate_question_app._linguistics.negation import get_negation_penalty
 
 
 class ExplanationLevel(Enum):

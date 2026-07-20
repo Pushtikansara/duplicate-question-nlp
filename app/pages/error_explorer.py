@@ -4,8 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from app.utils.constants import PATHS
-from duplicate_question_app.agreement_engine import get_agreement_report
-from duplicate_question_app.error_analyzer import categorize_error, classify_hardness
+from duplicate_question_app._ensemble.agreement import get_agreement_report
+from duplicate_question_app._evaluation.error_analysis import categorize_error, classify_hardness
 
 
 def render() -> None:

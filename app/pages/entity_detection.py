@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from duplicate_question_app.entity_detector import analyze_entity_mismatch
+from duplicate_question_app._linguistics.entity import analyze_entity_mismatch
 
 
 def render() -> None:

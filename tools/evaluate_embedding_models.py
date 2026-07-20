@@ -31,8 +31,8 @@ from sklearn.metrics import (
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.data_loader import get_quora_splits
-from duplicate_question_app.embedding_models import (
+from duplicate_question_app._dataset.loader import get_quora_splits
+from duplicate_question_app._models.embeddings import (
     get_ensemble_prediction,
     predict_batch_sentence_transformer,
 )

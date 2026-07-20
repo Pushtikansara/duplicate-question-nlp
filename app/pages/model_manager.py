@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from app.utils.constants import PATHS
-from duplicate_question_app.model_registry import build_registry, find_registry_entry
+from duplicate_question_app._models.registry import build_registry, find_registry_entry
 
 
 def render() -> None:

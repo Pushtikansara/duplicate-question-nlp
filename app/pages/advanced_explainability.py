@@ -4,8 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from app.utils.constants import PATHS
-from duplicate_question_app.adaptive_ensemble_v2 import adaptive_ensemble_predict
-from duplicate_question_app.explainer import (
+from duplicate_question_app._ensemble.v2 import adaptive_ensemble_predict
+from duplicate_question_app._explainability.text import (
     ExplanationLevel,
     generate_counterfactual_explanation,
     generate_explanation,

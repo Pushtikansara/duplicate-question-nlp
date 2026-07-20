@@ -7,5 +7,5 @@ metrics:
 
 baseline_models:
   - "E5-base-v2"
-  - "BGE-base-v1.5"
+  - "BGE-base-en-v1.5"
   - "MPNet-base-v2"

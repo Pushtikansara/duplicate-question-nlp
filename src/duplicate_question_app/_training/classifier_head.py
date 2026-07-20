@@ -30,13 +30,13 @@ import torch.nn as nn
 from sklearn.linear_model import LogisticRegression
 
 from duplicate_question_app._config.logging_setup import get_logger
-from duplicate_question_app.config import get_app_paths, get_config
-from duplicate_question_app.data_loader import get_quora_splits
-from duplicate_question_app.embedding_models import (
+from duplicate_question_app._config.settings import get_app_paths, get_config
+from duplicate_question_app._dataset.loader import get_quora_splits
+from duplicate_question_app._models.embeddings import (
     _resolve_device,
     get_sentence_transformer_model,
 )
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._preprocessing import normalize_question
 
 _logger = get_logger(__name__)
 
@@ -513,7 +513,7 @@ def batch_predict_with_mlp(
 
 if __name__ == "__main__":
     # Training script
-    from duplicate_question_app.config import get_app_paths
+    from duplicate_question_app._config.settings import get_app_paths
 
     _paths = get_app_paths()
     MODEL_DIR = _paths.models_dir

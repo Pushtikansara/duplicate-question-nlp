@@ -24,12 +24,12 @@ import torch
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.data_loader import get_quora_splits
-from duplicate_question_app.hard_negative_mining import (
+from duplicate_question_app._dataset.loader import get_quora_splits
+from duplicate_question_app._evaluation.hard_mining import (
     load_hard_negatives,
     mine_hard_negatives_combined,
 )
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._preprocessing import normalize_question
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "outputs" / "embedding_models"
 MODELS_DIR = Path(__file__).resolve().parents[1] / "models"

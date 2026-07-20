@@ -17,8 +17,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from duplicate_question_app.agreement_engine import analyze_agreement, collect_all_votes
-from duplicate_question_app.config import AppPaths, get_app_paths
+from duplicate_question_app._config.settings import AppPaths, get_app_paths
+from duplicate_question_app._ensemble.agreement import analyze_agreement, collect_all_votes
 
 # Common synonyms used for detection (lowercase)
 _SYNONYM_PAIRS: list[tuple[str, str]] = [
@@ -208,7 +208,7 @@ def get_adaptive_ensemble_prediction(
     if paths is None:
         from pathlib import Path
 
-        paths = get_app_paths(Path(__file__).resolve().parents[2])
+        paths = get_app_paths(Path(__file__).resolve().parents[3])
 
     start_time = time.time()
 

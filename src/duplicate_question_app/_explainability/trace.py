@@ -21,15 +21,15 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from duplicate_question_app.agreement_engine import get_agreement_report
-from duplicate_question_app.config import AppPaths, get_app_paths
-from duplicate_question_app.embedding_models import (
+from duplicate_question_app._config.settings import AppPaths, get_app_paths
+from duplicate_question_app._ensemble.agreement import get_agreement_report
+from duplicate_question_app._ensemble.v1 import compute_adaptive_weights, get_adaptive_ensemble_prediction
+from duplicate_question_app._inference.transformer import DuplicateQuestionInferenceService, load_model_and_tokenizer
+from duplicate_question_app._models.embeddings import (
     get_sentence_transformer_model,
 )
-from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
-from duplicate_question_app.intelligent_ensemble import compute_adaptive_weights, get_adaptive_ensemble_prediction
-from duplicate_question_app.preprocessing import normalize_question
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
+from duplicate_question_app._models.week2 import Week2InferenceService, check_week2_artifacts
+from duplicate_question_app._preprocessing import normalize_question
 
 
 @dataclass
@@ -214,7 +214,7 @@ def generate_decision_trace(
     if paths is None:
         from pathlib import Path
 
-        paths = get_app_paths(Path(__file__).resolve().parents[2])
+        paths = get_app_paths(Path(__file__).resolve().parents[3])
 
     q1_norm = normalize_question(q1, expand_abbrevs=True)
     q2_norm = normalize_question(q2, expand_abbrevs=True)

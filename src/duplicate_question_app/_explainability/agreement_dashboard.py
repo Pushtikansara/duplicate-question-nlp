@@ -21,8 +21,8 @@ from typing import Any
 
 import numpy as np
 
-from duplicate_question_app.agreement_engine import get_agreement_report
-from duplicate_question_app.config import AppPaths, get_app_paths
+from duplicate_question_app._config.settings import AppPaths, get_app_paths
+from duplicate_question_app._ensemble.agreement import get_agreement_report
 
 
 class ModelStrength(Enum):

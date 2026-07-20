@@ -11,7 +11,7 @@ from app.services.data import (
     get_week4_metrics,
     get_week4_threshold_df,
 )
-from duplicate_question_app.visuals import create_confusion_matrix_figure, create_roc_curve_figure
+from duplicate_question_app._visualization.plots import create_confusion_matrix_figure, create_roc_curve_figure
 
 
 def render() -> None:

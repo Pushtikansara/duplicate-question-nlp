@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from duplicate_question_app.config import AppPaths, get_app_paths, get_config
-from duplicate_question_app.week2_inference import check_week2_artifacts
+from duplicate_question_app._config.settings import AppPaths, get_app_paths, get_config
+from duplicate_question_app._models.week2 import check_week2_artifacts
 
 
 @dataclass
@@ -84,13 +84,13 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
     if paths is None:
         from pathlib import Path
 
-        paths = get_app_paths(Path(__file__).resolve().parents[2])
+        paths = get_app_paths(Path(__file__).resolve().parents[3])
 
     week2_arts = check_week2_artifacts(paths)
     week2_ready = all(week2_arts.values())
     resolution = None
     try:
-        from duplicate_question_app.config import resolve_model_selection
+        from duplicate_question_app._config.settings import resolve_model_selection
 
         resolution = resolve_model_selection(paths)
     except (FileNotFoundError, RuntimeError):

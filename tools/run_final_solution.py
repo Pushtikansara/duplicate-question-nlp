@@ -35,7 +35,7 @@ sys.path.insert(0, str(SRC_DIR))
 
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._preprocessing import normalize_question
 
 CSV_DIR = Path.home() / "Downloads"
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "outputs" / "final_solution"

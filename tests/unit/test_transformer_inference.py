@@ -136,13 +136,13 @@ class TestTransformerInference:
         assert r1["predicted_label"] == r2["predicted_label"]
 
     def test_default_max_length_imported(self):
-        from duplicate_question_app.inference import DEFAULT_MAX_LENGTH
+        from duplicate_question_app._inference.transformer import DEFAULT_MAX_LENGTH
 
         assert isinstance(DEFAULT_MAX_LENGTH, int)
         assert DEFAULT_MAX_LENGTH > 0
 
     def test_inference_stub_reexports(self):
+        from duplicate_question_app._inference.transformer import DuplicateQuestionInferenceService
         from duplicate_question_app._inference.transformer import DuplicateQuestionInferenceService as Inner
-        from duplicate_question_app.inference import DuplicateQuestionInferenceService
 
         assert DuplicateQuestionInferenceService is Inner

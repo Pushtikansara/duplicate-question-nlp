@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 from app.utils.constants import PATHS
-from duplicate_question_app.artifacts import (
+from duplicate_question_app._artifacts import (
     available_week4_plots,
     build_dataset_summary,
     build_transformer_metrics,

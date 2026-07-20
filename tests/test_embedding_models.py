@@ -137,7 +137,7 @@ def test_reproducible_predictions():
     We'll skip if model not available.
     """
     try:
-        from duplicate_question_app.embedding_models import (
+        from duplicate_question_app._models.embeddings import (
             predict_batch_sentence_transformer,
         )
 

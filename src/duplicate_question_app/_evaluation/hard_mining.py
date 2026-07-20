@@ -22,9 +22,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from duplicate_question_app._config.logging_setup import get_logger
-from duplicate_question_app.data_loader import get_quora_splits
-from duplicate_question_app.embedding_models import get_sentence_transformer_model
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._dataset.loader import get_quora_splits
+from duplicate_question_app._models.embeddings import get_sentence_transformer_model
+from duplicate_question_app._preprocessing import normalize_question
 
 _logger = get_logger(__name__)
 
@@ -299,7 +299,7 @@ def load_hard_negatives(path: Path | str) -> pd.DataFrame:
 
 def main() -> None:
     """Run the complete hard negative mining pipeline."""
-    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    PROJECT_ROOT = Path(__file__).resolve().parents[3]
     hard_neg_dir = PROJECT_ROOT / "data" / "hard_negatives"
     hard_neg_dir.mkdir(parents=True, exist_ok=True)
 

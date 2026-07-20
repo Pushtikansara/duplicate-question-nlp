@@ -13,7 +13,7 @@ from app.services.data import (
     get_week4_metrics,
 )
 from app.utils.constants import PATHS, PROJECT_ROOT
-from duplicate_question_app.week2_inference import check_week2_artifacts
+from duplicate_question_app._models.week2 import check_week2_artifacts
 
 
 def _directory_size_mb(path: Path) -> float | None:

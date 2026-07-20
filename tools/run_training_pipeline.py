@@ -38,7 +38,7 @@ def run_mining():
     print("  STEP 1/4: Hard Negative Mining")
     print("=" * 60)
 
-    from duplicate_question_app.hard_negative_mining import main as mine_main
+    from duplicate_question_app._evaluation.hard_mining import main as mine_main
 
     mine_main()
 

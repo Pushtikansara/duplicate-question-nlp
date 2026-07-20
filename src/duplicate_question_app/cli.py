@@ -30,13 +30,13 @@ def run_app() -> None:
     _ensure_project_root()
     import subprocess
 
-    entry_path = Path(__file__).resolve().parent.parent.parent / "app" / "_entry.py"
-    if not entry_path.exists():
-        print(f"Error: app entry point not found at {entry_path}")
+    run_app_path = Path(__file__).resolve().parent.parent.parent / "run_app.py"
+    if not run_app_path.exists():
+        print(f"Error: run_app.py not found at {run_app_path}")
         sys.exit(1)
 
-    print(f"Starting Streamlit dashboard from {entry_path}...")
-    cmd = [sys.executable, "-m", "streamlit", "run", str(entry_path)]
+    print(f"Starting Streamlit dashboard from {run_app_path}...")
+    cmd = [sys.executable, "-m", "streamlit", "run", str(run_app_path)]
     subprocess.run(cmd)
 
 
@@ -52,9 +52,9 @@ def predict() -> None:
 
     import pandas as pd
 
-    from duplicate_question_app.config import get_app_paths, get_config
+    from duplicate_question_app._config.settings import get_app_paths, get_config
+    from duplicate_question_app._models.week2 import is_week2_model
     from duplicate_question_app.utils.device import resolve_device
-    from duplicate_question_app.week2_inference import is_week2_model
 
     paths = get_app_paths()
     device = resolve_device()
@@ -81,11 +81,14 @@ def predict() -> None:
     logger.info("Predicting with model=%s threshold=%.2f device=%s", model_name, threshold, device)
 
     if is_week2_model(model_name):
-        from duplicate_question_app.week2_inference import Week2InferenceService
+        from duplicate_question_app._models.week2 import Week2InferenceService
 
         service = Week2InferenceService(paths)
     else:
-        from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
+        from duplicate_question_app._inference.transformer import (
+            DuplicateQuestionInferenceService,
+            load_model_and_tokenizer,
+        )
 
         model, tokenizer, metadata = load_model_and_tokenizer(paths, model_version=model_name)
         service = DuplicateQuestionInferenceService(model=model, tokenizer=tokenizer, metadata=metadata)
@@ -207,11 +210,10 @@ def _run_doctor(models: bool = False, verbose: bool = False) -> None:
     - Dependency versions
     - Cache status
     """
-    from duplicate_question_app._config.logging_setup import configure_logging, get_logger
+    from duplicate_question_app._config.logging_setup import configure_logging
     from duplicate_question_app._config.settings import get_app_paths
 
     configure_logging()
-    logger = get_logger("cli.doctor")
 
     print("=" * 60)
     print("  Duplicate Question Detection — System Diagnostics")
@@ -424,7 +426,7 @@ def _run_validate() -> None:
 
 def _run_config(verbose: bool = False) -> None:
     """Display current effective configuration."""
-    from duplicate_question_app.config import get_config
+    from duplicate_question_app._config.settings import get_config
 
     print("=" * 60)
     print("  Current Configuration")

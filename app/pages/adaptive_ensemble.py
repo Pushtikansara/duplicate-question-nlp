@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from app.utils.constants import PATHS
-from duplicate_question_app.adaptive_ensemble_v2 import adaptive_ensemble_predict
+from duplicate_question_app._ensemble.v2 import adaptive_ensemble_predict
 
 
 def render() -> None:

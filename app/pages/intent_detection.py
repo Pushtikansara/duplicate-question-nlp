@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from duplicate_question_app.intent_detector import get_intent_details
+from duplicate_question_app._linguistics.intent import get_intent_details
 
 
 def render() -> None:

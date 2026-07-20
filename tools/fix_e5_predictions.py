@@ -23,13 +23,13 @@ from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.config import get_app_paths
-from duplicate_question_app.embedding_models import (
+from duplicate_question_app._config.settings import get_app_paths
+from duplicate_question_app._models.embeddings import (
     _resolve_device,
     get_sentence_transformer_model,
     predict_batch_sentence_transformer,
 )
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._preprocessing import normalize_question
 
 # Optimal thresholds (found via threshold sweep on CSV test sets)
 FINETUNED_RAW_THRESHOLD = 0.74
@@ -76,7 +76,7 @@ def load_csv_data(path: Path) -> tuple[list[tuple[str, str]], np.ndarray]:
 
 def predict_with_e5_lr(model_name: str, pairs: list[tuple[str, str]], batch_size: int = 256):
     """Predict using E5 frozen model + Logistic Regression head."""
-    from duplicate_question_app.classifier_head import batch_predict_with_lr
+    from duplicate_question_app._training.classifier_head import batch_predict_with_lr
 
     return batch_predict_with_lr(model_name, pairs, threshold=0.5, batch_size=batch_size)
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from duplicate_question_app.negation_detector import detect_negations, get_negation_penalty
+from duplicate_question_app._linguistics.negation import detect_negations, get_negation_penalty
 
 
 def render() -> None:

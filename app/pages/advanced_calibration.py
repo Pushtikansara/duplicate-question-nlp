@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from duplicate_question_app.confidence_calibration import calibrate_model_prediction
-from duplicate_question_app.confidence_calibration_v2 import (
+from duplicate_question_app._calibration.v1 import calibrate_model_prediction
+from duplicate_question_app._calibration.v2 import (
     CalibrationMethod,
     calibrate_predictions,
     get_calibration_curve_data,
 )
-from duplicate_question_app.config import MODEL_CHOICES
+from duplicate_question_app._config.settings import MODEL_CHOICES
 
 
 def render() -> None:
@@ -34,7 +34,8 @@ def render() -> None:
 
         if cal_submitted:
             try:
-                calibrated = calibrate_model_prediction(model, raw_prob)
+                with st.spinner("Calibrating..."):
+                    calibrated = calibrate_model_prediction(model, raw_prob)
                 delta = calibrated - raw_prob
                 col1, col2, col3 = st.columns(3)
                 col1.metric("Raw Probability", f"{raw_prob:.2%}")

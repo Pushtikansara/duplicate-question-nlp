@@ -1,6 +1,6 @@
 __version__ = "0.2.0"
 
-from duplicate_question_app.artifacts import (
+from duplicate_question_app._artifacts import (
     available_week4_plots,
     build_dataset_summary,
     build_transformer_metrics,
@@ -14,7 +14,7 @@ from duplicate_question_app.artifacts import (
     load_week4_threshold_analysis,
     reconstruct_week3_test_frame,
 )
-from duplicate_question_app.config import (
+from duplicate_question_app._config.settings import (
     MODEL_CHOICES,
     AppPaths,
     ModelDirectoryStatus,
@@ -27,7 +27,7 @@ from duplicate_question_app.config import (
     resolve_model_selection,
     resolve_preferred_model_dir,
 )
-from duplicate_question_app.inference import (
+from duplicate_question_app._inference.transformer import (
     DEFAULT_MAX_LENGTH,
     DuplicateQuestionInferenceService,
     ModelArtifactsNotFoundError,
@@ -35,7 +35,7 @@ from duplicate_question_app.inference import (
     ModelMetadata,
     load_model_and_tokenizer,
 )
-from duplicate_question_app.week2_inference import (
+from duplicate_question_app._models.week2 import (
     Week2InferenceService,
     check_week2_artifacts,
     is_week2_model,

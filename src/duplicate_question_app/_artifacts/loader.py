@@ -18,7 +18,7 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
-from duplicate_question_app.config import AppPaths
+from duplicate_question_app._config.settings import AppPaths
 
 
 def _read_csv_if_exists(path: Path) -> pd.DataFrame:

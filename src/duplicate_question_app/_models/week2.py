@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import hstack, spmatrix
 
-from duplicate_question_app.config import AppPaths
-from duplicate_question_app.preprocessing import normalize_question as _base_normalize
+from duplicate_question_app._config.settings import AppPaths
+from duplicate_question_app._preprocessing import normalize_question as _base_normalize
 
 
 # TF-IDF models were trained on original text without abbreviation expansion.

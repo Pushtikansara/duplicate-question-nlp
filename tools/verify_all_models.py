@@ -14,15 +14,15 @@ from pathlib import Path
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.config import (
+from duplicate_question_app._config.settings import (
     get_app_paths,
 )
-from duplicate_question_app.embedding_models import (
+from duplicate_question_app._inference.transformer import DuplicateQuestionInferenceService, load_model_and_tokenizer
+from duplicate_question_app._models.embeddings import (
     get_ensemble_prediction,
     predict_with_sentence_transformer,
 )
-from duplicate_question_app.inference import DuplicateQuestionInferenceService, load_model_and_tokenizer
-from duplicate_question_app.week2_inference import Week2InferenceService, check_week2_artifacts
+from duplicate_question_app._models.week2 import Week2InferenceService, check_week2_artifacts
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PATHS = get_app_paths(PROJECT_ROOT)

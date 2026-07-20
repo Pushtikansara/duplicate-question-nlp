@@ -30,18 +30,18 @@ from sklearn.metrics import (
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.classifier_head import (
-    batch_predict_ensemble,
-    batch_predict_with_lr,
-)
-from duplicate_question_app.config import get_app_paths
-from duplicate_question_app.data_loader import get_quora_splits
-from duplicate_question_app.embedding_models import (
+from duplicate_question_app._config.settings import get_app_paths
+from duplicate_question_app._dataset.loader import get_quora_splits
+from duplicate_question_app._evaluation.metrics import compute_ece
+from duplicate_question_app._models.embeddings import (
     _get_threshold,
     predict_batch_sentence_transformer,
 )
-from duplicate_question_app.evaluation import compute_ece
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._preprocessing import normalize_question
+from duplicate_question_app._training.classifier_head import (
+    batch_predict_ensemble,
+    batch_predict_with_lr,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PATHS = get_app_paths(PROJECT_ROOT)

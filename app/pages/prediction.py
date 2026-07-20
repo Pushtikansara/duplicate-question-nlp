@@ -6,11 +6,16 @@ import streamlit as st
 
 from app.services.runtime import get_runtime_context
 from app.utils.constants import get_model_prediction
-from duplicate_question_app.visuals import create_probability_figure
+from duplicate_question_app._visualization.plots import create_probability_figure
 
 
 def render() -> None:
     st.title("Prediction Page")
+    st.markdown(
+        "<p style='color: #64748B; font-size: 0.95rem;'>"
+        "Run live inference on individual question pairs with the selected model.</p>",
+        unsafe_allow_html=True,
+    )
     selected_model = st.session_state.get("selected_model", "Improved DistilBERT (Week 4)")
 
     try:

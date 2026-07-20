@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from app.utils.constants import PATHS
-from duplicate_question_app.agreement_dashboard import (
+from duplicate_question_app._explainability.agreement_dashboard import (
     analyze_model_agreement,
     generate_agreement_summary,
 )

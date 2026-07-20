@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from duplicate_question_app.contradiction_detector import detect_contradiction
+from duplicate_question_app._linguistics.contradiction import detect_contradiction
 
 
 def render() -> None:

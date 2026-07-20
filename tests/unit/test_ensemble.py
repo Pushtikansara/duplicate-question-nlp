@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 
 
@@ -23,26 +21,28 @@ class TestEnsembleV1:
 
 class TestEnsembleV2:
     def test_embedding_cache_imports(self):
-        from duplicate_question_app._ensemble.v2 import EmbeddingCache
+        from app.services.cache import get_cache
 
-        cache = EmbeddingCache()
-        assert cache is not None
+        cache = get_cache()
+        assert cache.embedding_cache is not None
 
     def test_embedding_cache_put_get(self):
-        from duplicate_question_app._ensemble.v2 import EmbeddingCache
+        from app.services.cache import embedding_cache_key, get_cache
 
-        cache = EmbeddingCache()
+        cache = get_cache()
         emb = np.array([0.1, 0.2, 0.3])
-        cache.put("test_model", "test text", emb)
-        result = cache.get("test_model", "test text")
+        key = embedding_cache_key("test_model", "test text")
+        cache.embedding_cache.put(key, emb)
+        result = cache.embedding_cache.get(key)
         assert result is not None
         assert np.allclose(result, emb)
 
     def test_embedding_cache_miss(self):
-        from duplicate_question_app._ensemble.v2 import EmbeddingCache
+        from app.services.cache import embedding_cache_key, get_cache
 
-        cache = EmbeddingCache()
-        result = cache.get("nonexistent", "text")
+        cache = get_cache()
+        key = embedding_cache_key("nonexistent", "text")
+        result = cache.embedding_cache.get(key)
         assert result is None
 
     def test_adaptive_ensemble_predict_imports(self):

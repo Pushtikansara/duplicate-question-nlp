@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from duplicate_question_app.lexical_penalty import compute_lexical_penalty, get_lexical_penalty
+from duplicate_question_app._linguistics.lexical import compute_lexical_penalty, get_lexical_penalty
 
 
 def render() -> None:

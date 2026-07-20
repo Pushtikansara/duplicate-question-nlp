@@ -4,7 +4,7 @@ train/val/test splits accessible from Python modules (not just notebooks).
 Split: 80/10/10 — stratified by label, random_state=42.
 
 Usage:
-    from duplicate_question_app.data_loader import get_quora_splits
+    from duplicate_question_app._dataset.loader import get_quora_splits
     train_df, val_df, test_df = get_quora_splits()
 """
 
@@ -34,7 +34,7 @@ def get_quora_splits(
         (train_df, val_df, test_df) each with columns [q1, q2, label].
     """
     if data_path is None:
-        root = Path(__file__).resolve().parents[2]  # project root
+        root = Path(__file__).resolve().parents[3]  # project root
         data_path = root / "data" / "cleaned_quora.parquet"
 
     data_path = Path(data_path)
@@ -87,7 +87,8 @@ def load_quora_data(
 ) -> pd.DataFrame:
     """Load the full cleaned Quora dataset with standardized columns."""
     if data_path is None:
-        root = Path(__file__).resolve().parents[2]
+        root = Path(__file__).resolve().parents[3]
+
         data_path = root / "data" / "cleaned_quora.parquet"
 
     data_path = Path(data_path)

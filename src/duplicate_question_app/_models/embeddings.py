@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from duplicate_question_app._config.logging_setup import get_logger
-from duplicate_question_app.config import (
+from duplicate_question_app._config.settings import (
     get_app_paths,
     get_config,
     is_cross_encoder_model,
@@ -18,9 +18,11 @@ from duplicate_question_app.config import (
 )
 
 _logger = get_logger(__name__)
-from duplicate_question_app.preprocessing import normalize_question
+from duplicate_question_app._inference.cache import get_cache
+from duplicate_question_app._preprocessing import normalize_question
 
-_sentence_transformer_cache: dict[str, Any] = {}
+_cache_manager = get_cache()
+_sentence_transformer_cache: dict[str, Any] = _cache_manager.sentence_transformer_cache  # type: ignore[attr-defined]
 PATHS = None
 
 
@@ -30,7 +32,7 @@ def get_paths(project_root=None):
         from pathlib import Path
 
         if project_root is None:
-            project_root = Path(__file__).resolve().parents[2]
+            project_root = Path(__file__).resolve().parents[3]
         PATHS = get_app_paths(project_root)
     return PATHS
 
@@ -102,10 +104,7 @@ def get_sentence_transformer_model(model_name: str) -> Any:
         elif is_finetuned_embedding_model(model_name):
             # Load fine-tuned model from local path
             paths = get_paths()
-            model_key = {
-                "E5-quora-finetuned": str(paths.finetuned_e5_dir),
-                "BGE-quora-finetuned": str(paths.finetuned_bge_dir),
-            }.get(model_name)
+            model_key = str(paths.finetuned_e5_dir) if model_name == "E5-quora-finetuned" else None
             if not model_key or not Path(model_key).exists():
                 raise FileNotFoundError(
                     f"Fine-tuned model '{model_name}' not found at {model_key}. Run scripts/train_e5_quora.py first."
@@ -140,8 +139,6 @@ def _get_sigmoid_params(model_name: str) -> tuple[float, float]:
         return tuple(sigmoid_params.get("E5-quora-finetuned", default))
     elif "e5" in name_lower:
         return tuple(sigmoid_params.get("E5-base-v2", default))
-    elif "bge-quora" in name_lower or "bge-finetuned" in name_lower:
-        return tuple(sigmoid_params.get("BGE-quora-finetuned", default))
     elif "bge" in name_lower:
         return tuple(sigmoid_params.get("BGE-base-en-v1.5", default))
     elif "mpnet" in name_lower:
@@ -168,8 +165,6 @@ def _get_threshold(model_name: str) -> float:
         return thresholds.get("E5-quora-finetuned", 0.40)
     elif "e5" in name_lower:
         return thresholds.get("E5-base-v2", 0.35)
-    elif "bge-quora" in name_lower or "bge-finetuned" in name_lower:
-        return thresholds.get("BGE-quora-finetuned", 0.38)
     elif "bge" in name_lower:
         return thresholds.get("BGE-base-en-v1.5", 0.30)
     elif "mpnet" in name_lower:
@@ -365,7 +360,7 @@ def get_ensemble_prediction(q1: str, q2: str, paths=None) -> dict[str, Any]:
     """
     if paths is None:
         paths = get_paths()
-    from duplicate_question_app.intelligent_ensemble import get_adaptive_ensemble_prediction
+    from duplicate_question_app._ensemble.v1 import get_adaptive_ensemble_prediction
 
     return get_adaptive_ensemble_prediction(q1, q2, paths)
 
@@ -377,23 +372,24 @@ def is_finetuned_model_available(model_name: str, paths=None) -> bool:
     """Check if a fine-tuned model is available on disk."""
     if paths is None:
         paths = get_paths()
-    model_paths = {
-        "E5-quora-finetuned": paths.finetuned_e5_dir,
-        "BGE-quora-finetuned": paths.finetuned_bge_dir,
-    }
-    model_path = model_paths.get(model_name)
-    if model_path is None:
+    if model_name != "E5-quora-finetuned":
         return False
-    return model_path.exists() and (model_path / "config.json").exists()
+    return paths.finetuned_e5_dir.exists() and (paths.finetuned_e5_dir / "config.json").exists()
 
 
 def list_available_finetuned_models(paths=None) -> list[str]:
     """List all available fine-tuned models."""
     if paths is None:
         paths = get_paths()
-    available = []
     if is_finetuned_model_available("E5-quora-finetuned", paths):
-        available.append("E5-quora-finetuned")
-    if is_finetuned_model_available("BGE-quora-finetuned", paths):
-        available.append("BGE-quora-finetuned")
-    return available
+        return ["E5-quora-finetuned"]
+    return []
+
+
+def clear_embedding_cache() -> None:
+    """Clear the sentence transformer model cache.
+
+    Called when the user switches models to force a fresh load.
+    """
+    global _sentence_transformer_cache
+    _sentence_transformer_cache.clear()

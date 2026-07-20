@@ -14,9 +14,9 @@ from pathlib import Path
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from duplicate_question_app.agreement_engine import get_agreement_report
-from duplicate_question_app.config import MODEL_CHOICES, get_app_paths
-from duplicate_question_app.intelligent_ensemble import get_adaptive_ensemble_prediction
+from duplicate_question_app._config.settings import MODEL_CHOICES, get_app_paths
+from duplicate_question_app._ensemble.agreement import get_agreement_report
+from duplicate_question_app._ensemble.v1 import get_adaptive_ensemble_prediction
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PATHS = get_app_paths(PROJECT_ROOT)

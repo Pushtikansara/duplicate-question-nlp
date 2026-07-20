@@ -96,7 +96,7 @@ class TestPreprocessing:
         assert "  " not in result
 
     def test_preprocessing_imports_from_stub(self):
-        from duplicate_question_app.preprocessing import normalize_question as nq
+        from duplicate_question_app._preprocessing import normalize_question as nq
 
         assert nq is normalize_question
 

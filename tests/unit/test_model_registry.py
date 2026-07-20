@@ -94,7 +94,7 @@ class TestModelRegistry:
         assert entry.is_loaded is True
 
     def test_registry_importable_from_stub(self):
-        from duplicate_question_app.model_registry import ModelRegistryEntry as StubEntry
+        from duplicate_question_app._models.registry import ModelRegistryEntry as StubEntry
 
         assert StubEntry is ModelRegistryEntry
 
