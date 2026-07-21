@@ -172,3 +172,5 @@ mlruns/
 
 # Local config overrides
 configs/local.yaml
+.coverage
+htmlcov/
