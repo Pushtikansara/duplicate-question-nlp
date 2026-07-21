@@ -1,9 +1,3 @@
-"""Professional theme and styling for the DQD application.
-
-Provides a consistent design system with CSS variables,
-professional cards, navigation styling, and responsive layout.
-"""
-
 from __future__ import annotations
 
 import streamlit as st
@@ -13,7 +7,6 @@ def inject_styles() -> None:
     st.markdown(
         """
         <style>
-        /* ===== Design System ===== */
         :root {
             --primary: #2563EB;
             --primary-light: #3B82F6;
@@ -37,7 +30,6 @@ def inject_styles() -> None:
             --radius-xl: 20px;
         }
 
-        /* ===== Layout ===== */
         .block-container {
             padding-top: 1.5rem !important;
             padding-bottom: 2rem !important;
@@ -45,10 +37,11 @@ def inject_styles() -> None:
         }
         .stApp header {background: transparent !important;}
 
-        /* ===== Navigation Styling ===== */
+        /* ===== Sidebar ===== */
         div[data-testid="stSidebar"] {
             background: #FFFFFF;
             border-right: 1px solid var(--border-light);
+            min-width: 280px;
         }
         div[data-testid="stSidebar"] .stButton button {
             text-align: left;
@@ -76,6 +69,21 @@ def inject_styles() -> None:
         }
         div[data-testid="stSidebar"] .stSelectbox {
             margin-bottom: 0.5rem;
+        }
+
+        /* ===== Radio Navigation ===== */
+        div[data-testid="stSidebar"] div[data-testid="stRadio"] label {
+            padding: 0.3rem 0.5rem;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            transition: all 0.1s;
+        }
+        div[data-testid="stSidebar"] div[data-testid="stRadio"] label:hover {
+            background: var(--primary-bg);
+        }
+        div[data-testid="stSidebar"] div[data-testid="stRadio"] label[data-checked="true"] {
+            background: rgba(37,99,235,0.12);
+            font-weight: 500;
         }
 
         /* ===== Cards ===== */
@@ -204,6 +212,12 @@ def inject_styles() -> None:
             font-size: 0.85rem;
             font-weight: 500;
         }
+        div[data-baseweb="tab-list"] {
+            gap: 0.25rem;
+            padding: 0 0 0.25rem 0;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+        }
 
         /* ===== Buttons ===== */
         .stButton button[kind="primary"] {
@@ -220,6 +234,61 @@ def inject_styles() -> None:
             font-weight: 600;
         }
 
+        /* ===== Form Elements ===== */
+        div[data-testid="stForm"] {
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            background: var(--bg-card);
+        }
+        div[data-testid="stForm"] .stTextArea textarea {
+            border-radius: var(--radius-sm);
+            border: 1px solid #E2E8F0;
+        }
+        div[data-testid="stForm"] .stTextArea textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+        }
+
+        /* ===== Alerts ===== */
+        div[data-testid="stAlert"] {
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+        }
+
+        /* ===== Progress Bar ===== */
+        div[data-testid="stProgress"] > div {
+            border-radius: 8px;
+        }
+
+        /* ===== Selectbox ===== */
+        div[data-baseweb="select"] > div {
+            border-radius: var(--radius-sm);
+        }
+
+        /* ===== Input ===== */
+        input[type="text"], input[type="number"], input[type="search"] {
+            border-radius: var(--radius-sm) !important;
+        }
+
+        /* ===== Spacing improvements ===== */
+        div.row-widget.stColumns {
+            gap: 0.75rem;
+        }
+        section.main div[data-testid="column"] {
+            gap: 0.5rem;
+        }
+        div.stMetric {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+        div.stMetric:hover {
+            box-shadow: var(--shadow-md);
+        }
+
         /* ===== Responsive ===== */
         @media (max-width: 768px) {
             .block-container {
@@ -233,18 +302,23 @@ def inject_styles() -> None:
             }
         }
 
-        /* ===== Form Spacing ===== */
-        div[data-testid="stForm"] {
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            background: var(--bg-card);
+        /* ===== Caption styling ===== */
+        .stCaption {
+            color: var(--text-muted) !important;
+            font-size: 0.8rem !important;
         }
 
-        /* ===== Success/Info/Warning/Error ===== */
-        div[data-testid="stAlert"] {
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
+        /* ===== Code blocks ===== */
+        code {
+            background: #F1F5F9 !important;
+            padding: 0.1rem 0.3rem !important;
+            border-radius: 4px !important;
+            font-size: 0.8rem !important;
+        }
+
+        /* ===== Spinner ===== */
+        div[data-testid="stSpinner"] {
+            text-align: center;
         }
         </style>
         """,

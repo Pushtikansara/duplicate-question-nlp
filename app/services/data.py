@@ -36,11 +36,17 @@ def _get_dataset(dataset_signature: str) -> pd.DataFrame:
     return load_dataset_frame(PATHS)
 
 
+def _find_dataset_path() -> Path:
+    from duplicate_question_app._artifacts.loader import _discover_data_file
+
+    found = _discover_data_file(PATHS.data_dir)
+    if found is not None:
+        return found
+    return PATHS.data_dir / "cleaned_quora.parquet"
+
+
 def get_dataset() -> pd.DataFrame:
-    dataset_path = PATHS.data_dir / "cleaned_quora.parquet"
-    if not dataset_path.exists():
-        dataset_path = PATHS.data_dir / "cleaned_quora.csv"
-    return _get_dataset(path_signature(dataset_path))
+    return _get_dataset(path_signature(_find_dataset_path()))
 
 
 @st.cache_data(show_spinner=False)
@@ -50,10 +56,7 @@ def _get_dataset_summary(dataset_signature: str) -> dict[str, Any]:
 
 
 def get_dataset_summary() -> dict[str, Any]:
-    dataset_path = PATHS.data_dir / "cleaned_quora.parquet"
-    if not dataset_path.exists():
-        dataset_path = PATHS.data_dir / "cleaned_quora.csv"
-    return _get_dataset_summary(path_signature(dataset_path))
+    return _get_dataset_summary(path_signature(_find_dataset_path()))
 
 
 @st.cache_data(show_spinner=False)
@@ -74,10 +77,7 @@ def _get_week3_test_frame(dataset_signature: str) -> pd.DataFrame:
 
 
 def get_week3_test_frame() -> pd.DataFrame:
-    dataset_path = PATHS.data_dir / "cleaned_quora.parquet"
-    if not dataset_path.exists():
-        dataset_path = PATHS.data_dir / "cleaned_quora.csv"
-    return _get_week3_test_frame(path_signature(dataset_path))
+    return _get_week3_test_frame(path_signature(_find_dataset_path()))
 
 
 @st.cache_data(show_spinner=False)
@@ -102,11 +102,8 @@ def _get_week3_analysis_frame(dataset_signature: str, predictions_signature: str
 
 
 def get_week3_analysis_frame() -> pd.DataFrame:
-    dataset_path = PATHS.data_dir / "cleaned_quora.parquet"
-    if not dataset_path.exists():
-        dataset_path = PATHS.data_dir / "cleaned_quora.csv"
     predictions_path = PATHS.transformer_results_dir / "transformer_test_predictions.csv"
-    return _get_week3_analysis_frame(path_signature(dataset_path), path_signature(predictions_path))
+    return _get_week3_analysis_frame(path_signature(_find_dataset_path()), path_signature(predictions_path))
 
 
 @st.cache_data(show_spinner=False)

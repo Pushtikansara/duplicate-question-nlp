@@ -218,41 +218,40 @@ def get_adaptive_ensemble_prediction(
     # Compute adaptive weights
     weights = compute_adaptive_weights(q1, q2)
 
-    # Group models and their weights
+    # Group models and assign weights (single pass)
     model_weights: dict[str, float] = {}
 
-    # Lexical models (Week 2)
-    for v in votes:
-        if "Week 2" in v.model_name and v.error is None:
-            model_weights[v.model_name] = weights.lexical_weight / max(
-                1, sum(1 for v2 in votes if "Week 2" in v2.model_name and v2.error is None)
-            )
+    bi_encoder_names = {"BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2", "E5-quora-finetuned"}
+    cross_encoder_names = {"DeBERTa-v3 Cross-Encoder", "Cross-Encoder-Quora (Trained)"}
 
-    # Transformer models (Week 3, Week 4)
-    for v in votes:
-        if "DistilBERT" in v.model_name and v.error is None:
-            model_weights[v.model_name] = weights.transformer_weight / max(
-                1, sum(1 for v2 in votes if "DistilBERT" in v2.model_name and v2.error is None)
-            )
+    counts = {
+        "week2": sum(1 for v in votes if "Week 2" in v.model_name and v.error is None),
+        "transformer": sum(1 for v in votes if "DistilBERT" in v.model_name and v.error is None),
+        "bi_encoder": sum(1 for v in votes if v.model_name in bi_encoder_names and v.error is None),
+        "cross_encoder": sum(1 for v in votes if v.model_name in cross_encoder_names and v.error is None),
+    }
 
-    # Embedding models (BGE, E5, MPNet)
-    for v in votes:
-        if v.model_name in ("BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2") and v.error is None:
-            model_weights[v.model_name] = weights.embedding_weight / max(
-                1,
-                sum(
-                    1
-                    for v2 in votes
-                    if v2.model_name in ("BGE-base-en-v1.5", "E5-base-v2", "MPNet-base-v2") and v2.error is None
-                ),
-            )
+    group_weights = {
+        "week2": weights.lexical_weight,
+        "transformer": weights.transformer_weight,
+        "bi_encoder": weights.embedding_weight,
+        "cross_encoder": weights.cross_encoder_weight,
+    }
 
-    # Cross-encoder (DeBERTa)
     for v in votes:
-        if "DeBERTa" in v.model_name and v.error is None:
-            model_weights[v.model_name] = weights.cross_encoder_weight / max(
-                1, sum(1 for v2 in votes if "DeBERTa" in v2.model_name and v2.error is None)
-            )
+        if v.error is not None:
+            continue
+        if "Week 2" in v.model_name:
+            w = group_weights["week2"] / max(1, counts["week2"])
+        elif "DistilBERT" in v.model_name:
+            w = group_weights["transformer"] / max(1, counts["transformer"])
+        elif v.model_name in bi_encoder_names:
+            w = group_weights["bi_encoder"] / max(1, counts["bi_encoder"])
+        elif v.model_name in cross_encoder_names:
+            w = group_weights["cross_encoder"] / max(1, counts["cross_encoder"])
+        else:
+            continue
+        model_weights[v.model_name] = w
 
     # Compute weighted probability
     weighted_probs: list[float] = []

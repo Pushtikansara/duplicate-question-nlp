@@ -99,10 +99,11 @@ dqd-doctor = "duplicate_question_app.cli:_run_doctor"
 dqd-health = "duplicate_question_app.cli:_run_health"
 dqd-validate = "duplicate_question_app.cli:_run_validate"
 dqd-config = "duplicate_question_app.cli:_run_config"
+ares = "ares.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["duplicate_question_app*"]
+include = ["duplicate_question_app*", "ares*"]
 
 [tool.setuptools.package-data]
 duplicate_question_app = ["py.typed"]

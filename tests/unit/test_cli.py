@@ -68,23 +68,22 @@ class TestCLI:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             fname = f.name
             df.to_csv(fname, index=False)
-        with patch.object(sys, "argv", ["dqd-predict", fname, "--model", "E5-base-v2"]):
-            with patch("duplicate_question_app.week2_inference.is_week2_model", return_value=False):
+        with patch.object(sys, "argv", ["dqd-predict", fname]):
+            with patch("duplicate_question_app._inference.transformer.load_model_and_tokenizer") as mock_loader:
+                mock_loader.return_value = (MagicMock(), MagicMock(), meta)
                 with patch(
-                    "duplicate_question_app.inference.load_model_and_tokenizer",
-                    return_value=(MagicMock(), MagicMock(), meta),
-                ):
-                    with patch("duplicate_question_app.inference.DuplicateQuestionInferenceService") as mock_svc:
-                        mock_instance = MagicMock()
-                        mock_instance.predict_single.return_value = {
-                            "predicted_label": 1,
-                            "prob_duplicate": 0.9,
-                            "prob_non_duplicate": 0.1,
-                        }
-                        mock_svc.return_value = mock_instance
-                        from duplicate_question_app.cli import predict
+                    "duplicate_question_app._inference.transformer.DuplicateQuestionInferenceService"
+                ) as mock_svc:
+                    mock_instance = MagicMock()
+                    mock_instance.predict_single.return_value = {
+                        "predicted_label": 1,
+                        "prob_duplicate": 0.9,
+                        "prob_non_duplicate": 0.1,
+                    }
+                    mock_svc.return_value = mock_instance
+                    from duplicate_question_app.cli import predict
 
-                        predict()
+                    predict()
 
     def test_benchmark_imports(self):
         from duplicate_question_app.cli import benchmark

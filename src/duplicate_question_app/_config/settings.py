@@ -359,7 +359,6 @@ _LEGACY_SENTENCE_TRANSFORMER_MODELS = frozenset(
 _LEGACY_FINETUNED_EMBEDDING_MODELS = frozenset(
     {
         "E5-quora-finetuned",
-        "BGE-quora-finetuned",
     }
 )
 

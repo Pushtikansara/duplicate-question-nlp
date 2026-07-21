@@ -1,9 +1,3 @@
-"""Model Registry — tracks every model in the system with complete metadata.
-
-Provides a single source of truth for model discovery, status checking,
-and metadata queries used by the Streamlit UI.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -16,22 +10,20 @@ from duplicate_question_app._models.week2 import check_week2_artifacts
 
 @dataclass
 class ModelRegistryEntry:
-    """Complete metadata for a single model."""
-
     display_name: str
-    internal_id: str  # e.g. "week2_lr", "bge"
-    model_type: str  # "classical-ml", "transformer", "bi-encoder", "cross-encoder", "ensemble"
-    framework: str  # "joblib", "pytorch", "sentence-transformers", "ensemble"
-    source: str  # "local" (trained), "huggingface" (downloaded), "built-in" (ensemble)
-    version: str  # e.g. "week2", "week3", "phase2", "ensemble"
-    local_path: str | None  # Path on disk if local
-    cache_path: str | None  # HF cache path if applicable
-    device: str  # "cpu" or "cuda"
-    size_mb: float | None  # Model size on disk
-    load_status: str  # "loaded", "available", "missing", "downloading"
-    is_loaded: bool  # Currently loaded in memory
-    has_artifacts: bool  # Files exist on disk
-    parameters: str = "N/A"  # Parameter count
+    internal_id: str
+    model_type: str
+    framework: str
+    source: str
+    version: str
+    local_path: str | None
+    cache_path: str | None
+    device: str
+    size_mb: float | None
+    load_status: str
+    is_loaded: bool
+    has_artifacts: bool
+    parameters: str = "N/A"
     embedding_size: int | None = None
     hidden_size: int | None = None
     avg_latency_ms: float = 0.0
@@ -53,7 +45,6 @@ def _get_directory_size_mb(path: Path | None) -> float | None:
 
 
 def _get_hf_cache_path(model_key: str) -> str | None:
-    """Get HuggingFace cache path if model is cached."""
     try:
         from huggingface_hub import scan_cache_dir
 
@@ -63,7 +54,6 @@ def _get_hf_cache_path(model_key: str) -> str | None:
                 return str(repo.repo_path)
     except (OSError, ImportError):
         pass
-    # Try common cache locations with config overrides
     home = Path.home()
     paths_cfg = get_config("paths") or {}
     default_candidates = [
@@ -80,7 +70,6 @@ def _get_hf_cache_path(model_key: str) -> str | None:
 
 
 def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
-    """Build the complete model registry by inspecting all available models."""
     if paths is None:
         from pathlib import Path
 
@@ -96,18 +85,26 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
     except (FileNotFoundError, RuntimeError):
         pass
 
-    # Check HF cache for sentence transformer models
     bge_cached = _get_hf_cache_path("BAAI/bge-base-en-v1.5") is not None
     e5_cached = _get_hf_cache_path("intfloat/e5-base-v2") is not None
     mpnet_cached = _get_hf_cache_path("sentence-transformers/all-mpnet-base-v2") is not None
     deberta_cached = _get_hf_cache_path("cross-encoder/nli-deberta-v3-base") is not None
+
+    ce_quora_on_disk = paths.finetuned_cross_encoder_dir.exists() and (
+        (paths.finetuned_cross_encoder_dir / "model.safetensors").exists()
+        or (paths.finetuned_cross_encoder_dir / "pytorch_model.bin").exists()
+    )
+    e5_ft_on_disk = paths.finetuned_e5_dir.exists() and (
+        (paths.finetuned_e5_dir / "model.safetensors").exists()
+        or (paths.finetuned_e5_dir / "pytorch_model.bin").exists()
+    )
 
     entries: list[ModelRegistryEntry] = []
 
     # Week 2 - Logistic Regression
     lr_path = paths.models_dir / "week2_models" / "logistic_regression.joblib"
     svm_path = paths.models_dir / "week2_models" / "linear_svm.joblib"
-    paths.models_dir / "week2_models" / "tfidf_vectorizer.joblib"
+    week2_dir_size = _get_directory_size_mb(paths.models_dir / "week2_models")
 
     entries.append(
         ModelRegistryEntry(
@@ -120,7 +117,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
             local_path=str(lr_path) if lr_path.exists() else None,
             cache_path=None,
             device="cpu",
-            size_mb=_get_directory_size_mb(paths.models_dir / "week2_models"),
+            size_mb=week2_dir_size,
             load_status="available" if week2_ready else "missing",
             is_loaded=False,
             has_artifacts=week2_arts["logistic_regression"],
@@ -144,7 +141,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
             local_path=str(svm_path) if svm_path.exists() else None,
             cache_path=None,
             device="cpu",
-            size_mb=_get_directory_size_mb(paths.models_dir / "week2_models"),
+            size_mb=week2_dir_size,
             load_status="available" if week2_ready else "missing",
             is_loaded=False,
             has_artifacts=week2_arts["linear_svm"],
@@ -213,6 +210,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
     )
 
     # BGE-base-en-v1.5
+    bge_on_disk = paths.bge_model_dir.exists()
     entries.append(
         ModelRegistryEntry(
             display_name="BGE-base-en-v1.5",
@@ -221,13 +219,13 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
             framework="sentence-transformers",
             source="huggingface",
             version="phase2",
-            local_path=str(paths.bge_model_dir) if paths.bge_model_dir.exists() else None,
+            local_path=str(paths.bge_model_dir) if bge_on_disk else None,
             cache_path=_get_hf_cache_path("BAAI/bge-base-en-v1.5"),
             device="cpu",
-            size_mb=None,
-            load_status="available" if bge_cached else "missing (auto-download)",
+            size_mb=_get_directory_size_mb(paths.bge_model_dir) if bge_on_disk else None,
+            load_status="available" if (bge_cached or bge_on_disk) else "missing (auto-download)",
             is_loaded=False,
-            has_artifacts=bge_cached or paths.bge_model_dir.exists(),
+            has_artifacts=bge_cached or bge_on_disk,
             parameters="110M",
             embedding_size=768,
             hidden_size=768,
@@ -239,6 +237,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
     )
 
     # E5-base-v2
+    e5_on_disk = paths.e5_model_dir.exists()
     entries.append(
         ModelRegistryEntry(
             display_name="E5-base-v2",
@@ -247,13 +246,13 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
             framework="sentence-transformers",
             source="huggingface",
             version="phase2",
-            local_path=str(paths.e5_model_dir) if paths.e5_model_dir.exists() else None,
+            local_path=str(paths.e5_model_dir) if e5_on_disk else None,
             cache_path=_get_hf_cache_path("intfloat/e5-base-v2"),
             device="cpu",
-            size_mb=None,
-            load_status="available" if e5_cached else "missing (auto-download)",
+            size_mb=_get_directory_size_mb(paths.e5_model_dir) if e5_on_disk else None,
+            load_status="available" if (e5_cached or e5_on_disk) else "missing (auto-download)",
             is_loaded=False,
-            has_artifacts=e5_cached or paths.e5_model_dir.exists(),
+            has_artifacts=e5_cached or e5_on_disk,
             parameters="118M",
             embedding_size=768,
             hidden_size=768,
@@ -264,7 +263,34 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         )
     )
 
+    # E5-quora-finetuned (was missing from registry!)
+    entries.append(
+        ModelRegistryEntry(
+            display_name="E5-quora-finetuned",
+            internal_id="e5_ft",
+            model_type="bi-encoder",
+            framework="sentence-transformers",
+            source="local",
+            version="phase2",
+            local_path=str(paths.finetuned_e5_dir) if e5_ft_on_disk else None,
+            cache_path=None,
+            device="cpu",
+            size_mb=_get_directory_size_mb(paths.finetuned_e5_dir) if e5_ft_on_disk else None,
+            load_status="loaded" if e5_ft_on_disk else "missing",
+            is_loaded=e5_ft_on_disk,
+            has_artifacts=e5_ft_on_disk,
+            parameters="118M",
+            embedding_size=768,
+            hidden_size=768,
+            description="E5 fine-tuned on Quora duplicate detection data. Best performing bi-encoder for this task.",
+            advantages=["Fine-tuned for task", "Highest bi-encoder accuracy", "Good generalization"],
+            weaknesses=["Slower than base E5", "Larger model size"],
+            recommended_use="Primary bi-encoder for semantic duplicate detection",
+        )
+    )
+
     # MPNet-base-v2
+    mpnet_on_disk = paths.mpnet_model_dir.exists()
     entries.append(
         ModelRegistryEntry(
             display_name="MPNet-base-v2",
@@ -273,13 +299,13 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
             framework="sentence-transformers",
             source="huggingface",
             version="phase2",
-            local_path=str(paths.mpnet_model_dir) if paths.mpnet_model_dir.exists() else None,
+            local_path=str(paths.mpnet_model_dir) if mpnet_on_disk else None,
             cache_path=_get_hf_cache_path("sentence-transformers/all-mpnet-base-v2"),
             device="cpu",
-            size_mb=None,
-            load_status="available" if mpnet_cached else "missing (auto-download)",
+            size_mb=_get_directory_size_mb(paths.mpnet_model_dir) if mpnet_on_disk else None,
+            load_status="available" if (mpnet_cached or mpnet_on_disk) else "missing (auto-download)",
             is_loaded=False,
-            has_artifacts=mpnet_cached or paths.mpnet_model_dir.exists(),
+            has_artifacts=mpnet_cached or mpnet_on_disk,
             parameters="110M",
             embedding_size=768,
             hidden_size=768,
@@ -290,7 +316,8 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         )
     )
 
-    # DeBERTa-v3 Cross-Encoder
+    # DeBERTa-v3 Cross-Encoder (fixed hidden_size from 1024 to 768)
+    deberta_on_disk = paths.deberta_model_dir.exists()
     entries.append(
         ModelRegistryEntry(
             display_name="DeBERTa-v3 Cross-Encoder",
@@ -299,20 +326,47 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
             framework="sentence-transformers",
             source="huggingface",
             version="phase2",
-            local_path=str(paths.deberta_model_dir) if paths.deberta_model_dir.exists() else None,
+            local_path=str(paths.deberta_model_dir) if deberta_on_disk else None,
             cache_path=_get_hf_cache_path("cross-encoder/nli-deberta-v3-base"),
             device="cpu",
-            size_mb=None,
-            load_status="available" if deberta_cached else "missing (auto-download)",
+            size_mb=_get_directory_size_mb(paths.deberta_model_dir) if deberta_on_disk else None,
+            load_status="available" if (deberta_cached or deberta_on_disk) else "missing (auto-download)",
             is_loaded=False,
-            has_artifacts=deberta_cached or paths.deberta_model_dir.exists(),
+            has_artifacts=deberta_cached or deberta_on_disk,
             parameters="184M",
-            embedding_size=1024,
-            hidden_size=1024,
+            embedding_size=768,
+            hidden_size=768,
             description="DeBERTa-v3 NLI cross-encoder. Uses entailment ratio for pairwise scoring.",
             advantages=["Joint encoding captures full context", "Best accuracy on test suite"],
             weaknesses=["NLI model, not trained for duplicate detection", "Slowest inference (~400ms)"],
             recommended_use="When accuracy is critical; works best in ensemble",
+        )
+    )
+
+    # Cross-Encoder-Quora (Trained) — was missing from registry!
+    ce_quora_size = _get_directory_size_mb(paths.finetuned_cross_encoder_dir) if ce_quora_on_disk else None
+    entries.append(
+        ModelRegistryEntry(
+            display_name="Cross-Encoder-Quora (Trained)",
+            internal_id="ce_quora",
+            model_type="cross-encoder",
+            framework="sentence-transformers",
+            source="local",
+            version="phase2",
+            local_path=str(paths.finetuned_cross_encoder_dir) if ce_quora_on_disk else None,
+            cache_path=None,
+            device="cpu",
+            size_mb=ce_quora_size,
+            load_status="loaded" if ce_quora_on_disk else "missing",
+            is_loaded=ce_quora_on_disk,
+            has_artifacts=ce_quora_on_disk,
+            parameters="184M",
+            embedding_size=768,
+            hidden_size=768,
+            description="Cross-Encoder fine-tuned on Quora duplicate detection data. Highest single-model accuracy.",
+            advantages=["Fine-tuned for task", "Joint encoding", "Best single-model accuracy"],
+            weaknesses=["Slowest inference", "Cannot precompute embeddings"],
+            recommended_use="Default choice for accuracy-critical predictions",
         )
     )
 
@@ -333,7 +387,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
             is_loaded=True,
             has_artifacts=True,
             parameters="Varies (all models)",
-            description="Adaptive weighted ensemble combining all 8 models with dynamic feature-based weights.",
+            description="Adaptive weighted ensemble combining all models with dynamic feature-based weights.",
             advantages=["Best overall accuracy", "Handles all pair types", "Robust via trimmed mean"],
             weaknesses=["Slowest inference (loads all models)", "Depends on all sub-models"],
             recommended_use="Default choice for all predictions. Highest quality.",
@@ -344,7 +398,6 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
 
 
 def get_registry_dict(paths: AppPaths | None = None) -> list[dict[str, Any]]:
-    """Get registry as serializable dicts for display."""
     entries = build_registry(paths)
     return [
         {
@@ -367,13 +420,14 @@ def get_registry_dict(paths: AppPaths | None = None) -> list[dict[str, Any]]:
             "advantages": e.advantages,
             "weaknesses": e.weaknesses,
             "recommended_use": e.recommended_use,
+            "local_path": e.local_path,
+            "cache_path": e.cache_path,
         }
         for e in entries
     ]
 
 
 def find_registry_entry(display_name: str, paths: AppPaths | None = None) -> ModelRegistryEntry | None:
-    """Find a registry entry by display name."""
     for entry in build_registry(paths):
         if entry.display_name == display_name:
             return entry

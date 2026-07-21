@@ -46,15 +46,43 @@ def _parse_tensor_label(value: Any) -> int:
     return 0
 
 
-def load_dataset_frame(paths: AppPaths) -> pd.DataFrame:
-    parquet_path = paths.data_dir / "cleaned_quora.parquet"
-    csv_path = paths.data_dir / "cleaned_quora.csv"
+def _get_dataset_filenames() -> list[str]:
+    from duplicate_question_app._config.loader import get_config
 
-    if parquet_path.exists():
-        return pd.read_parquet(parquet_path)
-    if csv_path.exists():
-        return pd.read_csv(csv_path)
-    raise FileNotFoundError("No cleaned dataset found. Expected data/cleaned_quora.parquet or data/cleaned_quora.csv.")
+    cfg = get_config("dataset") or {}
+    filenames = []
+    if cfg.get("default_file"):
+        filenames.append(cfg["default_file"])
+    if cfg.get("fallback_file"):
+        filenames.append(cfg["fallback_file"])
+    if not filenames:
+        filenames = ["cleaned_quora.parquet", "cleaned_quora.csv"]
+    return filenames
+
+
+def _discover_data_file(data_dir: Path) -> Path | None:
+    data_dir = Path(data_dir)
+    if not data_dir.exists():
+        return None
+    candidates = [data_dir / name for name in _get_dataset_filenames()]
+    candidates.extend(sorted(data_dir.glob("*.parquet")))
+    candidates.extend(sorted(data_dir.glob("*.csv")))
+    seen = set()
+    for candidate in candidates:
+        if candidate.exists() and candidate not in seen:
+            seen.add(candidate)
+            return candidate
+    return None
+
+
+def load_dataset_frame(paths: AppPaths) -> pd.DataFrame:
+    found = _discover_data_file(paths.data_dir)
+    if found is None:
+        return pd.DataFrame()
+    suffix = found.suffix.lower()
+    if suffix == ".parquet":
+        return pd.read_parquet(found)
+    return pd.read_csv(found)
 
 
 def build_dataset_summary(df: pd.DataFrame) -> dict[str, Any]:

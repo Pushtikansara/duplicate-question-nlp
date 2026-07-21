@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import time
+
 import pandas as pd
 import streamlit as st
 
 from app.services.runtime import get_runtime_context
-from app.utils.constants import _detect_question_columns, run_batch_prediction
+from app.utils.constants import _detect_question_columns
+from duplicate_question_app._profiling import get_profiler
 from duplicate_question_app._visualization.plots import create_batch_summary_figure
 
 
 def render() -> None:
     st.title("Batch CSV Prediction")
     selected_model = st.session_state.get("selected_model", "Improved DistilBERT (Week 4)")
+    prediction_mode = st.session_state.get("prediction_mode", "fusion")
 
     try:
         service, metadata, _ = get_runtime_context()
@@ -28,7 +32,20 @@ def render() -> None:
         model_label = selected_model
         decision_threshold = 0.5
 
-    st.caption(f"Batch inference uses **{model_label}** with threshold **{decision_threshold:.2f}**.")
+    mode_labels = {
+        "cross_encoder_only": "CrossEncoder Only",
+        "semantic_only": "Semantic Intelligence Only",
+        "fusion": "Fusion (Recommended)",
+        "cross_encoder_dominant": "CrossEncoder Dominant",
+        "semantic_dominant": "Semantic Dominant",
+        "confidence_weighted": "Confidence Weighted",
+        "adaptive": "Adaptive",
+    }
+
+    col1, col2, col3 = st.columns(3)
+    col1.caption(f"Model: **{model_label}**")
+    col2.caption(f"Mode: **{mode_labels.get(prediction_mode, prediction_mode)}**")
+    col3.caption(f"Threshold: **{decision_threshold:.2f}**")
 
     template_df = pd.DataFrame(
         {
@@ -75,10 +92,18 @@ def render() -> None:
     st.subheader("Preview")
     st.dataframe(batch_df.head(10), use_container_width=True)
 
-    if st.button("Run Batch Prediction", use_container_width=True):
+    batch_size = st.number_input(
+        "Batch size", min_value=8, max_value=512, value=64, step=8, help="Number of pairs to process at once"
+    )
+
+    if st.button("Run Batch Prediction", use_container_width=True, type="primary"):
         if not valid_mask.any():
             st.error("No valid rows found.")
             return
+
+        profiler = get_profiler()
+        profiler.enable()
+
         try:
             question_pairs = list(
                 zip(
@@ -87,8 +112,119 @@ def render() -> None:
                     strict=False,
                 )
             )
-            with st.spinner(f"Processing {len(question_pairs)} pairs with {model_label}..."):
-                valid_results_df = run_batch_prediction(service, selected_model, question_pairs)
+
+            total = len(question_pairs)
+            progress_bar = st.progress(0, text="Starting batch prediction...")
+            status_text = st.empty()
+            metrics_col1, metrics_col2, metrics_col3, metrics_col4 = st.columns(4)
+            metrics_col1.metric("Total Pairs", total)
+            eta_metric = metrics_col2.empty()
+            avg_lat_metric = metrics_col3.empty()
+            throughput_metric = metrics_col4.empty()
+
+            start_time = time.time()
+            results_list = []
+
+            from app.utils.constants import (
+                _get_assessment_dict,
+                _get_decision_fusion,
+                _get_prediction_mode,
+                _get_semantic_pipeline,
+            )
+            from duplicate_question_app._config.settings import is_ensemble_model, is_new_embedding_model
+            from duplicate_question_app._models.embeddings import (
+                get_ensemble_prediction,
+                predict_batch_sentence_transformer,
+            )
+            from duplicate_question_app._models.week2 import is_week2_model
+
+            mode = _get_prediction_mode()
+            semantic_pipeline = _get_semantic_pipeline() if mode != "cross_encoder_only" else None
+
+            if is_week2_model(selected_model):
+                base_results = service.predict_batch(question_pairs, selected_model)
+                if isinstance(base_results, pd.DataFrame):
+                    base_results = base_results.to_dict("records")
+                else:
+                    base_results = list(base_results)
+            elif is_ensemble_model(selected_model):
+                base_results = []
+                for q1, q2 in question_pairs:
+                    base_results.append(get_ensemble_prediction(q1, q2))
+            elif is_new_embedding_model(selected_model):
+                base_results = predict_batch_sentence_transformer(selected_model, question_pairs, batch_size=batch_size)
+            else:
+                base_results = []
+                for q1, q2 in question_pairs:
+                    base_results.append(service.predict_single(q1, q2))
+
+            for idx, (q1, q2) in enumerate(question_pairs):
+                row = base_results[idx] if idx < len(base_results) else {}
+                row = dict(row) if isinstance(row, dict) else {}
+
+                assessment = None
+                assessment_dict = None
+                semantic_sim = 0.5
+                ce_score = float(row.get("prob_duplicate", 0.5))
+
+                if semantic_pipeline is not None:
+                    assessment, pipe_meta = semantic_pipeline.assess(q1, q2)
+                    assessment_dict = _get_assessment_dict(assessment)
+                    semantic_sim = assessment.semantic_similarity if assessment is not None else 0.5
+
+                fusion = _get_decision_fusion(mode)
+                if mode == "semantic_only":
+                    fusion_result = fusion.fuse(cross_encoder_score=0.0, semantic_assessment=assessment_dict)
+                elif mode == "cross_encoder_only":
+                    fusion_result = fusion.fuse(cross_encoder_score=ce_score, semantic_assessment=None)
+                else:
+                    fusion_result = fusion.fuse(cross_encoder_score=ce_score, semantic_assessment=assessment_dict)
+
+                row["semantic_similarity"] = semantic_sim
+                row["fusion_score"] = fusion_result.get("fusion_score", fusion_result.get("final_score"))
+                row["fusion_prediction"] = fusion_result.get("final_prediction", row.get("prediction"))
+                row["semantic_assessment_json"] = str(assessment_dict) if assessment_dict else ""
+                row["evidence_summary"] = _summarize_evidence(assessment_dict) if assessment_dict else ""
+                row["prediction_mode"] = mode
+
+                if assessment_dict:
+                    row["num_conflicts"] = len(assessment_dict.get("conflicts", []))
+                    row["concept_overlap"] = assessment_dict.get("concept_overlap", {}).get("overlap_score", 0.0)
+                    row["intent_match"] = assessment_dict.get("intent_similarity", {}).get("score", 0.0)
+                    row["entity_overlap"] = assessment_dict.get("entity_overlap", {}).get("overlap_score", 0.0)
+                else:
+                    row["num_conflicts"] = 0
+                    row["concept_overlap"] = 0.0
+                    row["intent_match"] = 0.0
+                    row["entity_overlap"] = 0.0
+
+                if mode != "cross_encoder_only":
+                    row["prob_duplicate"] = fusion_result.get("final_score", row.get("prob_duplicate", 0.5))
+                    row["confidence"] = fusion_result.get("final_score", row.get("confidence", 0.5))
+                    row["prediction"] = fusion_result.get("final_prediction", row.get("prediction", "Non-Duplicate"))
+                    row["predicted_label"] = 1 if row["prediction"] == "Duplicate" else 0
+
+                results_list.append(row)
+
+                elapsed = time.time() - start_time
+                avg_latency = elapsed / (idx + 1)
+                remaining = avg_latency * (total - idx - 1)
+                throughput = (idx + 1) / elapsed if elapsed > 0 else 0
+
+                progress = (idx + 1) / total
+                progress_bar.progress(progress, text=f"Processing pair {idx + 1}/{total}")
+                status_text.caption(
+                    f"Status: {idx + 1}/{total} pairs | Avg: {avg_latency * 1000:.0f}ms | ETA: {remaining:.0f}s"
+                )
+                eta_metric.metric("ETA", f"{remaining:.0f}s" if remaining > 0 else "Done")
+                avg_lat_metric.metric("Avg Latency", f"{avg_latency * 1000:.0f}ms")
+                throughput_metric.metric("Throughput", f"{throughput:.1f} pairs/s")
+
+            progress_bar.progress(1.0, text="Complete!")
+            status_text.success(f"Processed {total} pairs in {time.time() - start_time:.1f}s")
+
+            valid_results_df = pd.DataFrame(results_list)
+
         except Exception as exc:
             st.error(f"Batch prediction failed: {exc}")
             return
@@ -107,11 +243,65 @@ def render() -> None:
 
         st.success(f"Generated predictions for {len(merged_results):,} question pairs.")
         st.dataframe(merged_results, use_container_width=True)
-        summary_figure = create_batch_summary_figure(merged_results[merged_results["batch_status"] == "Predicted"])
+
+        pred_df = merged_results[merged_results["batch_status"] == "Predicted"]
+        if not pred_df.empty:
+            has_ce = "prob_duplicate" in pred_df.columns
+            has_sem = "semantic_similarity" in pred_df.columns
+            has_fusion = "fusion_score" in pred_df.columns
+
+            sem_cols = []
+            if has_sem:
+                sem_cols.append("semantic_similarity")
+            if has_ce:
+                sem_cols.append("prob_duplicate")
+            if has_fusion:
+                sem_cols.append("fusion_score")
+
+            if len(sem_cols) >= 2:
+                st.subheader("Score Distribution")
+                st.line_chart(pred_df[sem_cols])
+
+            if "num_conflicts" in pred_df.columns:
+                st.subheader("Conflict Statistics")
+                conflict_counts = pred_df["num_conflicts"].value_counts().sort_index()
+                st.bar_chart(conflict_counts)
+
+        summary_figure = create_batch_summary_figure(pred_df)
         st.pyplot(summary_figure, clear_figure=True)
+
+        export_cols = [question1_column, question2_column, "batch_status", "prediction"]
+        extra_cols = [
+            "fusion_score",
+            "fusion_prediction",
+            "semantic_similarity",
+            "num_conflicts",
+            "concept_overlap",
+            "intent_match",
+            "entity_overlap",
+            "evidence_summary",
+        ]
+        for c in extra_cols:
+            if c in merged_results.columns:
+                export_cols.append(c)
+
+        export_df = merged_results[[c for c in export_cols if c in merged_results.columns]]
         st.download_button(
             "Download Prediction Results",
-            data=merged_results.to_csv(index=False).encode("utf-8"),
+            data=export_df.to_csv(index=False).encode("utf-8"),
             file_name="duplicate_question_predictions.csv",
             mime="text/csv",
         )
+
+
+def _summarize_evidence(assessment_dict: dict | None) -> str:
+    if not assessment_dict:
+        return ""
+    evidence = assessment_dict.get("supporting_evidence", [])
+    if not evidence:
+        return ""
+    parts = []
+    for e in evidence[:5]:
+        if isinstance(e, dict):
+            parts.append(f"{e.get('status', '?')}: {e.get('message', '')}")
+    return " | ".join(parts)

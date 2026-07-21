@@ -14,6 +14,7 @@ from app.pages.model_manager import render as render_model_manager
 from app.pages.negation_detection import render as render_negation_detection
 from app.pages.performance import render as render_performance
 from app.pages.prediction import render as render_prediction
+from app.pages.semantic_debugger import render as render_semantic_debugger
 
 __all__ = [
     "render_home",
@@ -32,4 +33,5 @@ __all__ = [
     "render_error_explorer",
     "render_model_manager",
     "render_dataset",
+    "render_semantic_debugger",
 ]

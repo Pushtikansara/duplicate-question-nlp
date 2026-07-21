@@ -53,6 +53,25 @@ class LRUCache:
                     self._evictions += 1
             self._cache[key] = value
 
+    def __getitem__(self, key: str) -> Any:
+        with self._lock:
+            if key not in self._cache:
+                raise KeyError(key)
+            self._cache.move_to_end(key)
+            self._hits += 1
+            return self._cache[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.put(key, value)
+
+    def __delitem__(self, key: str) -> None:
+        with self._lock:
+            del self._cache[key]
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self._cache)
+
     def clear(self) -> None:
         with self._lock:
             self._cache.clear()
@@ -81,13 +100,15 @@ class LRUCache:
 
 class CacheManager:
     def __init__(self):
-        self._model_cache: dict[str, Any] = {}
-        self._model_cache_lock = threading.RLock()
-
         self.embedding_cache = LRUCache(max_size=10000, name="embedding")
         self.preprocessing_cache = LRUCache(max_size=5000, name="preprocessing")
+        self.semantic_representation_cache = LRUCache(max_size=500, name="semantic_rep")
+        self.linguistic_profile_cache = LRUCache(max_size=500, name="linguistic_profile")
+        self.perception_cache = LRUCache(max_size=500, name="perception")
         self.sentence_transformer_cache: dict[str, Any] = {}
         self._st_cache_lock = threading.RLock()
+        self._model_cache: LRUCache = LRUCache(max_size=50, name="model_services")
+        self._model_cache_lock = threading.RLock()
 
     def get_model(self, key: str) -> Any | None:
         with self._model_cache_lock:
@@ -95,7 +116,7 @@ class CacheManager:
 
     def set_model(self, key: str, value: Any) -> None:
         with self._model_cache_lock:
-            self._model_cache[key] = value
+            self._model_cache.put(key, value)
 
     def clear_models(self) -> None:
         with self._model_cache_lock:
@@ -118,19 +139,22 @@ class CacheManager:
         self.clear_st_models()
         self.embedding_cache.clear()
         self.preprocessing_cache.clear()
+        self.semantic_representation_cache.clear()
+        self.linguistic_profile_cache.clear()
+        self.perception_cache.clear()
 
     def stats(self) -> dict[str, CacheStats]:
         return {
             "embedding": self.embedding_cache.stats(),
             "preprocessing": self.preprocessing_cache.stats(),
+            "semantic_representation": self.semantic_representation_cache.stats(),
+            "linguistic_profile": self.linguistic_profile_cache.stats(),
+            "perception": self.perception_cache.stats(),
             "st_models": CacheStats(
                 size=len(self.sentence_transformer_cache),
                 max_size=0,
             ),
-            "model_services": CacheStats(
-                size=len(self._model_cache),
-                max_size=0,
-            ),
+            "model_services": self._model_cache.stats(),
         }
 
 
@@ -164,4 +188,40 @@ def cached_preprocessing(text: str, compute_fn: Callable[[], str]) -> str:
         return cached
     result = compute_fn()
     cm.preprocessing_cache.put(text, result)
+    return result
+
+
+def cached_perception(text: str, compute_fn: Callable) -> Any:
+    cm = get_cache()
+    text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+    key = f"perception:{text_hash}"
+    cached = cm.perception_cache.get(key)
+    if cached is not None:
+        return cached
+    result = compute_fn()
+    cm.perception_cache.put(key, result)
+    return result
+
+
+def cached_linguistic_profile(text: str, compute_fn: Callable) -> Any:
+    cm = get_cache()
+    text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+    key = f"ling_profile:{text_hash}"
+    cached = cm.linguistic_profile_cache.get(key)
+    if cached is not None:
+        return cached
+    result = compute_fn()
+    cm.linguistic_profile_cache.put(key, result)
+    return result
+
+
+def cached_semantic_representation(text: str, compute_fn: Callable) -> Any:
+    cm = get_cache()
+    text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+    key = f"sem_rep:{text_hash}"
+    cached = cm.semantic_representation_cache.get(key)
+    if cached is not None:
+        return cached
+    result = compute_fn()
+    cm.semantic_representation_cache.put(key, result)
     return result
