@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
+from typing import cast
 
 from duplicate_question_app._config.logging_setup import get_logger
 from duplicate_question_app._perception.cognitive_representation import Token
@@ -65,7 +66,7 @@ class RegexTokenizer(Tokenizer):
 
 
 class TokenizerFactory:
-    _strategies: dict[str, type[Tokenizer]] = {
+    _strategies: dict[str, type] = {
         "whitespace": WhitespaceTokenizer,
         "regex": RegexTokenizer,
     }
@@ -79,7 +80,7 @@ class TokenizerFactory:
                 context="TokenizerFactory.create",
                 resolution=f"Choose from: {list(cls._strategies.keys())}",
             )
-        return cls._strategies[strategy](config)
+        return cast(Tokenizer, cls._strategies[strategy](config))
 
     @classmethod
     def register(cls, name: str, tokenizer_cls: type[Tokenizer]) -> None:

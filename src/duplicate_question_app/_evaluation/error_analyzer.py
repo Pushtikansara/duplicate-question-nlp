@@ -22,7 +22,10 @@ class ErrorAnalyzer:
         all_model_probs: list[float] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return generate_error_report(q1, q2, predicted_label, prob_duplicate, true_label, all_model_probs, metadata)
+        result: Any = generate_error_report(
+            q1, q2, predicted_label, prob_duplicate, true_label, all_model_probs, metadata
+        )
+        return dict(result)
 
     def analyze_batch(
         self,
@@ -53,7 +56,8 @@ class ErrorAnalyzer:
         predicted_label: int,
         true_label: int | None = None,
     ) -> str:
-        return classify_hardness(prob_duplicate, confidence, model_agreement, predicted_label, true_label)
+        result: Any = classify_hardness(prob_duplicate, confidence, model_agreement, predicted_label, true_label)
+        return str(result)
 
     def find_errors_by_category(
         self,
@@ -71,7 +75,7 @@ class ErrorAnalyzer:
             prob = float(row.get(prob_col, 0.5))
             pred = int(row.get(pred_col, 0))
             true_val = row.get(true_col) if true_col in row else None
-            true = int(true_val) if pd.notna(true_val) else None
+            true = int(true_val) if true_val is not None and pd.notna(true_val) else None
             errors = categorize_error(q1, q2, pred, true, prob)
             for e in errors:
                 if e.name not in result:

@@ -306,7 +306,7 @@ def compute_model_leaderboard(
         ModelLeaderboard with ranked models
     """
     # Aggregate per-model statistics
-    model_stats = defaultdict(
+    model_stats: dict[str, dict[str, Any]] = defaultdict(
         lambda: {
             "probs": [],
             "labels": [],
@@ -325,8 +325,10 @@ def compute_model_leaderboard(
 
         for model_name, contrib in votes.items():
             if isinstance(contrib, dict):
-                prob = contrib.get("prob_dup", contrib.get("prob_duplicate", 0.5))
-                conf = contrib.get("confidence", max(prob, 1 - prob))
+                prob_val = contrib.get("prob_dup", contrib.get("prob_duplicate", 0.5))
+                prob = float(prob_val) if prob_val is not None else 0.5
+                conf_val = contrib.get("confidence", max(prob, 1.0 - prob))
+                conf = float(conf_val) if conf_val is not None else prob
             else:
                 prob = float(contrib)
                 conf = max(prob, 1 - prob)

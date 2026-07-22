@@ -9,21 +9,23 @@ from duplicate_question_app._memory.interfaces import MemoryEntry, MemoryLineage
 class MemoryDeserializer:
     @staticmethod
     def deserialize(data: dict[str, Any]) -> MemoryEntry:
-        lineage_data = data.get("lineage", {})
+        lineage_data: dict[str, Any] = data.get("lineage", {})
+        created_at_val = _parse_dt(lineage_data.get("created_at"))
         lineage = MemoryLineage(
-            created_by=lineage_data.get("created_by", ""),
-            created_at=_parse_dt(lineage_data.get("created_at")),
+            created_by=str(lineage_data.get("created_by", "")),
+            created_at=created_at_val if created_at_val is not None else datetime.min,
             parent_ids=list(lineage_data.get("parent_ids", [])),
             module_chain=list(lineage_data.get("module_chain", [])),
             reasoning_id=lineage_data.get("reasoning_id"),
             debate_id=lineage_data.get("debate_id"),
         )
 
+        timestamp_val = _parse_dt(data["timestamp"])
         return MemoryEntry(
             memory_id=data["memory_id"],
             memory_type=MemoryType(data["memory_type"]),
             version=data["version"],
-            timestamp=_parse_dt(data["timestamp"]),
+            timestamp=timestamp_val if timestamp_val is not None else datetime.min,
             source_module=data.get("source_module", ""),
             quality_score=data["quality_score"],
             confidence=data["confidence"],

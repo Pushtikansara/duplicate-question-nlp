@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import time
 
 from ares.plugins.base import Plugin
@@ -52,10 +53,10 @@ class PluginRegistry:
     def get_health(self, plugin_id: str) -> PluginHealth:
         return self._health.get(plugin_id, PluginHealth())
 
-    def list(self) -> list[Plugin]:
+    def list(self) -> builtins.list[Plugin]:
         return list(self._plugins.values())
 
-    def list_ids(self) -> list[str]:
+    def list_ids(self) -> builtins.list[str]:
         return list(self._plugins.keys())
 
     def count(self) -> int:

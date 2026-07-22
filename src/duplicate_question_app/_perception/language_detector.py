@@ -68,7 +68,7 @@ class HeuristicLanguageDetector(LanguageDetector):
             if _ENGLISH_CHAR_RANGE.match(normalized):
                 return "en", self._config.confidence_threshold
             return self._config.fallback_language, 0.0
-        best_lang = max(scores, key=scores.get)
+        best_lang = max(scores, key=lambda k: scores[k])
         max_score = scores[best_lang]
         total = sum(scores.values())
         confidence = max_score / total if total > 0 else 0.0

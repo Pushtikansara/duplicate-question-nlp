@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import logging
 from pathlib import Path
 from typing import Any
@@ -76,7 +77,7 @@ class PluginManager:
             self._loaded = True
             return []
 
-        existing_ids = set(self.registry.list_ids())
+        existing_ids: set[str] = set(self.registry.list_ids())
         instances: list[Plugin] = []
         metadata_map: dict[str, PluginMetadata] = {}
 
@@ -179,7 +180,7 @@ class PluginManager:
         """Reload a single plugin by uninstalling and re-installing."""
         self.uninstall(plugin_id)
 
-        discovered = discover_from_folder(["."])  # no-op; subclass must override
+        discovered = discover_from_folder(".")  # no-op; subclass must override
         for cls in discovered:
             if hasattr(cls, "metadata") and cls.metadata.name == plugin_id:
                 return self.install(cls)
@@ -188,7 +189,7 @@ class PluginManager:
     def get(self, plugin_id: str) -> Plugin:
         return self.registry.get(plugin_id)
 
-    def list(self) -> list[Plugin]:
+    def list(self) -> builtins.list[Plugin]:
         return self.registry.list()
 
     # ------------------------------------------------------------------
@@ -199,7 +200,7 @@ class PluginManager:
         self,
         hook_point: HookPoint,
         event_data: dict[str, Any] | None = None,
-    ) -> list[HookEvent]:
+    ) -> builtins.list[HookEvent]:
         """Execute a hook across all active plugins."""
         ctx = self._context or self._build_context()
         active_plugins = [
@@ -219,7 +220,7 @@ class PluginManager:
         before_hook: HookPoint,
         after_hook: HookPoint,
         event_data: dict[str, Any] | None = None,
-    ) -> tuple[list[HookEvent], list[HookEvent]]:
+    ) -> tuple[builtins.list[HookEvent], builtins.list[HookEvent]]:
         """Run before/after pair of hooks (e.g., before/after pipeline)."""
         before = self.run_hook(before_hook, event_data)
         after = self.run_hook(after_hook, event_data)

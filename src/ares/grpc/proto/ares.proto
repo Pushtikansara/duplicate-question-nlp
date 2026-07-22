@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package ares;
+
+service AresService {
+    rpc Predict (PredictRequest) returns (PredictResponse);
+    rpc PredictBatch (PredictBatchRequest) returns (PredictBatchResponse);
+    rpc PredictStream (stream PredictRequest) returns (stream PredictResponse);
+    rpc Health (HealthRequest) returns (HealthResponse);
+    rpc Version (VersionRequest) returns (VersionResponse);
+    rpc SystemInfo (SystemInfoRequest) returns (SystemInfoResponse);
+    rpc RunPipeline (PipelineRequest) returns (PipelineResponse);
+    rpc RunReflection (ReflectionRequest) returns (ReflectionResponse);
+    rpc SearchMemory (MemorySearchRequest) returns (MemorySearchResponse);
+    rpc ListPlugins (ListPluginsRequest) returns (ListPluginsResponse);
+}
+
+message PredictRequest {
+    string question1 = 1;
+    string question2 = 2;
+    optional string model = 3;
+    optional double threshold = 4;
+    optional bool reflect = 5;
+}
+
+message PredictResponse {
+    string question1 = 2;
+    string question2 = 3;
+    int32 predicted_label = 4;
+    string prediction = 5;
+    double prob_duplicate = 6;
+    double prob_non_duplicate = 7;
+    double confidence = 8;
+    double threshold = 9;
+    string model_label = 10;
+    double latency_ms = 11;
+    optional double trust_score = 12;
+    string trust_level = 13;
+    string risk_level = 14;
+    int64 timestamp = 15;
+    string request_id = 16;
+}
+
+message PredictBatchRequest {
+    repeated PredictRequest requests = 1;
+}
+
+message PredictBatchResponse {
+    repeated PredictResponse results = 1;
+    double total_latency_ms = 2;
+    int32 success_count = 3;
+    int32 failure_count = 4;
+}
+
+message HealthRequest {}
+message HealthResponse {
+    string status = 1;
+    string version = 2;
+    double uptime_seconds = 3;
+    map<string, string> components = 4;
+}
+
+message VersionRequest {}
+message VersionResponse {
+    string version = 1;
+    string api_version = 2;
+    string python_version = 3;
+    string platform = 4;
+}
+
+message SystemInfoRequest {}
+message SystemInfoResponse {
+    string version = 1;
+    string python_version = 2;
+    string platform = 3;
+    int32 cpu_cores = 4;
+    double memory_gb = 5;
+    bool gpu_available = 6;
+    string gpu_name = 7;
+    string torch_version = 8;
+}
+
+message PipelineRequest {
+    string question1 = 1;
+    string question2 = 2;
+    bool enable_perception = 3;
+    bool enable_routing = 4;
+    bool enable_memory = 5;
+    bool enable_semantic = 6;
+    bool enable_reasoning = 7;
+    bool enable_debate = 8;
+}
+
+message PipelineResponse {
+    bool success = 1;
+    repeated string modules_executed = 2;
+    double total_latency_ms = 3;
+    map<string, double> module_latencies = 4;
+    double confidence = 5;
+    string error = 6;
+}
+
+message ReflectionRequest {
+    string question1 = 1;
+    string question2 = 2;
+    map<string, string> prediction = 3;
+}
+
+message ReflectionResponse {
+    double trust_score = 1;
+    string trust_level = 2;
+    string risk_level = 3;
+    double confidence = 4;
+    string explanation = 5;
+    repeated string recommendations = 6;
+}
+
+message MemorySearchRequest {
+    string query = 1;
+    int32 limit = 2;
+    string memory_type = 3;
+}
+
+message MemoryEntry {
+    string id = 1;
+    string type = 2;
+    string content_json = 3;
+    double confidence = 4;
+    int64 created_at = 5;
+}
+
+message MemorySearchResponse {
+    repeated MemoryEntry entries = 1;
+}
+
+message ListPluginsRequest {}
+message PluginInfo {
+    string id = 1;
+    string name = 2;
+    string version = 3;
+    string status = 4;
+}
+message ListPluginsResponse {
+    repeated PluginInfo plugins = 1;
+}

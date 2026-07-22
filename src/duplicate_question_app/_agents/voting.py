@@ -67,7 +67,7 @@ class WeightedVoting(VotingStrategy):
                 decision="uncertain", confidence=0.0, strategy_used=self.name, details="Zero total weight"
             )
 
-        decision = max(weighted, key=weighted.get)
+        decision = max(weighted, key=lambda k: weighted[k])
         confidence = weighted[decision] / total_weight
 
         sorted_weights = sorted(weighted.items(), key=lambda x: x[1], reverse=True)
@@ -105,7 +105,7 @@ class ConfidenceWeightedVoting(VotingStrategy):
                 decision="uncertain", confidence=0.0, strategy_used=self.name, details="Zero total confidence"
             )
 
-        decision = max(weighted, key=weighted.get)
+        decision = max(weighted, key=lambda k: weighted[k])
         confidence = weighted[decision] / total_confidence
 
         sorted_weights = sorted(weighted.items(), key=lambda x: x[1], reverse=True)

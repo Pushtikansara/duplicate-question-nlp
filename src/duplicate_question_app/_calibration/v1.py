@@ -8,7 +8,7 @@ the best calibration method for each model group.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -57,7 +57,7 @@ def temperature_scale(logits: np.ndarray, temperature: float = 1.0) -> np.ndarra
     """
     scaled_logits = logits / temperature
     exp_logits = np.exp(scaled_logits - scaled_logits.max(axis=1, keepdims=True))
-    return exp_logits / exp_logits.sum(axis=1, keepdims=True)
+    return cast(np.ndarray, exp_logits / exp_logits.sum(axis=1, keepdims=True))
 
 
 def platt_scale(scores: np.ndarray) -> np.ndarray:
@@ -66,7 +66,7 @@ def platt_scale(scores: np.ndarray) -> np.ndarray:
     Converts scores to probabilities using sigmoid calibration.
     Uses sklearn's LogisticRegression if available for proper fitting.
     """
-    return 1.0 / (1.0 + np.exp(-scores))
+    return cast(np.ndarray, 1.0 / (1.0 + np.exp(-scores)))
 
 
 def _optimal_temperature(logits: np.ndarray, labels: np.ndarray) -> float:
@@ -118,7 +118,7 @@ def calibrate_duplicate_probs(
         logit = np.log(p / (1.0 - p))
         # Apply a learned sigmoid (equivalent to logistic regression)
         # Using default parameters: a=1.0, b=0.0
-        return 1.0 / (1.0 + np.exp(-1.0 * logit + 1.0))
+        return float(1.0 / (1.0 + np.exp(-1.0 * logit + 1.0)))
 
     return prob_duplicate
 

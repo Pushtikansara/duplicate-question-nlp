@@ -92,7 +92,7 @@ def _export_stats() -> dict[str, Any]:
         stats = p.get_stats()
         return {
             "profiled_functions": len(stats),
-            "total_calls": sum(s.get("calls", 0) for s in stats.values()),
+            "total_calls": sum(s.call_count for s in stats.values()),
         }
     except Exception:
         return {}

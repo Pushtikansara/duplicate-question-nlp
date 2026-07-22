@@ -27,15 +27,15 @@ class DefaultLatencyEstimator(LatencyEstimator):
             return 5000.0
 
         try:
-            complexity_score = complexity.score
+            complexity_score = float(complexity.score)
         except (AttributeError, TypeError):
             complexity_score = 0.5
 
-        avg_word_count = complexity.features.get("avg_word_count", 0)
+        avg_word_count = float(complexity.features.get("avg_word_count", 0))
         length_factor = 1.0 + (avg_word_count / 50.0) * 0.3
 
         complexity_factor = 1.0 + (complexity_score - 0.5) * 0.5
 
         base_latency = (range_[0] + range_[1]) / 2.0
         estimated = base_latency * length_factor * complexity_factor
-        return max(range_[0], min(range_[1], estimated))
+        return float(max(range_[0], min(range_[1], estimated)))

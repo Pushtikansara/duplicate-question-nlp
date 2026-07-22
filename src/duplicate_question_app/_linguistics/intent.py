@@ -211,7 +211,7 @@ def detect_intent(question: str) -> IntentResult:
     normalized = {cat: score / max_score for cat, score in scores.items()}
 
     # Get primary intent
-    primary = max(normalized, key=normalized.get)
+    primary = max(normalized, key=lambda k: normalized[k])
     confidence = normalized[primary]
 
     return IntentResult(

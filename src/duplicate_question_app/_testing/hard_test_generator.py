@@ -30,6 +30,7 @@ import random
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -695,7 +696,7 @@ SECURITY_TEMPLATES = {
 
 def _generate_abbreviation_pairs(category: Category, templates: dict, count: int) -> list[HardPair]:
     """Generate abbreviation vs full form pairs."""
-    pairs = []
+    pairs: list[HardPair] = []
     abbreviations = {
         "AI": "Artificial Intelligence",
         "ML": "Machine Learning",
@@ -874,7 +875,7 @@ def _generate_negation_pairs(category: Category, templates: dict, count: int) ->
 
 def _generate_paraphrase_pairs(category: Category, templates: dict, count: int) -> list[HardPair]:
     """Generate paraphrase pairs (these ARE duplicates)."""
-    pairs = []
+    pairs: list[HardPair] = []
     paraphrases = [
         ("How to {action} {target}?", "Guide for {action} {target}"),
         ("What is the best way to {action} {target}?", "How do I {action} {target}?"),
@@ -1169,7 +1170,7 @@ def save_dataset(pairs: list[HardPair], path: Path) -> None:
 
     # Stats
     stats_path = path.with_suffix(".stats.json")
-    stats = {
+    stats: dict[str, Any] = {
         "total_pairs": len(pairs),
         "duplicates": sum(1 for p in pairs if p.true_label == 1),
         "non_duplicates": sum(1 for p in pairs if p.true_label == 0),
@@ -1179,9 +1180,11 @@ def save_dataset(pairs: list[HardPair], path: Path) -> None:
 
     for p in pairs:
         cat = p.category.value
-        stats["by_category"][cat] = stats["by_category"].get(cat, 0) + 1
+        by_cat: dict[str, int] = stats["by_category"]
+        by_cat[cat] = by_cat.get(cat, 0) + 1
         for dt in p.difficulty_types:
-            stats["by_difficulty"][dt.value] = stats["by_difficulty"].get(dt.value, 0) + 1
+            by_diff: dict[str, int] = stats["by_difficulty"]
+            by_diff[dt.value] = by_diff.get(dt.value, 0) + 1
 
     with open(stats_path, "w") as f:
         json.dump(stats, f, indent=2)
@@ -1220,19 +1223,19 @@ def print_dataset_stats(pairs: list[HardPair]) -> None:
     _logger.info("  Non-duplicates: %s", sum(1 for p in pairs if p.true_label == 0))
 
     _logger.info("By Category:")
-    cat_counts = {}
+    cat_counts: dict[str, int] = {}
     for p in pairs:
         cat_counts[p.category.value] = cat_counts.get(p.category.value, 0) + 1
     for cat, count in sorted(cat_counts.items()):
         _logger.info("  %s: %s", cat, count)
 
     _logger.info("By Difficulty Type:")
-    diff_counts = {}
+    diff_counts: dict[str, int] = {}
     for p in pairs:
         for dt in p.difficulty_types:
             diff_counts[dt.value] = diff_counts.get(dt.value, 0) + 1
-    for dt, count in sorted(diff_counts.items()):
-        _logger.info("  %s: %s", dt, count)
+    for diff_key, count in sorted(diff_counts.items()):
+        _logger.info("  %s: %s", diff_key, count)
 
     _logger.info("Sample Pairs:")
     for i, p in enumerate(pairs[:5]):

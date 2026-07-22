@@ -8,6 +8,7 @@ import pandas as pd
 from duplicate_question_app._evaluation.benchmark_result import (
     BenchmarkResult,
     ClassificationMetrics,
+    ModuleSpecificMetrics,
     PerModuleMetrics,
 )
 from duplicate_question_app._evaluation.configuration import EvaluationConfig
@@ -68,7 +69,7 @@ class Evaluator:
             for mod_name, lat in per_module_latencies.items():
                 per_module.append(PerModuleMetrics(module_name=mod_name, latency_ms=lat))
 
-        module_specific = {
+        module_specific: dict[str, Any] = {
             "routing": compute_routing_metrics(routing_results or []),
             "reasoning": compute_reasoning_metrics(reasoning_results or []),
             "debate": compute_debate_metrics(debate_results or []),
@@ -85,13 +86,13 @@ class Evaluator:
             modules_enabled=modules,
             classification=cm,
             per_module=per_module,
-            module_specific={
-                "routing": module_specific["routing"],
-                "reasoning": module_specific["reasoning"],
-                "debate": module_specific["debate"],
-                "memory": module_specific["memory"],
-                "explainability": module_specific["explainability"],
-            },
+            module_specific=ModuleSpecificMetrics(
+                routing=module_specific.get("routing", {}),
+                reasoning=module_specific.get("reasoning", {}),
+                debate=module_specific.get("debate", {}),
+                memory=module_specific.get("memory", {}),
+                explainability=module_specific.get("explainability", {}),
+            ),
             num_samples=len(y_true),
         )
         self._results.append(result)

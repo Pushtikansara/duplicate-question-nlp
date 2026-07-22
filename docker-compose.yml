@@ -1,0 +1,107 @@
+version: "3.9"
+
+services:
+  ares-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ares-api
+    ports:
+      - "8000:8000"
+      - "50051:50051"
+    environment:
+      - ARES_HOST=0.0.0.0
+      - ARES_PORT=8000
+      - ARES_WORKERS=4
+      - ARES_LOG_LEVEL=info
+      - ARES_CORS_ORIGINS=["*"]
+      - ARES_RATE_LIMIT_ENABLED=true
+      - ARES_RATE_LIMIT_REQUESTS=100
+      - ARES_RATE_LIMIT_WINDOW_SECONDS=60
+      - ARES_GRPC_HOST=0.0.0.0
+      - ARES_GRPC_PORT=50051
+      - ARES_OTEL_ENDPOINT=
+      - ARES_PROMETHEUS_ENABLED=true
+      - ARES_SECRET_KEY=${ARES_SECRET_KEY:-change-me-in-production}
+      - ARES_API_KEY=${ARES_API_KEY:-}
+    volumes:
+      - ./configs:/app/configs:ro
+      - ares-data:/app/data
+      - ares-models:/app/models
+      - ares-uploads:/tmp/ares/uploads
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+        reservations:
+          cpus: "2"
+          memory: 4G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ares-grpc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ares-grpc
+    entrypoint: ["python", "-m", "ares.grpc.server"]
+    ports:
+      - "50051:50051"
+    environment:
+      - ARES_GRPC_HOST=0.0.0.0
+      - ARES_GRPC_PORT=50051
+      - ARES_LOG_LEVEL=info
+    volumes:
+      - ./configs:/app/configs:ro
+      - ares-data:/app/data
+      - ares-models:/app/models
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ares-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ares-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - grafana-data:/var/lib/grafana
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+volumes:
+  ares-data:
+  ares-models:
+  ares-uploads:
+  prometheus-data:
+  grafana-data:

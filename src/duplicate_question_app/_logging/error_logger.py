@@ -195,7 +195,7 @@ class ErrorLogger:
             confidence=confidence,
             model_name=model_name,
             model_version=model_version,
-            error_categories=error_categories or [],
+            error_categories=[str(c) for c in (error_categories or [])],
             error_details=error_details or {},
             ensemble_weights=ensemble_weights or {},
             model_votes=model_votes or {},
@@ -380,7 +380,7 @@ def analyze_error_log(df: pd.DataFrame) -> dict[str, Any]:
     fn = df[df["predicted_label"] == 0]  # False negatives
 
     # Error category distribution
-    cat_counts = defaultdict(int)
+    cat_counts: dict[str, int] = defaultdict(int)
     for cats in df["error_categories_list"]:
         for cat in cats:
             cat_counts[cat] += 1

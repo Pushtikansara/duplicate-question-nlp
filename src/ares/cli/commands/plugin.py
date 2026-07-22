@@ -87,7 +87,7 @@ def install_plugin(
     try:
         from ares.plugins.discovery import discover_from_folder
 
-        classes = discover_from_folder([path])
+        classes = discover_from_folder(path)
         if not classes:
             exit_with_error(f"No plugin classes found in {plugin_path}")
 

@@ -11,7 +11,7 @@ from duplicate_question_app._semantic.representation import SemanticRepresentati
 class DefaultSemanticSimilarity:
     def compute(self, rep_a: SemanticRepresentation, rep_b: SemanticRepresentation) -> float:
         scores = self.compute_all(rep_a, rep_b)
-        return scores.get("overall", 0.0)
+        return float(scores.get("overall", 0.0))
 
     def compute_all(self, rep_a: SemanticRepresentation, rep_b: SemanticRepresentation) -> dict:
         from duplicate_question_app._semantic_intelligence.concept_matcher import DefaultConceptMatcher

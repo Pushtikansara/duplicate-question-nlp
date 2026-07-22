@@ -4,6 +4,7 @@ import hashlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from duplicate_question_app._config.loader import (
     ENV_PREFIX,
@@ -121,9 +122,11 @@ def _legacy_get_app_paths(root: Path | None = None) -> AppPaths:
     """Fallback when configs/ is unavailable — matches original hardcoded values."""
     if root is None:
         root = _default_project_root()
+    data_override = _resolve_override("data_dir")
+    data_dir = Path(data_override) if data_override else root / "data"
     return AppPaths(
         project_root=root,
-        data_dir=root / "data",
+        data_dir=data_dir,
         models_dir=root / "models",
         results_dir=root / "outputs",
         notebooks_dir=root / "notebooks",
@@ -305,9 +308,10 @@ def _load_finetuned_embedding_models() -> frozenset[str]:
 
 
 def _load_hub_name(model_key: str) -> str | None:
-    cfg = get_config("models")
+    cfg: dict[str, Any] | None = get_config("models")
     if cfg and "hub_names" in cfg:
-        return cfg["hub_names"].get(model_key)
+        result: Any = cfg["hub_names"].get(model_key)
+        return str(result) if result is not None else None
     return None
 
 

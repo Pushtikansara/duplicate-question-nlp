@@ -12,8 +12,8 @@ class ValidationResult:
 
 
 def validate_pipeline_context(context: Any) -> ValidationResult:
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
     if context is None:
         errors.append("Pipeline context is None")
         return ValidationResult(valid=False, errors=errors)
@@ -25,8 +25,8 @@ def validate_pipeline_context(context: Any) -> ValidationResult:
 
 
 def validate_prediction_unchanged(before: dict[str, Any], after: dict[str, Any]) -> ValidationResult:
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
     for key in ("predicted_label", "prediction", "prob_duplicate", "prob_non_duplicate"):
         if key in before and key in after and before[key] != after[key]:
             errors.append(f"Prediction changed for key {key}: {before[key]} -> {after[key]}")

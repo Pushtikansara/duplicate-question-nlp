@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -39,9 +39,9 @@ def get_paths(project_root=None):
 
 def _resolve_device() -> str:
     """Auto-detect: use CUDA if available, else CPU."""
-    inf_cfg = get_config("inference") or {}
+    inf_cfg: dict[str, Any] = get_config("inference") or {}
     if not inf_cfg.get("auto_device", True):
-        return inf_cfg.get("default_device", "cpu")
+        return str(inf_cfg.get("default_device", "cpu"))
     if torch.cuda.is_available():
         return "cuda"
     return "cpu"
@@ -130,19 +130,19 @@ def _get_sigmoid_params(model_name: str) -> tuple[float, float]:
     Fine-tuned models use different params as their similarity distributions
     shift after contrastive fine-tuning.
     """
-    inf_cfg = get_config("inference") or {}
-    sigmoid_params = inf_cfg.get("sigmoid_params", {})
-    default = tuple(sigmoid_params.get("default", [15.0, 0.50]))
+    inf_cfg: dict[str, Any] = get_config("inference") or {}
+    sigmoid_params: dict[str, Any] = inf_cfg.get("sigmoid_params", {})
+    default = cast(tuple[float, float], tuple(sigmoid_params.get("default", [15.0, 0.50])))
 
     name_lower = model_name.lower()
     if "e5-quora" in name_lower or "finetuned" in name_lower:
-        return tuple(sigmoid_params.get("E5-quora-finetuned", default))
+        return cast(tuple[float, float], tuple(sigmoid_params.get("E5-quora-finetuned", default)))
     elif "e5" in name_lower:
-        return tuple(sigmoid_params.get("E5-base-v2", default))
+        return cast(tuple[float, float], tuple(sigmoid_params.get("E5-base-v2", default)))
     elif "bge" in name_lower:
-        return tuple(sigmoid_params.get("BGE-base-en-v1.5", default))
+        return cast(tuple[float, float], tuple(sigmoid_params.get("BGE-base-en-v1.5", default)))
     elif "mpnet" in name_lower:
-        return tuple(sigmoid_params.get("MPNet-base-v2", default))
+        return cast(tuple[float, float], tuple(sigmoid_params.get("MPNet-base-v2", default)))
     else:
         return default
 
@@ -154,21 +154,21 @@ def _get_threshold(model_name: str) -> float:
     Fine-tuned models typically need different thresholds than frozen ones
     because contrastive fine-tuning shifts the similarity distribution.
     """
-    inf_cfg = get_config("inference") or {}
-    thresholds = inf_cfg.get("per_model_thresholds", {})
-    default = inf_cfg.get("default_threshold", 0.5)
+    inf_cfg: dict[str, Any] = get_config("inference") or {}
+    thresholds: dict[str, Any] = inf_cfg.get("per_model_thresholds", {})
+    default = float(inf_cfg.get("default_threshold", 0.5))
 
     name_lower = model_name.lower()
     if "cross-encoder-quora" in name_lower:
-        return thresholds.get("Cross-Encoder-Quora (Trained)", 0.10)
+        return float(thresholds.get("Cross-Encoder-Quora (Trained)", 0.10))
     elif "e5-quora" in name_lower or "finetuned" in name_lower:
-        return thresholds.get("E5-quora-finetuned", 0.40)
+        return float(thresholds.get("E5-quora-finetuned", 0.40))
     elif "e5" in name_lower:
-        return thresholds.get("E5-base-v2", 0.35)
+        return float(thresholds.get("E5-base-v2", 0.35))
     elif "bge" in name_lower:
-        return thresholds.get("BGE-base-en-v1.5", 0.30)
+        return float(thresholds.get("BGE-base-en-v1.5", 0.30))
     elif "mpnet" in name_lower:
-        return thresholds.get("MPNet-base-v2", 0.36)
+        return float(thresholds.get("MPNet-base-v2", 0.36))
     else:
         return default
 
@@ -351,7 +351,7 @@ def predict_batch_sentence_transformer(
     ]
 
 
-def get_ensemble_prediction(q1: str, q2: str, paths=None) -> dict[str, Any]:
+def get_ensemble_prediction(q1: str, q2: str, paths: Any = None) -> dict[str, Any]:
     """Ensemble: uses the adaptive weighted ensemble for higher quality.
 
     This replaces the simple trimmed-mean with the intelligent ensemble
@@ -362,19 +362,20 @@ def get_ensemble_prediction(q1: str, q2: str, paths=None) -> dict[str, Any]:
         paths = get_paths()
     from duplicate_question_app._ensemble.v1 import get_adaptive_ensemble_prediction
 
-    return get_adaptive_ensemble_prediction(q1, q2, paths)
+    result: Any = get_adaptive_ensemble_prediction(q1, q2, paths)
+    return dict(result)
 
 
 # Convenience functions for checking model availability
 
 
-def is_finetuned_model_available(model_name: str, paths=None) -> bool:
+def is_finetuned_model_available(model_name: str, paths: Any = None) -> bool:
     """Check if a fine-tuned model is available on disk."""
     if paths is None:
         paths = get_paths()
     if model_name != "E5-quora-finetuned":
         return False
-    return paths.finetuned_e5_dir.exists() and (paths.finetuned_e5_dir / "config.json").exists()
+    return bool(paths.finetuned_e5_dir.exists() and (paths.finetuned_e5_dir / "config.json").exists())
 
 
 def list_available_finetuned_models(paths=None) -> list[str]:

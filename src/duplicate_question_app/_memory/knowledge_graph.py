@@ -145,24 +145,24 @@ class KnowledgeGraph:
             if entry.memory_type == MemoryType.SEMANTIC:
                 for concept in content.get("concepts", []):
                     if isinstance(concept, dict):
-                        cid = concept.get("id", str(uuid.uuid4()))
+                        cid = str(concept.get("id", str(uuid.uuid4())))
                         node = KnowledgeNode(
                             node_id=cid,
-                            label=concept.get("name", concept.get("label", "unknown")),
+                            label=str(concept.get("name", concept.get("label", "unknown"))),
                             node_type="concept",
                             properties=concept,
-                            confidence=concept.get("confidence", entry.confidence),
+                            confidence=float(concept.get("confidence", entry.confidence)),
                         )
                         self.add_node(node)
                 for entity in content.get("entities", []):
                     if isinstance(entity, dict):
-                        eid = entity.get("id", str(uuid.uuid4()))
+                        eid = str(entity.get("id", str(uuid.uuid4())))
                         node = KnowledgeNode(
                             node_id=eid,
-                            label=entity.get("name", entity.get("label", "unknown")),
+                            label=str(entity.get("name", entity.get("label", "unknown"))),
                             node_type="entity",
                             properties=entity,
-                            confidence=entity.get("confidence", entry.confidence),
+                            confidence=float(entity.get("confidence", entry.confidence)),
                         )
                         self.add_node(node)
                 for relation in content.get("relations", []):

@@ -61,7 +61,7 @@ class ARES:
         if is_week2_model(self._model_name):
             from duplicate_question_app._models.week2 import Week2InferenceService
 
-            svc = Week2InferenceService(self._paths)
+            svc: Any = Week2InferenceService(self._paths)
             self._bundle = _ModelBundle(
                 model=None,
                 tokenizer=None,
@@ -95,6 +95,7 @@ class ARES:
         self._lazy_load()
 
         start = time.perf_counter()
+        assert self._bundle is not None
         raw = self._bundle.service.predict_single(question1, question2)
         elapsed_ms = (time.perf_counter() - start) * 1000
 

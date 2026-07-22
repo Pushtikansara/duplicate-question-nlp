@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from duplicate_question_app._config.logging_setup import get_logger
 from duplicate_question_app._inference.cache import (
@@ -78,7 +78,7 @@ class PerceptionPipeline:
 
     @profile("perception_pipeline")
     def run(self, text: str, **kwargs: Any) -> PipelineResult:
-        return cached_perception(text, lambda: self._run_inner(text, **kwargs))
+        return cast(PipelineResult, cached_perception(text, lambda: self._run_inner(text, **kwargs)))
 
     def _run_inner(self, text: str, **kwargs: Any) -> PipelineResult:
         start = time.perf_counter()

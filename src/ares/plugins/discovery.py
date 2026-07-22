@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib
+import importlib.util
 import inspect
 import pkgutil
 from pathlib import Path

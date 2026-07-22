@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
@@ -9,6 +10,9 @@ from ares.cli.utils.console import console, exit_with_error, print_success
 from ares.cli.utils.formatting import format_duration
 from ares.cli.utils.progress import spinner_progress
 from ares.cli.utils.tables import print_table
+
+if TYPE_CHECKING:
+    from duplicate_question_app._evaluation.benchmark_result import BenchmarkResult
 
 
 def run_benchmark(
@@ -18,24 +22,27 @@ def run_benchmark(
 ) -> None:
     try:
         from duplicate_question_app._evaluation.benchmark_runner import BenchmarkRunner
-        from duplicate_question_app._evaluation.benchmark_suite import BenchmarkSuite
     except ImportError:
         exit_with_error("Benchmark modules not available")
 
     with spinner_progress("Running benchmark..."):
         runner = BenchmarkRunner()
-        suite = BenchmarkSuite(runner)
-
-        result = suite.run_configuration(config) if config else suite.run_all()
+        test_pairs: list[tuple[str, str, int]] = []
+        result: BenchmarkResult | dict[str, BenchmarkResult] | None
+        if config:
+            result = runner.run_configuration(config, None, test_pairs)
+        else:
+            result = runner.run_all_configurations(None, test_pairs)
 
     if not result:
         console.print("[yellow]No benchmark results[/yellow]")
         return
 
+    results_dict = result if isinstance(result, dict) else {config or "default": result}
     output_data = {
         "config": config or "all",
         "epochs": epochs,
-        "results": result if isinstance(result, dict) else {"result": str(result)},
+        "results": {k: v.to_dict() for k, v in results_dict.items()},
     }
 
     if output:
@@ -62,13 +69,13 @@ def list_benchmarks() -> None:
         return
 
     rows = []
-    for name, result in results.items():
+    for name, res in results.items():
         rows.append(
             [
                 name,
-                format_duration(result.get("total_latency_ms", 0)),
-                f"{result.get('accuracy', 0):.3f}",
-                str(result.get("samples", 0)),
+                format_duration(res.total_latency_ms),
+                f"{res.throughput:.3f}",
+                str(res.num_samples),
             ]
         )
 
@@ -96,11 +103,13 @@ def compare_benchmarks(
 
     if not b1 or not b2:
         exit_with_error(f"One or both benchmarks not found: {benchmark1}, {benchmark2}")
+        return
 
+    assert b1 is not None and b2 is not None
     rows = [
-        ["Latency", format_duration(b1.get("total_latency_ms", 0)), format_duration(b2.get("total_latency_ms", 0))],
-        ["Accuracy", f"{b1.get('accuracy', 0):.3f}", f"{b2.get('accuracy', 0):.3f}"],
-        ["Samples", str(b1.get("samples", 0)), str(b2.get("samples", 0))],
+        ["Latency", format_duration(b1.total_latency_ms), format_duration(b2.total_latency_ms)],
+        ["Throughput", f"{b1.throughput:.3f}", f"{b2.throughput:.3f}"],
+        ["Samples", str(b1.num_samples), str(b2.num_samples)],
     ]
 
     print_table(

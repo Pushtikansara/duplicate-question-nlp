@@ -104,8 +104,8 @@ def generate_explanation(
     agreement = analyze_model_agreement(q1, q2, paths)
 
     # Build reasons
-    reasons = []
-    details = {}
+    reasons: list[str] = []
+    details: dict[str, Any] = {}
 
     # 1. Entity mismatch
     if entity_result.mismatch_penalty > 0:
@@ -177,7 +177,7 @@ def generate_explanation(
                     embedding_probs.append(prob)
 
         if cross_encoder_prob is not None and embedding_probs:
-            avg_embedding = sum(embedding_probs) / len(embedding_probs)
+            avg_embedding = sum(p for p in embedding_probs if p is not None) / len(embedding_probs)
             if avg_embedding > 0.7 and cross_encoder_prob < 0.4:
                 reasons.append(
                     f"Embedding models suggest duplicate ({avg_embedding:.0%}) "
@@ -385,12 +385,16 @@ def generate_feature_importance(
 
     for model_name, contrib in feature_breakdown.items():
         if isinstance(contrib, dict):
-            prob = contrib.get("prob_dup", contrib.get("prob_duplicate", 0.5))
-            weight = contrib.get("weight", adaptive_weights.get(model_name, 0))
-            weighted_contrib = contrib.get("weighted_contribution", prob * weight)
+            prob_raw = contrib.get("prob_dup", contrib.get("prob_duplicate", 0.5))
+            prob = float(prob_raw) if prob_raw is not None else 0.5
+            weight_raw = contrib.get("weight", adaptive_weights.get(model_name, 0))
+            weight = float(weight_raw) if weight_raw is not None else 0.0
+            weighted_contrib_raw = contrib.get("weighted_contribution", prob * weight)
+            weighted_contrib = float(weighted_contrib_raw) if weighted_contrib_raw is not None else 0.0
         else:
             prob = float(contrib)
-            weight = adaptive_weights.get(model_name, 0)
+            weight_raw = adaptive_weights.get(model_name, 0)
+            weight = float(weight_raw) if weight_raw is not None else 0.0
             weighted_contrib = prob * weight
 
         importances.append(

@@ -72,12 +72,12 @@ def search_memory(
         return
 
     rows = []
-    for e in entries[:limit]:
-        timestamp = format_timestamp(getattr(e, "timestamp", None))
-        summary = str(getattr(e, "content", getattr(e, "summary", "")))[:60]
+    for entry in entries[:limit]:
+        timestamp = format_timestamp(getattr(entry, "timestamp", None))
+        summary = str(getattr(entry, "content", getattr(entry, "summary", "")))[:60]
         rows.append(
             [
-                getattr(e, "id", getattr(e, "entry_id", "?")),
+                getattr(entry, "id", getattr(entry, "entry_id", "?")),
                 timestamp,
                 summary,
             ]

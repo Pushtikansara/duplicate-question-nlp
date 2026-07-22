@@ -26,8 +26,10 @@ class ProfileEntry:
 
 
 class Profiler:
-    _instance = None
+    _instance: Any = None
     _lock = threading.RLock()
+    _entries: dict[str, ProfileEntry]
+    _disabled: bool
 
     def __new__(cls):
         if cls._instance is None:

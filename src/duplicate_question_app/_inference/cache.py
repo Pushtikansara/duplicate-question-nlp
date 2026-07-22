@@ -5,7 +5,7 @@ import threading
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -99,7 +99,7 @@ class LRUCache:
 
 
 class CacheManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.embedding_cache = LRUCache(max_size=10000, name="embedding")
         self.preprocessing_cache = LRUCache(max_size=5000, name="preprocessing")
         self.semantic_representation_cache = LRUCache(max_size=500, name="semantic_rep")
@@ -175,7 +175,7 @@ def cached_embedding(model_name: str, text: str, compute_fn: Callable[[], np.nda
     key = embedding_cache_key(model_name, text)
     cached = cm.embedding_cache.get(key)
     if cached is not None:
-        return cached
+        return cast(np.ndarray, cached)
     result = compute_fn()
     cm.embedding_cache.put(key, result)
     return result
@@ -185,7 +185,7 @@ def cached_preprocessing(text: str, compute_fn: Callable[[], str]) -> str:
     cm = get_cache()
     cached = cm.preprocessing_cache.get(text)
     if cached is not None:
-        return cached
+        return str(cached)
     result = compute_fn()
     cm.preprocessing_cache.put(text, result)
     return result

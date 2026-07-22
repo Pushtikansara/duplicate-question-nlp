@@ -108,12 +108,14 @@ class BenchmarkRunner:
                 y_prob_list.append(0.5)
             y_true_list.append(true_label)
 
+        modules_val: Any = cfg.get("modules_enabled", [])
+        modules_enabled_val: list[str] = list(modules_val) if modules_val else []
         result = self.evaluator.evaluate_predictions(
             y_true=np.array(y_true_list),
             y_pred=np.array(y_pred_list),
             y_prob=np.array(y_prob_list),
             config_name=config_name,
-            modules_enabled=cfg["modules_enabled"],
+            modules_enabled=modules_enabled_val,
             per_module_latencies=per_module_latencies,
         )
         self._results[config_name] = result

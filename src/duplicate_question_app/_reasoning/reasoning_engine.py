@@ -122,12 +122,12 @@ class ReasoningEngine:
 
         t0 = time.perf_counter()
         with tracer.step("decision_reasoner", "build_reason"):
-            decision_reason = self._decision_reasoner.build_reason(decision, confidence, uncertainty, all_evidence)
+            decision_reason = self._decision_reasoner.build_reason(decision, confidence, uncertainty, all_evidence)  # type: ignore[attr-defined]
         stages["reason_building"] = (time.perf_counter() - t0) * 1000
 
         t0 = time.perf_counter()
         with tracer.step("confidence_reasoner", "build_chain"):
-            confidence_chain = self._confidence_reasoner.build_chain(all_premises, hypotheses, all_evidence, confidence)
+            confidence_chain = self._confidence_reasoner.build_chain(all_premises, hypotheses, all_evidence, confidence)  # type: ignore[attr-defined]
         stages["confidence_chain"] = (time.perf_counter() - t0) * 1000
 
         t0 = time.perf_counter()

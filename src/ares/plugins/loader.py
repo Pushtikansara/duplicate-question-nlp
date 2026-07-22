@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from pathlib import Path
 from typing import Any
 
 from ares.plugins.base import Plugin
@@ -36,7 +37,7 @@ def instantiate_plugin(plugin_class: type[Plugin], config: PluginConfig | None =
 
 def load_plugins(
     registry: PluginRegistry,
-    folders: list[str] | None = None,
+    folders: list[str | Path] | None = None,
     config: PluginConfig | None = None,
 ) -> list[Plugin]:
     """Full plugin loading pipeline: discover, validate, order, instantiate, register."""

@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable
 from contextlib import contextmanager, suppress
 from functools import wraps
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -88,16 +88,15 @@ class EmbeddingCache:
         model = self.get_model(model_name)
 
         # Check cache for each text
-        embeddings = []
-        uncached_texts = []
-        uncached_indices = []
+        cached_embeddings: dict[int, np.ndarray] = {}
+        uncached_texts: list[str] = []
+        uncached_indices: list[int] = []
 
         for i, text in enumerate(texts):
             cached = self.get_embedding(model_name, text, normalize)
             if cached is not None:
-                embeddings.append(cached)
+                cached_embeddings[i] = cached
             else:
-                embeddings.append(None)
                 uncached_texts.append(text)
                 uncached_indices.append(i)
 
@@ -109,13 +108,17 @@ class EmbeddingCache:
                 normalize_embeddings=normalize,
                 show_progress_bar=False,
             )
+            if not isinstance(new_embeddings, np.ndarray):
+                new_embeddings = np.array(new_embeddings)
 
             # Cache and fill in
             for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings, strict=False):
                 self.put_embedding(model_name, text, emb, normalize)
-                embeddings[idx] = emb
+                cached_embeddings[idx] = emb
 
-        return np.array(embeddings)
+        # Reconstruct in original order
+        result_list = [cached_embeddings[i] for i in range(len(texts))]
+        return cast(np.ndarray, np.array(result_list))
 
     def stats(self) -> CacheStats:
         return self._cache.stats()
@@ -154,7 +157,7 @@ class PreprocessingCache:
 class ModelLoader:
     """Optimized model loading with lazy initialization."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._models: dict[str, Any] = {}
         self._load_times: dict[str, float] = {}
         self._lock = threading.RLock()
@@ -274,7 +277,7 @@ def get_model_loader() -> ModelLoader:
     return _model_loader
 
 
-def cached_normalize(text: str, **kwargs) -> str:
+def cached_normalize(text: str, **kwargs: Any) -> str:
     """Normalize with caching."""
     cached = _preprocessing_cache.get(text, **kwargs)
     if cached is not None:
@@ -282,7 +285,7 @@ def cached_normalize(text: str, **kwargs) -> str:
 
     from duplicate_question_app._preprocessing import normalize_question
 
-    result = normalize_question(text, **kwargs)
+    result = str(normalize_question(text, **kwargs))
     _preprocessing_cache.put(text, result, **kwargs)
     return result
 
@@ -303,7 +306,7 @@ def memoize(maxsize: int = 128):
             cache.put(key, result)
             return result
 
-        wrapper.cache = cache
+        wrapper.cache = cache  # type: ignore[attr-defined]
         return wrapper
 
     return decorator
@@ -386,7 +389,7 @@ class InferenceOptimizer:
             steepness, midpoint = 14.0, 0.58
         else:
             steepness, midpoint = 15.0, 0.50
-        return 1.0 / (1.0 + np.exp(-steepness * (prob - midpoint)))
+        return float(1.0 / (1.0 + np.exp(-steepness * (prob - midpoint))))
 
     def predict_batch_optimized(
         self,
@@ -471,9 +474,9 @@ def warmup_caches(
     # Preload models
     for model_name in model_names:
         if "cross-encoder" in model_name.lower() or "nli" in model_name.lower():
-            _model_loader.get_model(model_name, lambda m=model_name: CrossEncoder(m, device="cpu"))
+            _model_loader.get_model(model_name, lambda m=model_name: CrossEncoder(m, device="cpu"))  # type: ignore[misc,return-value]
         else:
-            _model_loader.get_model(model_name, lambda m=model_name: SentenceTransformer(m, device="cpu"))
+            _model_loader.get_model(model_name, lambda m=model_name: SentenceTransformer(m, device="cpu"))  # type: ignore[misc,return-value]
 
     # Run sample predictions to populate caches
     for q1, q2 in sample_pairs[:10]:

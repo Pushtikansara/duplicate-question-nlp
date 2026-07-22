@@ -22,7 +22,7 @@ def format_duration(ms: float) -> str:
     return f"{ms / 60000:.2f}m"
 
 
-def format_bytes(n: int) -> str:
+def format_bytes(n: int | float) -> str:
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if n < 1024:
             return f"{n:.1f}{unit}"
@@ -45,7 +45,7 @@ def to_json(data: Any, indent: int = 2) -> str:
 
 
 def to_yaml(data: Any) -> str:
-    return yaml.dump(data, default_flow_style=False, sort_keys=False)
+    return str(yaml.dump(data, default_flow_style=False, sort_keys=False))
 
 
 def output_result(data: Any, output_format: str = "text") -> str:

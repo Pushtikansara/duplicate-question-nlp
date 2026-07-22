@@ -25,7 +25,7 @@ class UsageFrequencyRanker(RetrievalRanker):
         def _access_count(entry: MemoryEntry) -> int:
             meta = entry.metadata
             if isinstance(meta, dict):
-                return meta.get("access_count", 0)
+                return int(meta.get("access_count", 0))
             return 0
 
         return sorted(entries, key=_access_count, reverse=True)

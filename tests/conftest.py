@@ -1,67 +1,163 @@
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-os.environ["DQD_ENV"] = "development"
-
 import pytest
+from fastapi.testclient import TestClient
 
-from duplicate_question_app._config.loader import clear_config_cache
-from duplicate_question_app._config.logging_setup import _module_loggers
-from duplicate_question_app._config.settings import get_app_paths, model_dir_has_artifacts
+from ares.api.app import create_app
+from ares.api.config import APIConfig, Settings
+from ares.api.models import UserRole
+from ares.api.security import SecurityManager
 
 
-def _model_artifacts_available() -> bool:
-    """Check whether trained model artifacts exist on disk.
+class _MockPredictionResult(dict):
+    """Acts as both a dict (for API handlers) and a PredictionResult-like object (for gRPC)."""
 
-    Returns True if at least one transformer model directory is complete.
-    Used to skip model-dependent tests in CI where artifacts are absent.
-    """
-    try:
-        paths = get_app_paths()
-        return model_dir_has_artifacts(paths.week4_model_dir) or model_dir_has_artifacts(paths.week3_model_dir)
-    except (FileNotFoundError, OSError):
-        return False
+    def __init__(self):
+        raw = {
+            "predicted_label": 1,
+            "prediction": "duplicate",
+            "confidence": 0.95,
+            "prob_duplicate": 0.95,
+            "prob_non_duplicate": 0.05,
+            "model_label": "test-model",
+            "latency_ms": 10.5,
+            "threshold": 0.5,
+            "trust_score": 0.9,
+            "trust_level": "high",
+            "risk_level": "low",
+            "model_name": "test-model",
+            "explanation": "",
+            "recommendations": [],
+            "evidence": [],
+            "consistency_check": None,
+            "confidence_audit": None,
+        }
+        super().__init__(raw)
+        self.raw = raw
+        self.predicted_label = 1
+        self.prediction = "duplicate"
+        self.confidence = 0.95
+        self.prob_duplicate = 0.95
+        self.prob_non_duplicate = 0.05
+        self.model_name = "test-model"
+        self.latency_ms = 10.5
+        self.threshold = 0.5
+        self.trust_score = 0.9
+        self.trust_level = "high"
+        self.risk_level = "low"
+        self.human_review_required = False
+        self.recommendations = []
+        self.explanations = {}
+
+    def to_dict(self):
+        return dict(self.raw)
+
+
+def _make_mock_engine():
+    engine = MagicMock()
+    prediction = _MockPredictionResult()
+    engine.predict.return_value = prediction
+    engine.predict_batch.return_value = [prediction]
+    engine.with_model.return_value = engine
+    engine.with_threshold.return_value = engine
+    engine.with_reflection.return_value = engine
+    engine.reflect.return_value = {
+        "trust_score": 0.9,
+        "trust_level": "high",
+        "risk_level": "low",
+        "confidence": 0.95,
+        "explanation": "",
+        "recommendations": [],
+        "evidence": [],
+        "confidence_audit": None,
+        "consistency_check": None,
+    }
+    return engine
 
 
 @pytest.fixture(autouse=True)
-def reset_config_cache():
-    clear_config_cache()
-    _module_loggers.clear()
+def _patch_ares_engine():
+    """Replace ARES class with a mock so no real model loading occurs."""
+    mock_engine = _make_mock_engine()
+    mock_ares_class = MagicMock(return_value=mock_engine)
+    with patch("ares._engine.ARES", mock_ares_class), patch("ares.ARES", mock_ares_class):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _patch_torch_cuda():
+    """Prevent CUDA checks from failing."""
+    with patch("torch.cuda.is_available", return_value=False):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Reset rate limiter singleton between tests."""
+    import ares.api.dependencies as deps
+
+    deps._rate_limiter = None
+    deps._security_manager = None
     yield
-    clear_config_cache()
-    _module_loggers.clear()
 
 
-def pytest_configure(config):
-    config.addinivalue_line("markers", "fast: Quick unit tests (default)")
-    config.addinivalue_line("markers", "slow: Tests that may take longer to run")
-    config.addinivalue_line("markers", "gpu: Tests requiring GPU hardware")
-    config.addinivalue_line("markers", "integration: Tests that cross module boundaries")
-    config.addinivalue_line("markers", "smoke: Lightweight smoke/sanity checks")
-    config.addinivalue_line("markers", "regression: Golden-output regression tests")
-    config.addinivalue_line("markers", "streamlit: Streamlit-specific smoke tests")
-    config.addinivalue_line("markers", "cli: Command-line interface tests")
-    config.addinivalue_line("markers", "needs_model: Requires actual model artifacts on disk (skipped in CI)")
+@pytest.fixture(autouse=True)
+def _disable_rate_limit():
+    """Disable rate limiting for all tests to avoid shared state."""
+    settings = Settings()
+    settings.rate_limit_enabled = False
+    with patch.object(APIConfig, "get", return_value=settings):
+        yield
 
 
-def pytest_collection_modifyitems(config, items):
-    model_deps_available = _model_artifacts_available()
-    for item in items:
-        if "gpu" in item.keywords:
-            continue
-        has_any = any(m in item.keywords for m in ("slow", "integration", "regression", "streamlit", "cli", "smoke"))
-        if not has_any:
-            item.add_marker(pytest.mark.fast)
+@pytest.fixture
+def app():
+    return create_app()
 
-    if not model_deps_available:
-        needs_model = [item for item in items if item.get_closest_marker("needs_model")]
-        if needs_model:
-            skip_reason = "Skipping model-dependent tests: model artifacts not found on disk"
-            for item in needs_model:
-                item.add_marker(pytest.mark.skip(reason=skip_reason))
+
+@pytest.fixture
+def test_client(app):
+    return TestClient(app)
+
+
+@pytest.fixture
+def mock_engine():
+    return _make_mock_engine()
+
+
+@pytest.fixture
+def auth_headers():
+    manager = SecurityManager()
+    token = manager.create_access_token("test-user", UserRole.USER)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def admin_auth_headers():
+    manager = SecurityManager()
+    token = manager.create_access_token("test-admin", UserRole.ADMIN)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def grpc_service(mock_engine):
+    with patch("ares._engine.ARES") as MockARES, patch("ares.ARES") as MockARES2:
+        MockARES.return_value = mock_engine
+        MockARES2.return_value = mock_engine
+        from ares.grpc.services import AresGrpcService
+
+        service = AresGrpcService()
+        service._engine = mock_engine
+        yield service
+
+
+@pytest.fixture
+def settings():
+    return Settings()

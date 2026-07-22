@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import joblib
 import numpy as np
@@ -43,7 +43,7 @@ _logger = get_logger(__name__)
 
 def _get_model_dir() -> Path:
     paths = get_app_paths()
-    return paths.models_dir
+    return cast(Path, paths.models_dir)
 
 
 def _build_lr_models() -> dict[str, Path]:
@@ -95,8 +95,7 @@ def _load_lr_head(model_name: str) -> LogisticRegression:
 
 
 def build_features(emb1: np.ndarray, emb2: np.ndarray) -> np.ndarray:
-    """Build feature vectors from pairs of normalized embeddings."""
-    return np.concatenate(
+    features = np.concatenate(
         [
             emb1,
             emb2,
@@ -105,6 +104,7 @@ def build_features(emb1: np.ndarray, emb2: np.ndarray) -> np.ndarray:
         ],
         axis=1,
     )
+    return cast(np.ndarray, features)
 
 
 def predict_with_lr(
@@ -253,7 +253,8 @@ def extract_embeddings(model_name: str, texts: list[str], batch_size: int = 128)
     model = get_sentence_transformer_model(model_name)
     is_e5 = "e5" in model_name.lower()
     encoded = [f"query: {t}" if is_e5 else t for t in texts]
-    return model.encode(encoded, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=True)
+    result = model.encode(encoded, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=True)
+    return cast(np.ndarray, np.asarray(result))
 
 
 def train_mlp_head(

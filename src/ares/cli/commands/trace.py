@@ -35,7 +35,7 @@ def run_trace(
     try:
         from duplicate_question_app._explainability.trace import generate_decision_trace
 
-        trace = generate_decision_trace(question1, question2, {})
+        trace = generate_decision_trace(question1, question2, None)
         data = trace.to_dict() if hasattr(trace, "to_dict") else {"decision": str(trace)}
 
         if output:

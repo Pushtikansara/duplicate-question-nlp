@@ -9,12 +9,12 @@ import time
 
 from duplicate_question_app._config.logging_setup import get_logger
 from duplicate_question_app._linguistic_intelligence.profile import LinguisticProfile
+from duplicate_question_app._semantic import representation as _rep
 from duplicate_question_app._semantic.ambiguity_detector import AmbiguityDetector, DefaultAmbiguityDetector
 from duplicate_question_app._semantic.concept_extractor import ConceptExtractor, DefaultConceptExtractor
 from duplicate_question_app._semantic.confidence import DefaultSemanticConfidence, SemanticConfidence
 from duplicate_question_app._semantic.context_builder import ContextBuilder, DefaultContextBuilder
 from duplicate_question_app._semantic.relation_extractor import DefaultRelationExtractor, RelationExtractor
-from duplicate_question_app._semantic.representation import ProcessingMetadata, SemanticConcept, SemanticRepresentation
 from duplicate_question_app._semantic.semantic_graph import SemanticGraph
 from duplicate_question_app._semantic.semantic_roles import DefaultSemanticRoleAnalyzer, SemanticRoleAnalyzer
 
@@ -38,16 +38,16 @@ class RepresentationBuilder:
         self._ambiguity_detector = ambiguity_detector or DefaultAmbiguityDetector()
         self._confidence = confidence or DefaultSemanticConfidence()
 
-    def build(self, profile: LinguisticProfile) -> SemanticRepresentation:
+    def build(self, profile: LinguisticProfile) -> _rep.SemanticRepresentation:
         t0 = time.perf_counter()
         stages: dict[str, float] = {}
-        representation = SemanticRepresentation()
+        representation = _rep.SemanticRepresentation()
 
         t_start = time.perf_counter()
         concepts = self._concept_extractor.extract(profile)
         stages["concept_extraction"] = (time.perf_counter() - t_start) * 1000
         representation.concepts = [
-            SemanticConcept(
+            _rep.SemanticConcept(
                 id=c.id,
                 label=c.label,
                 normalized_form=c.label,
@@ -68,11 +68,20 @@ class RepresentationBuilder:
             graph.add_edge(r)
         stages["relation_extraction"] = (time.perf_counter() - t_start) * 1000
         representation.semantic_graph = graph
-        representation.relationships = relations
+        representation.relationships = [
+            _rep.SemanticRelation(
+                source_id=r.source_id,
+                target_id=r.target_id,
+                relation_type=r.relation_type,
+                confidence=r.confidence,
+                metadata=r.metadata,
+            )
+            for r in relations
+        ]
 
         t_start = time.perf_counter()
         roles = self._role_analyzer.analyze(profile, concepts)
-        representation.semantic_roles = self._role_analyzer.to_assignments(roles)
+        representation.semantic_roles = self._role_analyzer.to_assignments(roles)  # type: ignore[attr-defined]
         stages["role_analysis"] = (time.perf_counter() - t_start) * 1000
 
         representation.intent_summary = profile.intent
@@ -97,7 +106,7 @@ class RepresentationBuilder:
         representation.semantic_confidence = confidence_detail.get("overall", 0.0)
 
         total_ms = (time.perf_counter() - t0) * 1000
-        representation.processing_metadata = ProcessingMetadata(
+        representation.processing_metadata = _rep.ProcessingMetadata(
             total_concepts=len(concepts),
             total_relations=len(relations),
             total_roles=len(representation.semantic_roles),

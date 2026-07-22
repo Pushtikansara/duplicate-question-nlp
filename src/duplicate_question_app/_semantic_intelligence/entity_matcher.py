@@ -10,10 +10,10 @@ from duplicate_question_app._semantic.representation import SemanticRepresentati
 
 class DefaultEntityMatcher:
     def _entity_key(self, entity: dict) -> str:
-        return entity.get("name", entity.get("text", entity.get("label", ""))).lower().strip()
+        return str(entity.get("name", entity.get("text", entity.get("label", "")))).lower().strip()
 
     def _entity_type(self, entity: dict) -> str:
-        return entity.get("type", entity.get("entity_type", "unknown"))
+        return str(entity.get("type", entity.get("entity_type", "unknown")))
 
     def match(self, rep_a: SemanticRepresentation, rep_b: SemanticRepresentation) -> dict:
         entities_a = {self._entity_key(e): e for e in rep_a.entities}

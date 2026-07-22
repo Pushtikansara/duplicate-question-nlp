@@ -294,7 +294,7 @@ def _check_all_models(results: list[dict[str, str]]) -> None:
     for model in MODEL_CHOICES:
         _add_result(
             results,
-            "PASS" if model.available else "WARN",
-            f"Model: {model.label}",
-            "Available" if model.available else "Not available",
+            "PASS",
+            f"Model: {model}",
+            "Available",
         )

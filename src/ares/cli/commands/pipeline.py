@@ -28,7 +28,6 @@ def inspect_pipeline(
         ("Semantic", config.enable_semantic),
         ("Reasoning", config.enable_reasoning),
         ("Debate", config.enable_debate),
-        ("Decision", config.enable_decision),
         ("Memory Write", config.enable_memory_write),
     ]
 

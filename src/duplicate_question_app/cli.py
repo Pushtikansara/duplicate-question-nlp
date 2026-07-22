@@ -17,6 +17,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _ensure_project_root() -> Path:
@@ -83,7 +84,7 @@ def predict() -> None:
     if is_week2_model(model_name):
         from duplicate_question_app._models.week2 import Week2InferenceService
 
-        service = Week2InferenceService(paths)
+        service: Any = Week2InferenceService(paths)
     else:
         from duplicate_question_app._inference.transformer import (
             DuplicateQuestionInferenceService,
@@ -93,9 +94,9 @@ def predict() -> None:
         model, tokenizer, metadata = load_model_and_tokenizer(paths, model_version=model_name)
         service = DuplicateQuestionInferenceService(model=model, tokenizer=tokenizer, metadata=metadata)
 
-    results = []
+    results: list[dict[str, Any]] = []
     for _, row in df.iterrows():
-        result = service.predict_single(row[q1_col], row[q2_col])
+        result = dict(service.predict_single(row[q1_col], row[q2_col]))
         results.append(result)
 
     result_df = pd.DataFrame(results)

@@ -399,7 +399,7 @@ def generate_evaluation_report(
 
 def _categorize_errors(examples: list[HardExample]) -> dict[str, int]:
     """Count error categories."""
-    cats = {}
+    cats: dict[str, int] = {}
     for ex in examples:
         for cat in ex.error_categories:
             cats[cat] = cats.get(cat, 0) + 1

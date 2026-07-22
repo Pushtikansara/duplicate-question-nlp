@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -23,14 +24,13 @@ def generate_profile(
     stats = p.get_stats()
     report = p.get_report()
 
-    profile_data = {
+    profile_data: dict[str, Any] | list[dict[str, Any]] = {
         "stats": stats,
         "report": report,
     }
 
     if format == "chrome":
-        chrome_events = _to_chrome_trace(report)
-        profile_data = chrome_events
+        profile_data = _to_chrome_trace(report)
 
     if output:
         path = Path(output)
@@ -56,13 +56,13 @@ def show_metrics() -> None:
         return
 
     rows = []
-    for func_name, data in stats.items():
+    for func_name, entry in stats.items():
         rows.append(
             [
                 func_name,
-                str(data.get("calls", 0)),
-                format_duration(data.get("total_time_ms", 0)),
-                format_duration(data.get("avg_time_ms", 0)),
+                str(entry.call_count),
+                format_duration(entry.total_time_ms),
+                format_duration(entry.avg_time_ms),
             ]
         )
 
@@ -100,8 +100,8 @@ def show_stats() -> None:
         console.print("[yellow]No statistics available[/yellow]")
         return
 
-    total_calls = sum(s.get("calls", 0) for s in stats.values())
-    total_time = sum(s.get("total_time_ms", 0) for s in stats.values())
+    total_calls = sum(e.call_count for e in stats.values())
+    total_time = sum(e.total_time_ms for e in stats.values())
 
     console.print("[bold cyan]Runtime Statistics[/bold cyan]")
     console.print(f"  Total function calls:  {total_calls}")

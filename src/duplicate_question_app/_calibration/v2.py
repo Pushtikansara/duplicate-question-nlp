@@ -14,7 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -181,7 +181,7 @@ def temperature_scale(probs: np.ndarray, temperature: float) -> np.ndarray:
     scaled_logits = logits / temperature
 
     # Convert back to probabilities
-    return 1.0 / (1.0 + np.exp(-scaled_logits))
+    return cast(np.ndarray, 1.0 / (1.0 + np.exp(-scaled_logits)))
 
 
 def find_optimal_temperature(
@@ -228,13 +228,13 @@ def platt_scale(
                     best_nll = nll
                     best_a, best_b = a, b
 
-        def transform(p: np.ndarray) -> np.ndarray:
+        def _platt_transform(p: np.ndarray) -> np.ndarray:
             eps = 1e-8
             p_clipped = np.clip(p, eps, 1.0 - eps)
             logits_p = np.log(p_clipped / (1.0 - p_clipped))
-            return 1.0 / (1.0 + np.exp(-(best_a * logits_p + best_b)))
+            return cast(np.ndarray, 1.0 / (1.0 + np.exp(-(best_a * logits_p + best_b))))
 
-        return transform, {"a": best_a, "b": best_b}
+        return _platt_transform, {"a": best_a, "b": best_b}
 
     # Use sklearn LogisticRegression
     eps = 1e-8
@@ -244,13 +244,13 @@ def platt_scale(
     lr = LogisticRegression(solver="lbfgs", max_iter=1000)
     lr.fit(logits, labels)
 
-    def transform(p: np.ndarray) -> np.ndarray:
+    def _lr_transform(p: np.ndarray) -> np.ndarray:
         eps = 1e-8
         p_clipped = np.clip(p, eps, 1.0 - eps)
         logits_p = np.log(p_clipped / (1.0 - p_clipped)).reshape(-1, 1)
-        return lr.predict_proba(logits_p)[:, 1]
+        return cast(np.ndarray, lr.predict_proba(logits_p)[:, 1])
 
-    return transform, {"coef": float(lr.coef_[0][0]), "intercept": float(lr.intercept_[0])}
+    return _lr_transform, {"coef": float(lr.coef_[0][0]), "intercept": float(lr.intercept_[0])}
 
 
 def isotonic_regression(
@@ -280,24 +280,24 @@ def isotonic_regression(
                 bin_centers.append((bin_edges[i] + bin_edges[i + 1]) / 2)
 
         # Ensure monotonicity
-        bin_probs = np.array(bin_probs)
-        for i in range(1, len(bin_probs)):
-            if bin_probs[i] < bin_probs[i - 1]:
-                bin_probs[i] = bin_probs[i - 1]
+        bin_probs_arr = np.array(bin_probs)
+        for i in range(1, len(bin_probs_arr)):
+            if bin_probs_arr[i] < bin_probs_arr[i - 1]:
+                bin_probs_arr[i] = bin_probs_arr[i - 1]
 
-        def transform(p: np.ndarray) -> np.ndarray:
-            return np.interp(p, bin_centers, bin_probs)
+        def _iso_transform(p: np.ndarray) -> np.ndarray:
+            return cast(np.ndarray, np.interp(p, bin_centers, bin_probs_arr))
 
-        return transform, {"bin_centers": bin_centers, "bin_probs": bin_probs.tolist()}
+        return _iso_transform, {"bin_centers": bin_centers, "bin_probs": bin_probs_arr.tolist()}
 
     # Use sklearn IsotonicRegression
     ir = IsotonicRegression(out_of_bounds="clip", increasing=True)
     ir.fit_transform(probs, labels)
 
-    def transform(p: np.ndarray) -> np.ndarray:
-        return ir.predict(p)
+    def _sk_iso_transform(p: np.ndarray) -> np.ndarray:
+        return cast(np.ndarray, ir.predict(p))
 
-    return transform, {
+    return _sk_iso_transform, {
         "thresholds": ir.X_thresholds_.tolist() if hasattr(ir, "X_thresholds_") else [],
         "y_thresholds": ir.y_thresholds_.tolist() if hasattr(ir, "y_thresholds_") else [],
     }
@@ -344,12 +344,16 @@ def calibrate_predictions(
         labels_train, _labels_val = labels, labels
 
     # Fit calibration on training set
+    transform: Callable[[np.ndarray], np.ndarray]
+    parameters: dict[str, Any]
+
     if method == CalibrationMethod.TEMPERATURE:
         temp = find_optimal_temperature(probs_train, labels_train)
 
-        def transform(p):
-            return temperature_scale(p, temp)
+        def _temp_scale(p: np.ndarray) -> np.ndarray:
+            return cast(np.ndarray, temperature_scale(p, temp))
 
+        transform = _temp_scale
         parameters = {"temperature": float(temp)}
 
     elif method == CalibrationMethod.PLATT:
@@ -460,4 +464,5 @@ def load_calibration_params(path: Path) -> dict[str, Any] | None:
     """Load calibration parameters from file."""
     if not path.exists():
         return None
-    return json.loads(path.read_text())
+    result: dict[str, Any] = json.loads(path.read_text())
+    return result

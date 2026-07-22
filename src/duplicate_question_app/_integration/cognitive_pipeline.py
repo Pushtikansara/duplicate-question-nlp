@@ -124,7 +124,7 @@ class CognitivePipeline:
             metadata.modules_skipped.append("routing")
 
         # ---- 3. Memory Read ----
-        retrieved_memories = []
+        retrieved_memories: list[Any] = []
         if self.config.enable_memory_read and self._memory_manager is not None:
             t0 = time.perf_counter()
             try:

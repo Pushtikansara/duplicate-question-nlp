@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 
 from ares.cli.app import app
 from ares.cli.commands.profile import _to_chrome_trace
+from duplicate_question_app._profiling import ProfileEntry
 
 runner = CliRunner()
 
@@ -14,7 +15,9 @@ class TestProfile:
     def test_generate_profile(self):
         with patch("duplicate_question_app._profiling.Profiler") as mock_profiler:
             instance = MagicMock()
-            instance.get_stats.return_value = {"func": {"calls": 5, "total_time_ms": 100, "avg_time_ms": 20}}
+            instance.get_stats.return_value = {
+                "func": ProfileEntry(name="func", call_count=5, total_time_ms=100.0, avg_time_ms=20.0)
+            }
             instance.get_report.return_value = [{"name": "func", "timestamp": 0, "elapsed_ms": 100}]
             mock_profiler.return_value = instance
             result = runner.invoke(app, ["profile"])
@@ -47,7 +50,9 @@ class TestProfile:
     def test_show_metrics(self):
         with patch("duplicate_question_app._profiling.Profiler") as mock_profiler:
             instance = MagicMock()
-            instance.get_stats.return_value = {"func_a": {"calls": 10, "total_time_ms": 500, "avg_time_ms": 50}}
+            instance.get_stats.return_value = {
+                "func_a": ProfileEntry(name="func_a", call_count=10, total_time_ms=500.0, avg_time_ms=50.0)
+            }
             mock_profiler.return_value = instance
             result = runner.invoke(app, ["metrics", "show"])
             assert result.exit_code == 0
@@ -67,7 +72,9 @@ class TestProfile:
         out = tmp_path / "metrics.json"
         with patch("duplicate_question_app._profiling.Profiler") as mock_profiler:
             instance = MagicMock()
-            instance.get_stats.return_value = {"func": {"calls": 1, "total_time_ms": 10, "avg_time_ms": 10}}
+            instance.get_stats.return_value = {
+                "func": ProfileEntry(name="func", call_count=1, total_time_ms=10.0, avg_time_ms=10.0)
+            }
             mock_profiler.return_value = instance
             result = runner.invoke(app, ["metrics", "export", str(out)])
             assert result.exit_code == 0
@@ -77,8 +84,8 @@ class TestProfile:
         with patch("duplicate_question_app._profiling.Profiler") as mock_profiler:
             instance = MagicMock()
             instance.get_stats.return_value = {
-                "f1": {"calls": 5, "total_time_ms": 100, "avg_time_ms": 20},
-                "f2": {"calls": 3, "total_time_ms": 50, "avg_time_ms": 16},
+                "f1": ProfileEntry(name="f1", call_count=5, total_time_ms=100.0, avg_time_ms=20.0),
+                "f2": ProfileEntry(name="f2", call_count=3, total_time_ms=50.0, avg_time_ms=16.0),
             }
             mock_profiler.return_value = instance
             result = runner.invoke(app, ["stats", "show"])
@@ -99,7 +106,7 @@ class TestProfile:
         out = tmp_path / "stats.json"
         with patch("duplicate_question_app._profiling.Profiler") as mock_profiler:
             instance = MagicMock()
-            instance.get_stats.return_value = {"func": {"calls": 1}}
+            instance.get_stats.return_value = {"func": ProfileEntry(name="func", call_count=1)}
             mock_profiler.return_value = instance
             result = runner.invoke(app, ["stats", "export", str(out)])
             assert result.exit_code == 0

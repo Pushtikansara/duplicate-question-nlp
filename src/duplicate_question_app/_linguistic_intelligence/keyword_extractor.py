@@ -161,7 +161,7 @@ class DefaultKeywordExtractor(KeywordExtractor):
     def _score_keywords(self, freq: Counter, total: int, text: str, lexical: LexicalFeatures) -> list[Keyword]:
         noun_set = set(lexical.unique_nouns)
         verb_set = set(lexical.unique_verbs)
-        entity_set = set()
+        entity_set: set[str] = set()
         scored: list[Keyword] = []
         for word, count in freq.most_common(self._top_n * 2):
             if word in _STOPWORDS and len(word) <= 3:

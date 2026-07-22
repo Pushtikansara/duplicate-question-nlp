@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from duplicate_question_app._inference.cache import (
     cached_semantic_representation,
@@ -25,7 +25,9 @@ class SemanticPipelineService:
     @profile("analyze_question")
     def analyze_question(self, text: str) -> SemanticRepresentation | None:
         rep = cached_semantic_representation(text, lambda: self._build_representation(text))
-        return rep
+        if rep is not None:
+            return cast(SemanticRepresentation, rep)
+        return None
 
     def _build_representation(self, text: str) -> SemanticRepresentation | None:
         result = self._pipeline.run(text)
@@ -35,7 +37,7 @@ class SemanticPipelineService:
         if sr is not None:
             sr.reasoning_metadata["perception_timing_ms"] = result.timing_ms
             sr.reasoning_metadata["perception_stages"] = result.stages
-        return sr
+        return cast(SemanticRepresentation, sr)
 
     @profile("assess_pair")
     def assess(

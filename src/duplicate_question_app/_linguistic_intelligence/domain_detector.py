@@ -82,7 +82,7 @@ class DefaultDomainDetector(DomainDetector):
                 scores[domain] = score
         if not scores:
             return "general", 0.3
-        best = max(scores, key=scores.get)
+        best = max(scores, key=lambda k: scores[k])
         max_score = scores[best]
         total = sum(scores.values())
         confidence = max_score / total if total > 0 else 0.0

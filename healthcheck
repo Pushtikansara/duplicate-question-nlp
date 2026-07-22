@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+
+HEALTH_URL="${HEALTH_URL:-http://localhost:8000/api/v1/health}"
+TIMEOUT="${TIMEOUT:-10}"
+
+response=$(curl -s -o /dev/null -w "%{http_code}" --max-time "$TIMEOUT" "$HEALTH_URL" 2>/dev/null || echo "000")
+
+if [ "$response" = "200" ]; then
+    echo "Health check passed: $HEALTH_URL -> $response"
+    exit 0
+else
+    echo "Health check failed: $HEALTH_URL -> $response"
+    exit 1
+fi

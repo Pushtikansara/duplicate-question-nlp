@@ -27,14 +27,14 @@ class DefaultCostEstimator(CostEstimator):
             return 1.0
 
         try:
-            complexity_score = complexity.score
+            complexity_score = float(complexity.score)
         except (AttributeError, TypeError):
             complexity_score = 0.5
 
-        avg_word_count = complexity.features.get("avg_word_count", 0)
+        avg_word_count = float(complexity.features.get("avg_word_count", 0))
         length_factor = 1.0 + (avg_word_count / 100.0) * 0.2
 
         complexity_factor = 1.0 + (complexity_score - 0.5) * 0.3
 
         final_cost = base_cost * length_factor * complexity_factor
-        return max(0.0, min(1.0, final_cost))
+        return float(max(0.0, min(1.0, final_cost)))

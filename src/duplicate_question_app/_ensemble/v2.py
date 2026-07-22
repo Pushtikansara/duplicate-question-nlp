@@ -39,10 +39,11 @@ from duplicate_question_app._models.week2 import is_week2_model
 def cached_normalize(text: str, expand_abbrevs: bool = True) -> str:
     from duplicate_question_app._preprocessing import normalize_question
 
-    return cached_preprocessing(
+    result: Any = cached_preprocessing(
         f"{text}|{expand_abbrevs}",
         lambda: normalize_question(text, expand_abbrevs=expand_abbrevs),
     )
+    return str(result)
 
 
 @dataclass

@@ -12,15 +12,19 @@ def start_shell() -> None:
     console.print("         result = engine.predict('question1', 'question2')")
     console.print()
 
+    _ares: type | None = None
+    _prediction_result: type | None = None
     try:
         from ares import ARES, PredictionResult
+
+        _ares = ARES
+        _prediction_result = PredictionResult
     except ImportError:
-        ARES = None  # type: ignore[assignment]
-        PredictionResult = None  # type: ignore[assignment]
+        pass
 
     namespace = {
-        "ARES": ARES,
-        "PredictionResult": PredictionResult,
+        "ARES": _ares,
+        "PredictionResult": _prediction_result,
     }
 
     try:

@@ -82,7 +82,7 @@ class AblationEngine:
         ablated: dict[str, BenchmarkResult],
     ) -> list[dict[str, Any]]:
         baseline_f1 = full.classification.f1
-        contributions = []
+        contributions: list[dict[str, Any]] = []
         for name, result in ablated.items():
             delta_f1 = baseline_f1 - result.classification.f1
             contributions.append(

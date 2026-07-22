@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 from ares.cli.app import app
+from duplicate_question_app._evaluation.benchmark_result import BenchmarkResult
 
 runner = CliRunner()
 
@@ -65,11 +66,13 @@ class TestBenchmark:
         with patch("duplicate_question_app._evaluation.benchmark_runner.BenchmarkRunner") as mock_runner:
             instance = MagicMock()
             instance.get_results.return_value = {
-                "test_config": {
-                    "total_latency_ms": 100,
-                    "accuracy": 0.95,
-                    "samples": 100,
-                }
+                "test_config": BenchmarkResult(
+                    config_name="test_config",
+                    modules_enabled=[],
+                    total_latency_ms=100.0,
+                    throughput=0.95,
+                    num_samples=100,
+                ),
             }
             mock_runner.return_value = instance
             result = runner.invoke(app, ["benchmark", "list"])
@@ -80,8 +83,12 @@ class TestBenchmark:
         with patch("duplicate_question_app._evaluation.benchmark_runner.BenchmarkRunner") as mock_runner:
             instance = MagicMock()
             instance.get_results.return_value = {
-                "a": {"total_latency_ms": 100, "accuracy": 0.9, "samples": 50},
-                "b": {"total_latency_ms": 200, "accuracy": 0.95, "samples": 100},
+                "a": BenchmarkResult(
+                    config_name="a", modules_enabled=[], total_latency_ms=100.0, throughput=0.9, num_samples=50
+                ),
+                "b": BenchmarkResult(
+                    config_name="b", modules_enabled=[], total_latency_ms=200.0, throughput=0.95, num_samples=100
+                ),
             }
             mock_runner.return_value = instance
             result = runner.invoke(app, ["benchmark", "compare", "a", "b"])

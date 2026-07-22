@@ -9,7 +9,7 @@ from duplicate_question_app._semantic.semantic_graph import SemanticNode
 
 log = get_logger(__name__)
 
-_NORMALIZATION_RULES: list[tuple[re.Pattern, str]] = [
+_NORMALIZATION_RULES: list[tuple[re.Pattern, str | None]] = [
     (re.compile(r"(install|installation|installing|setup|configure|configuring)", re.IGNORECASE), "INSTALL"),
     (re.compile(r"(uninstall|remove|deinstall|deletion|deleting)", re.IGNORECASE), "UNINSTALL"),
     (re.compile(r"(upgrade|update|updating|upgrading)", re.IGNORECASE), "UPDATE"),

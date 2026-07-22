@@ -81,8 +81,8 @@ class DefaultEvidenceBuilder:
                 )
             )
 
-        for conflict in entity.conflicts:
-            evidence.append(self._item("entities", "conflict", conflict, 0.8))
+        for ent_conflict in entity.conflicts:
+            evidence.append(self._item("entities", "conflict", ent_conflict, 0.8))
 
         relation = assessment.relation_similarity
         if relation.matching_relations:
@@ -96,13 +96,13 @@ class DefaultEvidenceBuilder:
         else:
             evidence.append(self._item("relations", "info", "No relations available for comparison", 0.5))
 
-        for conflict in assessment.conflicts:
+        for ass_conflict in assessment.conflicts:
             evidence.append(
                 self._item(
-                    conflict.conflict_type,
+                    ass_conflict.conflict_type,
                     "conflict",
-                    conflict.description,
-                    1.0 - conflict.severity * 0.5,
+                    ass_conflict.description,
+                    1.0 - ass_conflict.severity * 0.5,
                 )
             )
 

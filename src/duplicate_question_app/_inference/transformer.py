@@ -4,6 +4,7 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import torch
@@ -127,8 +128,8 @@ def _build_metadata(
 
 def _resolve_device() -> str:
     """Force CPU to avoid CUDA OOM in constrained environments."""
-    inf_cfg = get_config("inference")
-    return inf_cfg.get("default_device", "cpu")
+    inf_cfg: dict[str, Any] = get_config("inference")
+    return str(inf_cfg.get("default_device", "cpu"))
 
 
 def load_model_and_tokenizer(
