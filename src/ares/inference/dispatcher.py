@@ -151,6 +151,16 @@ class InferenceDispatcher:
         )
 
     @staticmethod
+    def validate_model(model_name: str) -> None:
+        entry, _ = _lookup_model(model_name)
+        model_type = entry.model_type
+        if model_type not in _SUPPORTED_MODEL_TYPES:
+            raise ValueError(
+                f"Model '{model_name}' has unsupported type '{model_type}'. "
+                f"Supported types: {', '.join(sorted(_SUPPORTED_MODEL_TYPES))}."
+            )
+
+    @staticmethod
     def list_models() -> list[str]:
         from duplicate_question_app._models.registry import build_registry
 
