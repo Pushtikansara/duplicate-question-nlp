@@ -22,7 +22,7 @@ services:
       - ARES_GRPC_PORT=50051
       - ARES_OTEL_ENDPOINT=
       - ARES_PROMETHEUS_ENABLED=true
-      - ARES_SECRET_KEY=${ARES_SECRET_KEY:-change-me-in-production}
+      - ARES_SECRET_KEY=${ARES_SECRET_KEY}
       - ARES_API_KEY=${ARES_API_KEY:-}
     volumes:
       - ./configs:/app/configs:ro

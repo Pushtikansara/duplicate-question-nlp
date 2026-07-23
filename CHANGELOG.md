@@ -38,3 +38,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 3: Layered architecture with 15 subpackages
 - Phase 2: Modular Streamlit dashboard (5 packages, 41 files)
 - Phase 1: Baseline research project with notebooks and monolithic app
+
+v0.9.3
+
+Added Enterprise Plugin System
+
+Plugin Lifecycle
+
+Plugin Discovery
+
+Plugin Registry
+
+Dependency Resolution
+
+Plugin Configuration
+
+77 Tests
+
+Zero Ruff Violations

@@ -111,10 +111,17 @@ def setup_middleware(app: FastAPI) -> None:
             },
         )
 
+    cors_origins = config.cors_origins
+    allow_credentials = "*" not in cors_origins
+    if "*" in cors_origins:
+        logger.warning(
+            "CORS configured with wildcard origin '*' — credentials disabled. "
+            "Set ARES_CORS_ORIGINS to explicit origins to enable credentials."
+        )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=config.cors_origins,
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

@@ -2,6 +2,7 @@ from app.pages.adaptive_ensemble import render as render_adaptive_ensemble
 from app.pages.advanced_calibration import render as render_advanced_calibration
 from app.pages.advanced_explainability import render as render_advanced_explainability
 from app.pages.agreement_dashboard import render as render_agreement_dashboard
+from app.pages.ares_demo import render as render_ares_demo
 from app.pages.batch_prediction import render as render_batch_prediction
 from app.pages.contradiction_detection import render as render_contradiction_detection
 from app.pages.dataset import render as render_dataset
@@ -30,6 +31,7 @@ __all__ = [
     "render_advanced_calibration",
     "render_advanced_explainability",
     "render_agreement_dashboard",
+    "render_ares_demo",
     "render_error_explorer",
     "render_model_manager",
     "render_dataset",

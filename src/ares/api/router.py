@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from ares.api.routers.ares_demo import router as ares_demo_router
 from ares.api.routers.benchmark import router as benchmark_router
 from ares.api.routers.config import router as config_router
 from ares.api.routers.health import router as health_router
@@ -34,6 +35,9 @@ api_router.include_router(metrics_router, tags=["Metrics"])
 api_router.include_router(trace_router, tags=["Trace"])
 api_router.include_router(profile_router, tags=["Profile"])
 api_router.include_router(system_router, tags=["System"])
+api_router.include_router(ares_demo_router, tags=["ARES Demo"])
 
-auth_router = APIRouter()
+from ares.api.routers.auth import router as auth_router
+
+auth_router = auth_router
 """Standalone router for authentication and authorisation endpoints."""

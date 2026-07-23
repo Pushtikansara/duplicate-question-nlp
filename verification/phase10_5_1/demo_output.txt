@@ -1,0 +1,82 @@
+========================================================================
+  ARES DEMO — PHASE 10.5.1
+========================================================================
+
+Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 104/104 [00:00<00:00, 12742.69it/s]
+Failed to emit orchestration event
+Traceback (most recent call last):
+  File "/home/ommistry223/Documents/nlp/duplicate-question-nlp/src/ares/orchestration/coordinator.py", line 349, in _emit_event
+    await self._event_bus.emit("orchestration", orchestration_event=event)
+TypeError: object Event can't be used in 'await' expression
+Failed to emit orchestration event
+Traceback (most recent call last):
+  File "/home/ommistry223/Documents/nlp/duplicate-question-nlp/src/ares/orchestration/coordinator.py", line 349, in _emit_event
+    await self._event_bus.emit("orchestration", orchestration_event=event)
+TypeError: object Event can't be used in 'await' expression
+Failed to emit orchestration event
+Traceback (most recent call last):
+  File "/home/ommistry223/Documents/nlp/duplicate-question-nlp/src/ares/orchestration/coordinator.py", line 349, in _emit_event
+    await self._event_bus.emit("orchestration", orchestration_event=event)
+TypeError: object Event can't be used in 'await' expression
+
+[GOAL]
+  Description: Analyze the semantic similarity between two questions and determine if they are duplicates
+  Sub-goals: 2
+    - Analyze the semantic similarity between two questions
+    - determine if they are duplicates
+
+[PLAN]
+  Strategy: LINEAR
+  Nodes: 2
+  Edges: 1
+  Execution Order: [['f9796db9-3a50-428b-b557-7952c3867404'], ['e7882bd8-0ad9-43c5-9933-3b16443c74b6']]
+  Validation Errors: 0
+
+[PREDICTION]
+  Q1: How do I learn to code?
+  Q2: What is the best way to start programming?
+  Result: Non-Duplicate
+  Confidence: 99.96%
+  Model: Week 4 Improved DistilBERT
+  Latency: 74.4ms
+
+[MEMORY]
+  Stored: prediction:ebdeb32c-3615-4fad-830d-f9b42ab4f2a0
+  Retrieved: 4 entries
+    - prediction:ebdeb32c-3615-4fad-830d-f9b42ab4f2a0 (WORKING)
+    - prediction:14e5966f-2174-4df6-be53-d5a1fca8e712 (WORKING)
+    - prediction:ef83ace9-9be3-447c-bb0d-399761ea3562 (WORKING)
+    - prediction:7bbc3d0d-a7c5-4bcf-8fe4-612c5dfe559f (WORKING)
+
+[REFLECTION]
+  Trust Score: 42.5
+  Trust Level: low
+  Risk Level: high
+  Human Review: False
+
+[TIMELINE]
+  planning_time_ms: 0.4ms
+  prediction_time_ms: 510.8ms
+  memory_write_time_ms: 0.2ms
+  memory_read_time_ms: 0.5ms
+  reflection_time_ms: 5.5ms
+  execution_time_ms: 2.9ms
+  total_time_ms: 520.7ms
+
+[ORCHESTRATION]
+  Status: PARTIAL
+  Agent: planner -> SUCCESS (1ms)
+  Agent: predict -> FAILURE (0ms)
+  Agent: memory -> FAILURE (0ms)
+  Agent: reflection -> SUCCESS (0ms)
+
+[EVENTS]
+  Total events captured: 39
+
+[FINAL RESPONSE]
+  Prediction: Non-Duplicate (confidence: 99.96%, model: Week 4 Improved DistilBERT)
+
+========================================================================
+  DEMO COMPLETE — PHASE 10.5.1 SUCCESSFUL
+========================================================================

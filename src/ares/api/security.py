@@ -20,7 +20,7 @@ class SecurityManager:
     def __init__(self) -> None:
         self.config = APIConfig.get()
         self.jwt = _JWTManager(self.config)
-        self.apikey = _APIKeyManager()
+        self.apikey = _APIKeyManager(storage_path=self.config.data_dir)
 
     def authenticate_request(
         self,

@@ -222,6 +222,7 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short -p no:warnings --strict-markers"
+asyncio_mode = "auto"
 markers = [
     "fast: Quick unit tests (default)",
     "slow: Tests that may take longer to run",
@@ -236,6 +237,7 @@ markers = [
     "security: Security and auth tests",
     "load: Load and stress tests",
     "performance: Performance benchmark tests",
+    "asyncio: Async test marker (pytest-asyncio)",
 ]
 
 [tool.coverage.run]

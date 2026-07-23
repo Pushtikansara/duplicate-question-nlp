@@ -26,6 +26,7 @@ ROUTE_MAP: dict[str, str] = {
     "\U0001f4a1 Semantic Debugger": "Semantic Debugger",
     "\U0001f517 Model Manager": "Model Manager",
     "\U0001f4ca Dataset Info": "Dataset Information",
+    "\U0001f916 ARES Demo": "ARES Demo",
 }
 
 
@@ -195,6 +196,7 @@ def sidebar_navigation() -> str:
                 "\U0001f4a1 Semantic Debugger",
             ],
         ),
+        ("ARES", ["\U0001f916 ARES Demo"]),
         ("Information", ["\U0001f517 Model Manager", "\U0001f4ca Dataset Info"]),
     ]
 

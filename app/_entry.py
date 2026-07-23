@@ -28,6 +28,7 @@ from app.pages import (
     render_advanced_calibration,
     render_advanced_explainability,
     render_agreement_dashboard,
+    render_ares_demo,
     render_batch_prediction,
     render_contradiction_detection,
     render_dataset,
@@ -70,6 +71,7 @@ _ROUTE_RENDER_MAP: dict[str, tuple[str, object]] = {
     "Model Manager": ("🔗 Model Manager", render_model_manager),
     "Semantic Debugger": ("🐛 Semantic Debugger", render_semantic_debugger),
     "Dataset Information": ("📋 Dataset Info", render_dataset),
+    "ARES Demo": ("🤖 ARES Demo", render_ares_demo),
 }
 
 _QUERY_PARAM_MODEL = "selected_model"

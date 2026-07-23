@@ -98,3 +98,48 @@ class TestAuthentication:
     def test_public_endpoint_version_no_auth_needed(self, test_client):
         response = test_client.get("/api/v1/version")
         assert response.status_code == 200
+
+
+@pytest.mark.api
+class TestAuthRouter:
+    def test_token_endpoint_creates_jwt(self, test_client):
+        sm = get_security_manager()
+        api_key = sm.create_api_key("test-client", UserRole.USER)
+        response = test_client.post("/api/v1/auth/token", params={"x_api_key": api_key})
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert data["token_type"] == "bearer"
+
+    def test_token_endpoint_invalid_key_returns_401(self, test_client):
+        response = test_client.post(
+            "/api/v1/auth/token", params={"x_api_key": "ares_bad.1234567890abcdef1234567890abcdef"}
+        )
+        assert response.status_code == 401
+
+    def test_refresh_endpoint_returns_new_access(self, test_client):
+        sm = get_security_manager()
+        api_key = sm.create_api_key("test-client", UserRole.USER)
+        token_resp = test_client.post("/api/v1/auth/token", params={"x_api_key": api_key})
+        refresh_token = token_resp.json()["refresh_token"]
+        response = test_client.post("/api/v1/auth/refresh", params={"refresh_token": refresh_token})
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+
+    def test_refresh_endpoint_invalid_token_returns_401(self, test_client):
+        response = test_client.post("/api/v1/auth/refresh", params={"refresh_token": "invalid"})
+        assert response.status_code == 401
+
+    def test_verify_endpoint_valid_token(self, test_client, auth_headers):
+        response = test_client.get("/api/v1/auth/verify", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["sub"] == "test-user"
+        assert data["role"] == "user"
+
+    def test_verify_endpoint_no_auth_returns_401(self, test_client):
+        response = test_client.get("/api/v1/auth/verify")
+        assert response.status_code == 401

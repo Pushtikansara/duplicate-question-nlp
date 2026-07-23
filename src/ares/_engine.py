@@ -113,7 +113,7 @@ class ARES:
         if self._use_reflection and self._reflection_engine:
             try:
                 ref = self._reflection_engine.reflect(prediction=raw)
-                result.trust_score = ref.trust_score
+                result.trust_score = max(0.0, min(1.0, ref.trust_score if ref.trust_score is not None else 0.0))
                 result.trust_level = ref.trust_level.value if ref.trust_level else None
                 result.risk_level = ref.risk_level.value if ref.risk_level else None
                 result.human_review_required = ref.human_review_required

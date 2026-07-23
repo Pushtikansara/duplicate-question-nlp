@@ -1,0 +1,10 @@
+# Phase 10.2 — Demo Output
+# Generated: 2026-07-23 10:38 UTC
+
+
+--- pytest output ---
+  tests/unit/agents/test_voting.py::TestConfidenceWeightedVoting::test_confidence_decides PASSED [ 99%]
+  tests/unit/agents/test_voting.py::TestConfidenceWeightedVoting::test_tie_uncertain PASSED [ 99%]
+  tests/unit/agents/test_voting.py::TestConfidenceWeightedVoting::test_confidence_sum PASSED [100%]
+
+  ============================= 381 passed in 1.28s ==============================

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
+import os
 import secrets
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from ares.api.models import UserRole
@@ -34,8 +37,62 @@ class StoredKey:
 
 
 class APIKeyManager:
-    def __init__(self) -> None:
+    def __init__(self, storage_path: str = "") -> None:
         self._keys: dict[str, StoredKey] = {}
+        self._storage_path = storage_path
+        if storage_path:
+            self._load()
+
+    def _storage_file(self) -> str:
+        return os.path.join(self._storage_path, "api_keys.json")
+
+    def _load(self) -> None:
+        path = self._storage_file()
+        if not os.path.exists(path):
+            return
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            for item in data:
+                created = datetime.fromisoformat(item["created_at"])
+                expires = datetime.fromisoformat(item["expires_at"]) if item.get("expires_at") else None
+                self._keys[item["prefix"]] = StoredKey(
+                    key_hash=item["key_hash"],
+                    prefix=item["prefix"],
+                    client_id=item["client_id"],
+                    role=item["role"],
+                    permissions=item.get("permissions", []),
+                    created_at=created,
+                    expires_at=expires,
+                    revoked=item.get("revoked", False),
+                )
+            logger.info("Loaded %d API keys from %s", len(self._keys), path)
+        except Exception:
+            logger.exception("Failed to load API keys from %s", path)
+
+    def _save(self) -> None:
+        if not self._storage_path:
+            return
+        path = self._storage_file()
+        try:
+            Path(self._storage_path).mkdir(parents=True, exist_ok=True)
+            data = [
+                {
+                    "key_hash": k.key_hash,
+                    "prefix": k.prefix,
+                    "client_id": k.client_id,
+                    "role": k.role,
+                    "permissions": k.permissions,
+                    "created_at": k.created_at.isoformat(),
+                    "expires_at": k.expires_at.isoformat() if k.expires_at else None,
+                    "revoked": k.revoked,
+                }
+                for k in self._keys.values()
+            ]
+            with open(path, "w") as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            logger.exception("Failed to save API keys to %s", path)
 
     def _hash_key(self, key: str) -> str:
         return hashlib.sha256(key.encode()).hexdigest()
@@ -64,6 +121,7 @@ class APIKeyManager:
             created_at=now,
             expires_at=expires_at,
         )
+        self._save()
         return full_key
 
     def verify_key(self, api_key: str) -> dict[str, Any] | None:
@@ -91,6 +149,7 @@ class APIKeyManager:
         if stored is None:
             return False
         stored.revoked = True
+        self._save()
         return True
 
     def list_keys(self) -> list[dict[str, Any]]:

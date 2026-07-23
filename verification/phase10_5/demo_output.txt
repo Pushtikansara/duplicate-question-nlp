@@ -1,0 +1,100 @@
+
+╔══════════════════════════════════════════════════════════════════════╗
+║           PLANNING ENGINE DEMO — PHASE 10.5                        ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+========================================================================
+  1. USER GOAL
+========================================================================
+
+  Goal: Analyze customer feedback and generate actionable insights report
+
+========================================================================
+  2. GOAL DECOMPOSITION
+========================================================================
+
+  Goal ID: 51643bd1-67b6-45ad-8f84-24a326fa18c2
+  Sub-goals: 2
+    1. Analyze customer feedback (id=daafcbb1)
+    2. generate actionable insights report (id=ca87ba0d)
+
+========================================================================
+  3. PLANNER
+========================================================================
+
+  Strategy: DAG
+  Plan ID: 3b93717a-d2b6-4961-a3d1-25aaf5593cf7
+  Planning time: 0.0ms
+  Nodes: 2
+  Edges: 1
+
+========================================================================
+  4. VALIDATION
+========================================================================
+
+  ✅ Plan validated successfully — no errors
+
+========================================================================
+  5. OPTIMIZATION
+========================================================================
+
+  Optimizations applied: parallelism, latency, cost, retries
+  Before — latency: 300.0ms, cost: 1.0, parallel nodes: 0
+  After  — latency: 300.0ms, cost: 1.0, parallel nodes: 0
+  Improvement — latency: 0.0%, parallelism: 0.0%
+
+========================================================================
+  6. EXECUTION ORDER
+========================================================================
+
+  Level 0: [Analyze customer feedback (44fe4f), generate actionable insights report (f404e0)]
+
+========================================================================
+  7. EXECUTION
+========================================================================
+
+  Status: COMPLETED
+  Total latency: 0.0ms
+  Total cost: 1.0
+  Nodes executed: 2
+
+    [ COMPLETED] agent-analyzer       Analyze customer feedback
+    [ COMPLETED] agent-extractor      generate actionable insights report
+
+========================================================================
+  8. FULL CYCLE (end-to-end)
+========================================================================
+
+  Total time: 0.1ms
+  Validation errors: 0
+  Plan status: COMPLETED
+
+========================================================================
+  9. METRICS
+========================================================================
+
+  Planning Metrics:
+    plans_created: 2
+    plans_completed: 2
+    plans_failed: 0
+    failure_rate: 0.00
+    avg_planning_latency_ms: 0.03
+    avg_execution_latency_ms: 0.02
+    avg_node_count: 2.00
+    total_retries: 0
+    avg_optimization_gain_pct: 0.00
+
+========================================================================
+  10. PLAN GRAPH STRUCTURE
+========================================================================
+
+  Plan graph for plan '3b93717a-d2b6-4961-a3d1-25aaf5593cf7':
+  Strategy: DAG
+  Nodes: 2
+  Edges: 1
+  Levels: 1
+  Execution order levels: [['44fe4f0d-38b8-4839-8a24-3895f71067ac', 'f404e00b-ad7a-4d3b-98cd-2938e434a901']]
+
+╔══════════════════════════════════════════════════════════════════════╗
+║           DEMO COMPLETE — PHASE 10.5 SUCCESSFUL                     ║
+╚══════════════════════════════════════════════════════════════════════╝

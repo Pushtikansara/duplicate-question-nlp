@@ -7,6 +7,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, cast
 
 from ares.api.config import APIConfig
+from ares.api.exceptions import AuthenticationError
+from ares.grpc.authentication import GrpcAuthInterceptor
 from ares.grpc.services import AresGrpcService
 
 logger = logging.getLogger(__name__)
@@ -14,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 class GrpcJsonHandler(BaseHTTPRequestHandler):
     service = AresGrpcService()
+    _config = APIConfig.get()
+    auth_interceptor = GrpcAuthInterceptor(api_key=_config.api_key)
 
     def _send_json(self, data: dict[str, Any], status: int = 200) -> None:
         self.send_response(status)
@@ -28,9 +32,18 @@ class GrpcJsonHandler(BaseHTTPRequestHandler):
         body = self.rfile.read(length)
         return cast("dict[str, Any]", json.loads(body))
 
+    def _authenticate(self) -> None:
+        try:
+            headers = {k.lower(): v for k, v in dict(self.headers).items()}
+            self.auth_interceptor.authenticate(headers)
+        except AuthenticationError:
+            self._send_json({"error": "Authentication required"}, 401)
+
     def do_POST(self) -> None:
-        body = self._read_body()
         path = self.path.strip("/")
+        if path != "health":
+            self._authenticate()
+        body = self._read_body()
         try:
             if path == "predict":
                 result = self.service.predict(
@@ -86,11 +99,13 @@ class GrpcJsonHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = self.path.strip("/")
-        if path == "health":
+        if path in ("health",):
             self._send_json(self.service.health())
         elif path == "version":
+            self._authenticate()
             self._send_json(self.service.version())
         else:
+            self._authenticate()
             self._send_json({"error": f"Unknown endpoint: {path}"}, 404)
 
     def log_message(self, format: str, *args: Any) -> None:
