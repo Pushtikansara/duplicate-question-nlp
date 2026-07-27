@@ -51,39 +51,25 @@ class TestCLI:
 
         import pandas as pd
 
-        from duplicate_question_app._inference.transformer import ModelMetadata
+        from ares._result import PredictionResult
 
-        meta = ModelMetadata(
-            model_dir=Path("/tmp"),
-            model_label="T",
-            model_version="1",
-            decision_threshold=0.5,
-            threshold_source="config",
-            device="cpu",
-            fallback_reason=None,
-            load_errors=(),
-            cache_key="k",
-        )
         df = pd.DataFrame({"question1": ["test"], "question2": ["test2"], "label": [1]})
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             fname = f.name
             df.to_csv(fname, index=False)
+        fake_result = MagicMock(spec=PredictionResult)
+        fake_result.predicted_label = 1
+        fake_result.prediction = "Duplicate"
+        fake_result.confidence = 0.9
+        fake_result.prob_duplicate = 0.9
+        fake_result.prob_non_duplicate = 0.1
+        fake_result.model_name = "test"
+        fake_result.latency_ms = 1.0
         with patch.object(sys, "argv", ["dqd-predict", fname]):
-            with patch("duplicate_question_app._inference.transformer.load_model_and_tokenizer") as mock_loader:
-                mock_loader.return_value = (MagicMock(), MagicMock(), meta)
-                with patch(
-                    "duplicate_question_app._inference.transformer.DuplicateQuestionInferenceService"
-                ) as mock_svc:
-                    mock_instance = MagicMock()
-                    mock_instance.predict_single.return_value = {
-                        "predicted_label": 1,
-                        "prob_duplicate": 0.9,
-                        "prob_non_duplicate": 0.1,
-                    }
-                    mock_svc.return_value = mock_instance
-                    from duplicate_question_app.cli import predict
+            with patch("duplicate_question_app.cli.InferenceDispatcher.predict", return_value=fake_result):
+                from duplicate_question_app.cli import predict
 
-                    predict()
+                predict()
 
     def test_benchmark_imports(self):
         from duplicate_question_app.cli import benchmark

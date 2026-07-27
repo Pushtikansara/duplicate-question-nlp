@@ -40,7 +40,7 @@ jobs:
       - name: Install package with dev dependencies
         run: |
           pip install -e . --no-build-isolation
-          pip install pytest pytest-cov pytest-asyncio
+          pip install pytest pytest-cov pytest-asyncio tabulate
 
       - name: Verify editable install
         run: python -c "import duplicate_question_app; print(duplicate_question_app.__version__)"
