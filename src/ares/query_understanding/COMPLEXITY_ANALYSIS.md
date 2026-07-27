@@ -47,10 +47,11 @@ The `ComplexityAnalyzer` is automatically invoked by `QueryAnalyzer.analyze()`. 
 
 ```python
 from ares.query_understanding import QueryAnalyzer
+
 analyzer = QueryAnalyzer()
 result = analyzer.analyze("What is Python?", "What is Java?")
 ca = result.complexity_analysis
-print(ca.difficulty_level)        # "Very Easy"
+print(ca.difficulty_level)  # "Very Easy"
 print(ca.overall_complexity_score)  # e.g. 0.12
 ```
 

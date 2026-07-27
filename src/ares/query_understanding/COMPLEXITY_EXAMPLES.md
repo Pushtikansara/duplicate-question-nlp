@@ -42,6 +42,7 @@ risk_score = 0.12
 
 ```python
 from ares.query_understanding.complexity_rules import abbreviation_density
+
 tokens = ["What", "is", "the", "difference", "between", "AI", "ML", "NLP", "and", "CNN"]
 abbreviation_density(tokens)  # 0.3 (3/10 uppercase tokens)
 ```
@@ -59,8 +60,8 @@ ambiguity_score = 0.15  # pronouns detected
 With 8 entities across 2 short questions:
 
 ```python
-entity_complexity = 1.0    # density > 0.5
-entity_density = 1.0       # 8 entities / 2 words
+entity_complexity = 1.0  # density > 0.5
+entity_density = 1.0  # 8 entities / 2 words
 ```
 
 ## Example 6: Numeric-Heavy
@@ -77,7 +78,7 @@ numeric_density = 0.23
 
 ```python
 question_length_score = 0.1  # both ≤ 10 chars
-ambiguity_score = 0.15       # very short questions
+ambiguity_score = 0.15  # very short questions
 ```
 
 ## Example 8: Very Long
