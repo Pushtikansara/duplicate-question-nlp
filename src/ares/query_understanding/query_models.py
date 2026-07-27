@@ -4,8 +4,10 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from ares.query_understanding.complexity_models import ComplexityAnalysis
+from ares.query_understanding.decision_trace_models import DecisionTrace
 from ares.query_understanding.entity_models import EntityResult
 from ares.query_understanding.relationship_models import RelationshipAnalysis
+from ares.query_understanding.router_models import RoutingDecision
 from ares.query_understanding.type_models import QuestionTypeResult
 
 
@@ -125,12 +127,18 @@ class QueryAnalysis:
 
     complexity_analysis: ComplexityAnalysis = field(default_factory=ComplexityAnalysis)
 
+    routing_decision: RoutingDecision = field(default_factory=RoutingDecision)
+
+    decision_trace: DecisionTrace = field(default_factory=DecisionTrace)
+
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["question_type"] = self.question_type.to_dict()
         d["entity_analysis"] = self.entity_analysis.to_dict()
         d["relationship_analysis"] = self.relationship_analysis.to_dict()
         d["complexity_analysis"] = self.complexity_analysis.to_dict()
+        d["routing_decision"] = self.routing_decision.to_dict()
+        d["decision_trace"] = self.decision_trace.to_dict()
         return d
 
     def to_json(self) -> str:
@@ -145,6 +153,8 @@ class QueryAnalysis:
         entity_analysis = EntityResult.from_dict(data.get("entity_analysis", {}))
         relationship_analysis = RelationshipAnalysis.from_dict(data.get("relationship_analysis", {}))
         complexity_analysis = ComplexityAnalysis.from_dict(data.get("complexity_analysis", {}))
+        routing_decision = RoutingDecision.from_dict(data.get("routing_decision", {}))
+        decision_trace = DecisionTrace.from_dict(data.get("decision_trace", {}))
         metadata_1 = QuestionMetadata(**data.get("metadata_1", {}))
         metadata_2 = QuestionMetadata(**data.get("metadata_2", {}))
         token_stats_1 = TokenStatistics(**data.get("token_stats_1", {}))
@@ -180,4 +190,6 @@ class QueryAnalysis:
             entity_analysis=entity_analysis,
             relationship_analysis=relationship_analysis,
             complexity_analysis=complexity_analysis,
+            routing_decision=routing_decision,
+            decision_trace=decision_trace,
         )

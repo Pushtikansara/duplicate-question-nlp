@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 
 from ares.query_understanding.complexity_analyzer import ComplexityAnalyzer
+from ares.query_understanding.decision_trace_builder import DecisionTraceBuilder
 from ares.query_understanding.entity_detector import EntityDetector
 from ares.query_understanding.query_features import (
     extract_complexity,
@@ -17,6 +18,7 @@ from ares.query_understanding.query_features import (
 from ares.query_understanding.query_models import QueryAnalysis
 from ares.query_understanding.question_type_detector import QuestionTypeDetector
 from ares.query_understanding.relationship_analyzer import RelationshipAnalyzer
+from ares.query_understanding.router_engine import RouterEngine
 from ares.query_understanding.utils import (
     detect_language,
     normalize_text,
@@ -32,6 +34,8 @@ class QueryAnalyzer:
         self._entity_detector = EntityDetector()
         self._relationship_analyzer = RelationshipAnalyzer()
         self._complexity_analyzer = ComplexityAnalyzer()
+        self._router_engine = RouterEngine()
+        self._trace_builder = DecisionTraceBuilder()
 
     def analyze(self, question_1: str, question_2: str) -> QueryAnalysis:
         start = time.time()
@@ -42,13 +46,15 @@ class QueryAnalyzer:
         normalized_2 = normalize_text(question_2) if isinstance(question_2, str) else ""
 
         if not normalized_1 and not normalized_2:
-            return QueryAnalysis(
+            result = QueryAnalysis(
                 original_question_1=str(question_1) if not isinstance(question_1, str) else question_1,
                 original_question_2=str(question_2) if not isinstance(question_2, str) else question_2,
                 timestamp=datetime.utcnow().isoformat(),
                 processing_time_ms=round((time.time() - start) * 1000, 2),
                 version=self.version,
             )
+            result.decision_trace = self._trace_builder.build(result)
+            return result
 
         metadata_1 = extract_question_metadata(normalized_1)
         metadata_2 = extract_question_metadata(normalized_2)
@@ -94,9 +100,21 @@ class QueryAnalyzer:
             relationship_analysis=relationship_analysis,
         )
 
+        routing_decision = self._router_engine.decide(
+            question_1=question_1,
+            question_2=question_2,
+            metadata_1=metadata_1,
+            metadata_2=metadata_2,
+            similarity=similarity,
+            question_type=question_type,
+            entity_analysis=entity_analysis,
+            relationship_analysis=relationship_analysis,
+            complexity_analysis=complexity_analysis,
+        )
+
         elapsed = round((time.time() - start) * 1000, 2)
 
-        return QueryAnalysis(
+        result = QueryAnalysis(
             original_question_1=question_1,
             original_question_2=question_2,
             normalized_question_1=normalized_1,
@@ -120,4 +138,7 @@ class QueryAnalyzer:
             entity_analysis=entity_analysis,
             relationship_analysis=relationship_analysis,
             complexity_analysis=complexity_analysis,
+            routing_decision=routing_decision,
         )
+        result.decision_trace = self._trace_builder.build(result)
+        return result
