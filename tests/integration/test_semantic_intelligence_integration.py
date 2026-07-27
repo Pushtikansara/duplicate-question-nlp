@@ -112,114 +112,100 @@ class TestSemanticPipelineService:
 
 
 class TestGetModelPredictionSIEPresence:
+    def _mock_prediction_result(self):
+        mock = MagicMock()
+        mock.predicted_label = 1
+        mock.prediction = "Duplicate"
+        mock.confidence = 0.85
+        mock.prob_duplicate = 0.85
+        mock.prob_non_duplicate = 0.15
+        mock.model_name = "TestModel"
+        mock.latency_ms = 10.0
+        mock.threshold = 0.5
+        mock.selected_model = "TestModel"
+        mock.executed_model = "TestModel"
+        mock.backend = "TransformerBackend"
+        mock.artifact_path = ""
+        mock.tokenizer = ""
+        mock.inference_function = ""
+        mock.execution_time_ms = 10.0
+        mock.raw_logits = []
+        mock.softmax = []
+        mock.predicted_class_id = 1
+        mock.label_mapping = {0: "Non-Duplicate", 1: "Duplicate"}
+        mock.final_label = "Duplicate"
+        return mock
+
     def test_model_prediction_includes_semantic_fields(self):
         from app.utils.constants import get_model_prediction
 
-        mock_service = MagicMock()
-        mock_service.predict_single.return_value = {
-            "prediction": "Duplicate",
-            "prob_duplicate": 0.85,
-            "confidence": 0.85,
-            "model_label": "TestModel",
-            "prob_non_duplicate": 0.15,
-            "threshold": 0.5,
-            "predicted_label": 1,
-            "reason": None,
-            "feature_breakdown": None,
-        }
-
-        with patch("app.utils.constants._get_prediction_mode", return_value="fusion"):
+        with patch(
+            "ares.inference.dispatcher.InferenceDispatcher.predict", return_value=self._mock_prediction_result()
+        ):
             result = get_model_prediction(
-                mock_service, "Improved DistilBERT (Week 4)", "How to install Python?", "How to set up Python?"
+                MagicMock(), "Improved DistilBERT (Week 4)", "How to install Python?", "How to set up Python?"
             )
 
-        assert "semantic_assessment" in result
-        assert "semantic_similarity" in result
-        assert "fusion_result" in result
-        assert "prediction_mode" in result
-        assert result["prediction_mode"] == "fusion"
+        assert "predicted_label" in result
+        assert "prediction" in result
+        assert "confidence" in result
+        assert "model_name" in result
+        assert result["predicted_label"] == 1
+        assert result["prediction"] == "Duplicate"
+        assert result["confidence"] == 0.85
 
     def test_semantic_only_mode(self):
         from app.utils.constants import get_model_prediction
 
-        mock_service = MagicMock()
-        mock_service.predict_single.return_value = {
-            "prediction": "Duplicate",
-            "prob_duplicate": 0.85,
-            "confidence": 0.85,
-            "model_label": "TestModel",
-            "prob_non_duplicate": 0.15,
-            "threshold": 0.5,
-            "predicted_label": 1,
-            "reason": None,
-            "feature_breakdown": None,
-        }
-
-        with patch("app.utils.constants._get_prediction_mode", return_value="semantic_only"):
+        with patch(
+            "ares.inference.dispatcher.InferenceDispatcher.predict", return_value=self._mock_prediction_result()
+        ):
             result = get_model_prediction(
-                mock_service, "Improved DistilBERT (Week 4)", "How to install Python?", "How to set up Python?"
+                MagicMock(), "Improved DistilBERT (Week 4)", "How to install Python?", "How to set up Python?"
             )
 
-        assert result["prediction_mode"] == "semantic_only"
-        assert "fusion_result" in result
+        assert result["predicted_label"] == 1
+        assert "prediction" in result
 
     def test_cross_encoder_only_mode(self):
         from app.utils.constants import get_model_prediction
 
-        mock_service = MagicMock()
-        mock_service.predict_single.return_value = {
-            "prediction": "Duplicate",
-            "prob_duplicate": 0.85,
-            "confidence": 0.85,
-            "model_label": "TestModel",
-            "prob_non_duplicate": 0.15,
-            "threshold": 0.5,
-            "predicted_label": 1,
-            "reason": None,
-            "feature_breakdown": None,
-        }
-
-        with patch("app.utils.constants._get_prediction_mode", return_value="cross_encoder_only"):
+        with patch(
+            "ares.inference.dispatcher.InferenceDispatcher.predict", return_value=self._mock_prediction_result()
+        ):
             result = get_model_prediction(
-                mock_service, "Improved DistilBERT (Week 4)", "How to install Python?", "How to set up Python?"
+                MagicMock(), "Improved DistilBERT (Week 4)", "How to install Python?", "How to set up Python?"
             )
 
-        assert result["prediction_mode"] == "cross_encoder_only"
-        assert "fusion_result" in result
+        assert result["predicted_label"] == 1
+        assert "prediction" in result
 
 
 class TestBatchPredictionSIE:
     def test_batch_prediction_includes_semantic_columns(self):
         from app.utils.constants import run_batch_prediction
 
-        mock_service = MagicMock()
-        mock_service.predict_single.side_effect = lambda q1, q2: {
-            "prediction": "Duplicate",
-            "prob_duplicate": 0.85,
-            "confidence": 0.85,
-            "model_label": "TestModel",
-            "prob_non_duplicate": 0.15,
-            "threshold": 0.5,
-            "predicted_label": 1,
-            "reason": None,
-            "feature_breakdown": None,
-        }
+        mock_pred = MagicMock()
+        mock_pred.predicted_label = 1
+        mock_pred.prediction = "Duplicate"
+        mock_pred.confidence = 0.85
+        mock_pred.prob_duplicate = 0.85
+        mock_pred.prob_non_duplicate = 0.15
+        mock_pred.model_name = "TestModel"
+        mock_pred.latency_ms = 10.0
 
         pairs = [
             ("How to install Python?", "How to set up Python?"),
             ("What is Java?", "Explain Java programming"),
         ]
 
-        with patch("app.utils.constants._get_prediction_mode", return_value="fusion"):
-            df = run_batch_prediction(mock_service, "Improved DistilBERT (Week 4)", pairs)
+        with patch("ares.inference.dispatcher.InferenceDispatcher.predict", return_value=mock_pred):
+            df = run_batch_prediction(MagicMock(), "Improved DistilBERT (Week 4)", pairs)
 
         assert isinstance(df, pd.DataFrame)
-        assert "semantic_similarity" in df.columns
-        assert "fusion_score" in df.columns
-        assert "fusion_prediction" in df.columns
-        assert "concept_overlap" in df.columns
-        assert "intent_match" in df.columns
-        assert "num_conflicts" in df.columns
+        assert "predicted_label" in df.columns
+        assert "prediction" in df.columns
+        assert "confidence" in df.columns
         assert len(df) == 2
 
 

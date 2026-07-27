@@ -86,6 +86,19 @@ class AresGrpcService:
             "failure_count": failures,
         }
 
+    def version(self) -> dict[str, Any]:
+        import platform
+        import sys
+
+        from ares.api.version import API_VERSION
+
+        return {
+            "version": "0.2.0",
+            "python_version": sys.version.split()[0],
+            "platform": platform.platform(),
+            "api_version": API_VERSION,
+        }
+
     def health(self) -> dict[str, Any]:
         import torch
 

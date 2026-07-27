@@ -112,7 +112,7 @@ class TestToolOrchestrationIntegration:
         )
         assert result.status == OrchestrationStatus.COMPLETED
         agent_result = result.agent_results[0]
-        assert agent_result.result["tool_result"]["value"] == "hello world"
+        assert agent_result.result["tool_result"]["entries"][0]["value"] == "hello world"
 
     async def test_parallel_tool_usage(self, tool_manager, coordinator):
         agent_a = ToolUsingAgent(tool_manager, agent_id="tool_user_a")
