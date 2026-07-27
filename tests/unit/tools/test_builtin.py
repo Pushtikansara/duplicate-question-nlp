@@ -110,35 +110,36 @@ class TestPythonTool:
 class TestMemoryTool:
     @pytest.fixture
     def tool(self):
-        MemoryTool._store.clear()
-        return MemoryTool()
+        t = MemoryTool()
+        t._manager.clear()
+        return t
 
     async def test_set_and_get(self, tool):
         await tool.execute({"operation": "set", "key": "name", "value": "test"})
         result = await tool.execute({"operation": "get", "key": "name"})
         assert result.status == ToolStatus.AVAILABLE
-        assert result.result["value"] == "test"
+        assert result.result["entries"][0]["value"] == "test"
 
     async def test_get_namespace(self, tool):
-        await tool.execute({"operation": "set", "key": "a", "value": 1, "namespace": "ns1"})
-        await tool.execute({"operation": "set", "key": "b", "value": 2, "namespace": "ns1"})
-        result = await tool.execute({"operation": "list", "namespace": "ns1"})
+        await tool.execute({"operation": "set", "key": "nstst_a", "value": 1, "tags": ["nstst"]})
+        await tool.execute({"operation": "set", "key": "nstst_b", "value": 2, "tags": ["nstst"]})
+        result = await tool.execute({"operation": "search", "key": "nstst_", "limit": 10})
         assert result.status == ToolStatus.AVAILABLE
-        assert result.result["count"] == 2
+        assert len(result.result["entries"]) == 2
 
     async def test_delete_key(self, tool):
         await tool.execute({"operation": "set", "key": "del_me", "value": "gone"})
         result = await tool.execute({"operation": "delete", "key": "del_me"})
         assert result.status == ToolStatus.AVAILABLE
         get_result = await tool.execute({"operation": "get", "key": "del_me"})
-        assert get_result.result["found"] is False
+        assert get_result.result["count"] == 0
 
     async def test_list_keys(self, tool):
-        await tool.execute({"operation": "set", "key": "k1", "value": 1})
-        await tool.execute({"operation": "set", "key": "k2", "value": 2})
-        result = await tool.execute({"operation": "keys", "namespace": "default"})
+        await tool.execute({"operation": "set", "key": "lst_k1", "value": 1})
+        await tool.execute({"operation": "set", "key": "lst_k2", "value": 2})
+        result = await tool.execute({"operation": "search", "key": "lst_", "limit": 10})
         assert result.status == ToolStatus.AVAILABLE
-        assert result.result["count"] == 2
+        assert len(result.result["entries"]) == 2
 
     async def test_unknown_operation(self, tool):
         result = await tool.execute({"operation": "unknown"})

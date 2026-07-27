@@ -32,7 +32,6 @@ def _render_overview_cards(result: dict[str, Any]) -> None:
     tasks = decomposition.get("tasks", [])
     executed_agents = len({t.get("agent_id") for t in tasks if t.get("agent_id")})
     total_tasks = decomposition.get("task_count", len(tasks))
-    parallel_groups = len(decomposition.get("parallel_groups", []))
     total_ms = timeline.get("total_ms", 0)
     final_conf = decision.get("final_confidence", prediction.get("final_confidence", prediction.get("confidence", 0)))
     risk = prediction.get("risk_level", prediction.get("trust_level", ""))
@@ -548,7 +547,6 @@ def render() -> None:
 
         try:
             bar = st.progress(0, text="Initializing multi-agent pipeline...")
-            status_text = st.empty()
 
             async def run_agents() -> dict[str, Any]:
                 bar.progress(10, text="Decomposing goal into atomic tasks...")

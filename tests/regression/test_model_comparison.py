@@ -6,8 +6,6 @@ Accuracy, Precision, Recall, F1, Latency, Confidence.
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from ares.inference.dispatcher import InferenceDispatcher
@@ -49,10 +47,8 @@ def benchmark_results():
         latencies = []
         confidences = []
         for q1, q2, expected in GROUND_TRUTH:
-            start = time.perf_counter()
             result = InferenceDispatcher.predict(model_name=model, question1=q1, question2=q2)
             latencies.append(result.latency_ms)
-            confidences.append(result.confidence)
             if result.predicted_label == 1 and expected == 1:
                 tp += 1
             elif result.predicted_label == 0 and expected == 0:

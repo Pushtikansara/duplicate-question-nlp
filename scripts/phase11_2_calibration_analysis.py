@@ -163,7 +163,7 @@ def _predict_bi_encoder(model_name, pairs, batch_size=64):
     all_probs = np.zeros(len(pairs))
     for i in range(0, len(pairs), batch_size):
         batch = pairs[i : i + batch_size]
-        q1s, q2s = zip(*batch)
+        q1s, q2s = zip(*batch, strict=False)
         q1s = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q1s]
         q2s = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q2s]
 
@@ -187,7 +187,7 @@ def _predict_ce(model_name, pairs, batch_size=128):
     all_probs = np.zeros(len(pairs))
     for i in range(0, len(pairs), batch_size):
         batch = pairs[i : i + batch_size]
-        q1s, q2s = zip(*batch)
+        q1s, q2s = zip(*batch, strict=False)
         q1s = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q1s]
         q2s = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q2s]
         remaining, ridx = [], []
@@ -223,7 +223,7 @@ def _predict_transformer(model_name, pairs):
     try:
         model, tokenizer, metadata = load_model_and_tokenizer(paths, model_version=model_version)
     except (ModelArtifactsNotFoundError, RuntimeError) as e:
-        raise RuntimeError(f"Failed to load {model_name}: {e}")
+        raise RuntimeError(f"Failed to load {model_name}: {e}") from e
     service = DuplicateQuestionInferenceService(model, tokenizer, metadata)
     df = service.predict_batch(pairs)
     return df["prob_duplicate"].values
@@ -448,7 +448,7 @@ def main():
             print(f"    Running predictions on {len(val_subset)} pairs...")
             t0 = time.time()
             try:
-                y_prob = _predict_model(model_name, list(zip(val_subset["q1"], val_subset["q2"])))
+                y_prob = _predict_model(model_name, list(zip(val_subset["q1"], val_subset["q2"], strict=False)))
                 elapsed = time.time() - t0
                 print(f"    Done in {elapsed:.1f}s ({len(val_subset) / elapsed:.1f} pairs/s)")
                 np.save(cache_file, y_prob)
@@ -748,7 +748,6 @@ def _generate_calibration_report(combined):
         if not data or "calibration" not in data:
             continue
         ca = data["calibration"]
-        cur = data.get("current_metrics", {})
         lines.extend(
             [
                 f"## {model_name}",
@@ -827,8 +826,6 @@ def _generate_calibration_report(combined):
 
         f1_gain = tuned_f1 - cur_f1
         ece_gain = raw_ece - best_ece
-        th_diff = abs(best_f1.get("threshold", cur_th) - cur_th)
-
         recs = []
         if f1_gain > 0.01:
             recs.append(

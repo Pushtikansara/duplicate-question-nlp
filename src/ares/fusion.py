@@ -92,10 +92,7 @@ class FusionEngine:
             if r.get("error"):
                 error_count += 1
 
-        if total_weight > 0:
-            fused_prob = weighted_prob / total_weight
-        else:
-            fused_prob = 0.5
+        fused_prob = weighted_prob / total_weight if total_weight > 0 else 0.5
 
         predicted_label = int(fused_prob >= default_th)
         prediction = "Duplicate" if predicted_label == 1 else "Non-Duplicate"

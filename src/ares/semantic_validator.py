@@ -21,7 +21,6 @@ ABBREVIATIONS: dict[str, list[str]] = {
     "html": ["hypertext markup language"],
     "css": ["cascading style sheets"],
     "js": ["javascript"],
-    "api": ["application programming interface"],
     "sdk": ["software development kit"],
     "db": ["database"],
     "os": ["operating system"],
@@ -153,7 +152,6 @@ COMMON_TYPOS: dict[str, str] = {
     "acheive": "achieve",
     "adress": "address",
     "alot": "a lot",
-    "alot": "a lot",
     "begining": "beginning",
     "beleif": "belief",
     "calender": "calendar",
@@ -165,7 +163,6 @@ COMMON_TYPOS: dict[str, str] = {
     "commitee": "committee",
     "concious": "conscious",
     "curiousity": "curiosity",
-    "definately": "definitely",
     "definately": "definitely",
     "disapear": "disappear",
     "disapoint": "disappoint",
@@ -264,7 +261,6 @@ COMMON_TYPOS: dict[str, str] = {
     "vigourous": "vigorous",
     "warrent": "warrant",
     "weild": "wield",
-    "wierd": "weird",
     "writen": "written",
     "writting": "writing",
     "yatch": "yacht",
@@ -462,9 +458,10 @@ def check_semantic_similarity(q1: str, q2: str, prediction_confidence: float) ->
 
     abbreviation_overlap = 0
     for abbr, expansions in ABBREVIATIONS.items():
-        if abbr in q1_words or any(exp in q1.lower() for exp in expansions):
-            if abbr in q2_words or any(exp in q2.lower() for exp in expansions):
-                abbreviation_overlap += 1
+        if (abbr in q1_words or any(exp in q1.lower() for exp in expansions)) and (
+            abbr in q2_words or any(exp in q2.lower() for exp in expansions)
+        ):
+            abbreviation_overlap += 1
 
     return {
         "jaccard_similarity": round(jaccard, 4),

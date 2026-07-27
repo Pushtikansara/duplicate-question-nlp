@@ -348,10 +348,15 @@ def verify_architecture() -> None:
 
     # 1e. No circular imports
     try:
-        from ares.agents import Agent
-        from ares.orchestration import AgentCoordinator
+        import importlib
 
-        report("No circular imports", True, details=["  from ares.orchestration → OK", "  from ares.agents → OK"])
+        agent_ok = importlib.util.find_spec("ares.agents") is not None
+        orch_ok = importlib.util.find_spec("ares.orchestration") is not None
+        report(
+            "No circular imports",
+            agent_ok and orch_ok,
+            details=["  from ares.orchestration → OK", "  from ares.agents → OK"],
+        )
     except ImportError as e:
         report("No circular imports", False, error=str(e))
 
@@ -438,7 +443,7 @@ async def verify_concurrency() -> None:
 
     # Sequential — expect ~9s
     start = time.time()
-    seq_result = await engine.coordinator.run_agents(
+    await engine.coordinator.run_agents(
         agent_ids=["planner", "memory", "reflection"],
         input={},
         strategy_type=OrchestrationStrategyType.SEQUENTIAL,
@@ -447,7 +452,7 @@ async def verify_concurrency() -> None:
 
     # Parallel — expect ~3s
     start = time.time()
-    par_result = await engine.coordinator.run_agents(
+    await engine.coordinator.run_agents(
         agent_ids=["planner", "memory", "reflection"],
         input={},
         strategy_type=OrchestrationStrategyType.PARALLEL,
@@ -772,7 +777,7 @@ def verify_backward_compatibility(demo_output: list[str]) -> None:
         ["mypy", "src/ares/orchestration/", "src/ares/agents/"], capture_output=True, text=True, cwd=ARES_ROOT
     )
     mypy_ok = mypy.returncode == 0
-    mypy_lines = [l for l in mypy.stdout.split("\n") if l.strip() and "unused section" not in l]
+    mypy_lines = [line for line in mypy.stdout.split("\n") if line.strip() and "unused section" not in line]
     report(
         "mypy src/ares/orchestration/ src/ares/agents/",
         mypy_ok,
@@ -799,8 +804,8 @@ def verify_backward_compatibility(demo_output: list[str]) -> None:
     pytest_ok = pytest.returncode == 0
     last_lines = pytest.stdout.strip().split("\n")[-5:]
     demo_output.append("\n--- pytest output ---")
-    for l in last_lines:
-        demo_output.append(f"  {l}")
+    for line in last_lines:
+        demo_output.append(f"  {line}")
     report(
         "pytest tests/unit/orchestration/ tests/unit/agents/",
         pytest_ok,

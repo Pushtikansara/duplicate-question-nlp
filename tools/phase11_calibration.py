@@ -38,7 +38,7 @@ def _classical_batch(entry, q1s, q2s, threshold):
     vectorizer = joblib.load(vec_path)
     q1s_n = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q1s]
     q2s_n = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q2s]
-    combined = [a + " " + b for a, b in zip(q1s_n, q2s_n)]
+    combined = [a + " " + b for a, b in zip(q1s_n, q2s_n, strict=False)]
     X = vectorizer.transform(combined)
     if hasattr(clf, "predict_proba"):
         probas = clf.predict_proba(X)
@@ -124,7 +124,9 @@ def _cross_encoder_batch(entry, q1s, q2s, threshold):
     model = loaded["model"]
     q1s_n = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q1s]
     q2s_n = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q2s]
-    all_scores = model.predict(list(zip(q1s_n, q2s_n)), batch_size=64, apply_softmax=True, show_progress_bar=False)
+    all_scores = model.predict(
+        list(zip(q1s_n, q2s_n, strict=False)), batch_size=64, apply_softmax=True, show_progress_bar=False
+    )
     prob_dup = np.array(
         [
             float(s[1])
@@ -190,7 +192,7 @@ def compute_threshold_metrics(y_true, y_prob, threshold):
 def compute_ece(probs, labels, n_bins=10):
     bb = np.linspace(0, 1, n_bins + 1)
     ece = 0.0
-    for bl, bu in zip(bb[:-1], bb[1:]):
+    for bl, bu in zip(bb[:-1], bb[1:], strict=False):
         in_bin = (probs >= bl) & (probs < bu)
         if in_bin.sum() > 0:
             bin_acc = labels[in_bin].mean()
@@ -202,7 +204,7 @@ def compute_ece(probs, labels, n_bins=10):
 def compute_mce(probs, labels, n_bins=10):
     bb = np.linspace(0, 1, n_bins + 1)
     max_cal_err = 0.0
-    for bl, bu in zip(bb[:-1], bb[1:]):
+    for bl, bu in zip(bb[:-1], bb[1:], strict=False):
         in_bin = (probs >= bl) & (probs < bu)
         if in_bin.sum() > 0:
             bin_acc = labels[in_bin].mean()
@@ -218,7 +220,7 @@ def compute_brier(y_true, y_prob):
 def reliability_diagram(probs, labels, n_bins=10):
     bb = np.linspace(0, 1, n_bins + 1)
     bins = []
-    for bl, bu in zip(bb[:-1], bb[1:]):
+    for bl, bu in zip(bb[:-1], bb[1:], strict=False):
         in_bin = (probs >= bl) & (probs < bu)
         count = int(in_bin.sum())
         if count > 0:
@@ -258,9 +260,7 @@ def find_best_thresholds(results, y_true, y_prob):
 
     # Also find threshold closest to ECE=0 (best calibrated)
     eces = []
-    for r in results:
-        thresh = r["threshold"]
-        preds = (y_prob >= thresh).astype(int)
+    for _ in results:
         eces.append(compute_ece(y_prob, y_true))
     best_ece_idx = int(np.argmin(eces))
     best["lowest_ece"] = results[best_ece_idx]

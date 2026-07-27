@@ -25,11 +25,11 @@ class ProjectPathsInitializationError(ApplicationBootstrapError):
     """Raised when ``AppPaths`` cannot be constructed."""
 
 
-class ModelRegistryNotLoaded(ApplicationBootstrapError):
+class ModelRegistryNotLoadedError(ApplicationBootstrapError):
     """Raised when the model registry is unavailable."""
 
 
-class InferenceDispatcherMissing(ApplicationBootstrapError):
+class InferenceDispatcherMissingError(ApplicationBootstrapError):
     """Raised when the ARES inference dispatcher cannot be imported."""
 
 

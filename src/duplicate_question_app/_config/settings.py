@@ -303,6 +303,15 @@ MODEL_CHOICES: list[str] = _get_model_choices()
 MODEL_VERSION_SHORT: dict[str, str] = {}
 
 
+def _reload_module_constants() -> None:
+    from duplicate_question_app._config.loader import clear_config_cache
+
+    clear_config_cache()
+    MODEL_CHOICES.clear()
+    MODEL_CHOICES.extend(_get_model_choices())
+    MODEL_VERSION_SHORT.clear()
+
+
 def _query_model_type(model_name: str, target_type: str | None = None) -> str | None:
     try:
         from duplicate_question_app._models.registry import find_registry_entry

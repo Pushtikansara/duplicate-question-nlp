@@ -55,7 +55,9 @@ def _predict_ce(model_name, pairs, batch_size=128):
     model = get_sentence_transformer_model(model_name)
     q1s = [normalize_question(p[0], expand_abbrevs=True, fix_typos=True) for p in pairs]
     q2s = [normalize_question(p[1], expand_abbrevs=True, fix_typos=True) for p in pairs]
-    all_scores = model.predict(list(zip(q1s, q2s)), batch_size=batch_size, apply_softmax=True, show_progress_bar=True)
+    all_scores = model.predict(
+        list(zip(q1s, q2s, strict=False)), batch_size=batch_size, apply_softmax=True, show_progress_bar=True
+    )
     probs = []
     for scores in all_scores:
         if len(scores) >= 3:
@@ -101,7 +103,7 @@ def main():
     val_texts_a = val_df["q1"].tolist()
     val_texts_b = val_df["q2"].tolist()
     val_labels = np.array(val_df["label"].tolist())
-    pairs = list(zip(val_texts_a, val_texts_b))
+    pairs = list(zip(val_texts_a, val_texts_b, strict=False))
     print(f"\n  Validation set: {len(pairs)} pairs\n")
 
     results = {}

@@ -86,7 +86,7 @@ def compute_ece(probs, labels, n_bins=10):
     bin_lowers = bin_boundaries[:-1]
     bin_uppers = bin_boundaries[1:]
     ece = 0.0
-    for bin_lower, bin_upper in zip(bin_lowers, bin_uppers):
+    for bin_lower, bin_upper in zip(bin_lowers, bin_uppers, strict=False):
         in_bin = (probs >= bin_lower) & (probs < bin_upper)
         if in_bin.sum() > 0:
             bin_acc = labels[in_bin].mean()
@@ -129,7 +129,7 @@ def predict_classical_batch(entry, q1s, q2s, threshold):
 
     q1s_n = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q1s]
     q2s_n = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q2s]
-    combined = [a + " " + b for a, b in zip(q1s_n, q2s_n)]
+    combined = [a + " " + b for a, b in zip(q1s_n, q2s_n, strict=False)]
     X = vectorizer.transform(combined)
 
     if hasattr(clf, "predict_proba"):
@@ -143,7 +143,6 @@ def predict_classical_batch(entry, q1s, q2s, threshold):
             prob_dup = clf.predict(X).astype(float)
 
     prob_dup = np.array(prob_dup).flatten()
-    prob_non = 1.0 - prob_dup
     preds = (prob_dup >= threshold).astype(int)
     return preds, prob_dup
 
@@ -151,10 +150,9 @@ def predict_classical_batch(entry, q1s, q2s, threshold):
 def predict_transformer_batch(entry, q1s, q2s, threshold, batch_size=64):
     import torch
 
-    from ares._config import get_app_paths, get_config
+    from ares._config import get_config
     from ares.model_loader import load_model
 
-    paths = get_app_paths()
     loaded = load_model(entry.display_name)
     model = loaded["model"]
     tokenizer = loaded["tokenizer"]
@@ -184,7 +182,6 @@ def predict_transformer_batch(entry, q1s, q2s, threshold, batch_size=64):
             probs = torch.softmax(outputs.logits, dim=1)
         all_probs.append(probs[:, 1].cpu().numpy())
     prob_dup = np.concatenate(all_probs)
-    prob_non = 1.0 - prob_dup
     preds = (prob_dup >= threshold).astype(int)
     return preds, prob_dup
 
@@ -220,7 +217,6 @@ def predict_bi_encoder_batch(entry, q1s, q2s, threshold):
     similarities = (emb1 * emb2).sum(axis=1)
     prob_dup = 1.0 / (1.0 + np.exp(-steepness * (similarities - midpoint)))
     prob_dup = np.array(prob_dup).flatten()
-    prob_non = 1.0 - prob_dup
     preds = (prob_dup >= threshold).astype(int)
     return preds, prob_dup
 
@@ -234,7 +230,9 @@ def predict_cross_encoder_batch(entry, q1s, q2s, threshold):
     q1s_n = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q1s]
     q2s_n = [normalize_question(q, expand_abbrevs=True, fix_typos=True) for q in q2s]
 
-    all_scores = model.predict(list(zip(q1s_n, q2s_n)), batch_size=64, apply_softmax=True, show_progress_bar=False)
+    all_scores = model.predict(
+        list(zip(q1s_n, q2s_n, strict=False)), batch_size=64, apply_softmax=True, show_progress_bar=False
+    )
     prob_dup = np.array(
         [
             float(s[1])
@@ -247,7 +245,6 @@ def predict_cross_encoder_batch(entry, q1s, q2s, threshold):
             for s in all_scores
         ]
     )
-    prob_non = 1.0 - prob_dup
     preds = (prob_dup >= threshold).astype(int)
     return preds, prob_dup
 
@@ -345,19 +342,15 @@ def evaluate_model(model_name, q1s, q2s, y_true, max_samples=5000, ensemble_limi
         if backend == ModelBackend.CLASSICAL_ML:
             y_pred, y_prob = predict_classical_batch(entry, q1s, q2s, threshold)
             pred_time = time.time() - pred_start
-            actual_n = len(y_true)
         elif backend == ModelBackend.TRANSFORMER:
             y_pred, y_prob = predict_transformer_batch(entry, q1s, q2s, threshold)
             pred_time = time.time() - pred_start
-            actual_n = len(y_true)
         elif backend == ModelBackend.BI_ENCODER:
             y_pred, y_prob = predict_bi_encoder_batch(entry, q1s, q2s, threshold)
             pred_time = time.time() - pred_start
-            actual_n = len(y_true)
         elif backend == ModelBackend.CROSS_ENCODER:
             y_pred, y_prob = predict_cross_encoder_batch(entry, q1s, q2s, threshold)
             pred_time = time.time() - pred_start
-            actual_n = len(y_true)
         elif backend == ModelBackend.ENSEMBLE:
             subset_n = min(ensemble_limit, len(q1s))
             idx = np.random.RandomState(42).choice(len(q1s), subset_n, replace=False)
@@ -371,7 +364,6 @@ def evaluate_model(model_name, q1s, q2s, y_true, max_samples=5000, ensemble_limi
                 y_pred[i] = pred
                 y_prob[i] = prob
             pred_time = time.time() - pred_start
-            actual_n = subset_n
             y_true = y_true_subset
         else:
             raise ValueError(f"Unsupported backend: {backend}")

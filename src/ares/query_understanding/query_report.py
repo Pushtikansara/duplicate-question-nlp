@@ -20,6 +20,7 @@ class QueryReport:
         self._write_similarity(lines, analysis)
         self._write_complexity(lines, analysis)
         self._write_readability(lines, analysis)
+        self._write_routing(lines, analysis)
         self._write_processing(lines, analysis)
 
         return "\n".join(lines)
@@ -153,6 +154,17 @@ class QueryReport:
             fre = read.flesch_reading_ease
             level = self._readability_level(fre)
             lines.append(f"    {label}: Flesch={fre:.1f} ({level}), Complex words={read.complex_word_count}")
+        lines.append("")
+
+    def _write_routing(self, lines: list[str], analysis: QueryAnalysis) -> None:
+        rd = analysis.routing_decision
+        lines.append("  Routing Decision")
+        lines.append(f"    Strategy: {rd.selected_strategy}")
+        lines.append(f"    Confidence: {rd.confidence:.4f}")
+        lines.append(f"    Risk Level: {rd.risk_level}")
+        lines.append(f"    Priority: {rd.priority}")
+        if rd.reason_codes:
+            lines.append(f"    Reason Codes: {', '.join(rd.reason_codes)}")
         lines.append("")
 
     def _write_processing(self, lines: list[str], analysis: QueryAnalysis) -> None:

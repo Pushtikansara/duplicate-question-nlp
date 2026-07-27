@@ -272,7 +272,8 @@ def verify_architecture():
 
     # Check imports: Coordinator depends on Agent Core only
     coord_path = os.path.join(src_dir, "ares/orchestration/coordinator.py")
-    coord_imports = open(coord_path).read()
+    with open(coord_path) as fh:
+        coord_imports = fh.read()
     check("ares.agents.base" in coord_imports, "Coordinator imports Agent base")
     check("ares.agents.manager" in coord_imports, "Coordinator imports AgentManager")
     check("ares.agents.registry" in coord_imports, "Coordinator imports AgentRegistry")
@@ -283,7 +284,8 @@ def verify_architecture():
     for fname in os.listdir(agents_dir):
         fpath = os.path.join(agents_dir, fname)
         if fname.endswith(".py"):
-            content = open(fpath).read()
+            with open(fpath) as fh:
+                content = fh.read()
             if "ares.orchestration" in content:
                 orchestration_imports_found = True
                 print(f"  WARNING: {fpath} imports from orchestration!")
@@ -295,10 +297,11 @@ def verify_architecture():
     # Check duplicate_question_app/ is untouched
     dqa_dir = os.path.join(src_dir, "duplicate_question_app")
     dqa_has_orchestration = False
-    for root, dirs, files in os.walk(dqa_dir):
+    for root, _dirs, files in os.walk(dqa_dir):
         for f in files:
             if f.endswith(".py"):
-                content = open(os.path.join(root, f)).read()
+                with open(os.path.join(root, f)) as fh:
+                    content = fh.read()
                 if "ares.orchestration" in content:
                     dqa_has_orchestration = True
                     print(f"  WARNING: {os.path.join(root, f)} imports from orchestration!")
@@ -423,26 +426,7 @@ async def verify_concurrency():
     )
     seq_time = time.time() - start
     # The agents don't actually sleep, so sequential should be fast
-    # Let's re-register with sleep agents
     print(f"  Sequential (fast agents): {seq_time:.3f}s | status={result_seq.status.name}")
-
-    # Now use sleep agents for true timing test
-    sleep_coordinator = AgentCoordinator(event_bus=MockEventBus())
-    for i in range(3):
-        aid = f"sleep_{i}"
-        agent_cls = lambda aid=aid: PlannerAgent(agent_id=aid, sleep=3.0)
-        metadata = AgentMetadata(
-            agent_id=aid,
-            name=f"SleepAgent-{i}",
-            version="1.0",
-            capabilities=frozenset({AgentCapability.REASONING}),
-        )
-        sleep_coordinator.agent_manager.register_agent(
-            lambda: PlannerAgent(agent_id=f"sleep_{i}", sleep=3.0),
-            metadata,
-        )
-    # Actually let me use the proper approach
-    # We need to register instances. Let me try a different approach.
 
     # Clean approach: register agents with sleep
     sc = AgentCoordinator(event_bus=MockEventBus())
@@ -496,7 +480,7 @@ async def verify_concurrency():
 
     # Parallel with sleep agents
     start = time.time()
-    result_par = await sc.run_agents(
+    await sc.run_agents(
         agent_ids=["sleeper_0", "sleeper_1", "sleeper_2"],
         input={},
         strategy_type=OrchestrationStrategyType.PARALLEL,
@@ -520,9 +504,6 @@ async def verify_concurrency():
 
 async def verify_retry():
     header("RETRY VERIFICATION")
-
-    event_bus = MockEventBus()
-    coordinator = make_coordinator(event_bus)
 
     rm = RetryManager()
     call_tracker = {"count": 0}
@@ -737,7 +718,7 @@ async def verify_event_bus():
     event_bus = MockEventBus()
     coordinator = make_coordinator(event_bus)
 
-    result = await coordinator.run_agents(
+    await coordinator.run_agents(
         agent_ids=["planner", "memory", "reflection"],
         input={"query": "test"},
         strategy_type=OrchestrationStrategyType.SEQUENTIAL,

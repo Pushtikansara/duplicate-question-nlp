@@ -14,7 +14,6 @@ from ares.confidence import (
 )
 from ares.fusion import FusionEngine
 from ares.inference.dispatcher import InferenceDispatcher
-from ares.model_registry import ModelBackend, find_entry
 from ares.semantic_validator import validate_semantic
 
 
@@ -88,13 +87,6 @@ class ARES:
 
     def _predict_fusion(self, question1: str, question2: str) -> PredictionResult:
         engine = FusionEngine()
-        models = engine.get_available_models()
-
-        if self._model_name and self._model_name != "Semantic Ensemble":
-            entry = find_entry(self._model_name)
-            if entry and entry.backend != ModelBackend.ENSEMBLE:
-                models = [self._model_name]
-
         result = engine.fuse(question1, question2, model_names=None, threshold=self._threshold)
 
         if self._use_reflection:
