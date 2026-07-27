@@ -104,12 +104,13 @@ def _get_directory_size_mb(path: Path | None) -> float | None:
 def _get_hf_cache_path(model_key: str) -> str | None:
     try:
         from huggingface_hub import scan_cache_dir
+        from huggingface_hub.errors import CacheNotFound
 
         cache = scan_cache_dir()
         for repo in cache.repos:
             if model_key.replace("/", "--") in str(repo.repo_id) or model_key in str(repo.repo_id):
                 return str(repo.repo_path)
-    except (OSError, ImportError):
+    except (OSError, ImportError, CacheNotFound):
         pass
     home = Path.home()
     paths_cfg = get_config("paths") or {}
