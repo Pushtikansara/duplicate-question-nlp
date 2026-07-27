@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     grpc_max_message_length_mb: int = 100
 
     # Model
-    default_model: str = "Week 4 Improved DistilBERT"
+    default_model: str = ""
     default_threshold: float = 0.5
     enable_reflection: bool = True
     enable_pipeline: bool = True

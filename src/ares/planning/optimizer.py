@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from ares.planning.graph import PlanGraph
-from ares.planning.types import PlanNode
+from ares.planning.types import PlanEdge, PlanNode
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,10 @@ class PlanOptimizer:
         if optimize_retries:
             self._optimize_retries(graph)
             stats["optimizations_applied"].append("retries")
+
+        dedup_removed = self._deduplicate_nodes(graph)
+        if dedup_removed > 0:
+            stats["optimizations_applied"].append(f"dedup:{dedup_removed}")
 
         stats["after"] = self._snapshot(graph)
         stats["improvements"] = self._compute_improvements(stats["before"], stats["after"])
@@ -102,6 +106,33 @@ class PlanOptimizer:
             if estimated_duration < 5.0:
                 node.max_retries = min(3, node.max_retries + 1)
                 node.metadata["retry_optimized"] = True
+
+    def _deduplicate_nodes(self, graph: PlanGraph) -> int:
+        seen: dict[tuple[str, str], str] = {}
+        removed = 0
+        for node_id in list(graph.plan.nodes.keys()):
+            node = graph.plan.nodes[node_id]
+            key = (node.agent_id, node.action)
+            if key in seen:
+                kept_id = seen[key]
+                for edge in list(graph.plan.edges):
+                    if edge.source_id == node_id:
+                        graph.plan.edges.remove(edge)
+                        graph.plan.edges.append(
+                            PlanEdge(
+                                source_id=kept_id, target_id=edge.target_id, condition=edge.condition, data=edge.data
+                            )
+                        )
+                    if edge.target_id == node_id:
+                        graph.plan.edges.remove(edge)
+                        dep_set = set(graph.plan.nodes[kept_id].depends_on)
+                        dep_set.add(edge.source_id)
+                        graph.plan.nodes[kept_id].depends_on = list(dep_set)
+                graph.plan.nodes.pop(node_id, None)
+                removed += 1
+            else:
+                seen[key] = node_id
+        return removed
 
     def _snapshot(self, graph: PlanGraph) -> dict[str, Any]:
         return {

@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.services.runtime import get_model_resolution, get_runtime_context
+from app.services.runtime import get_runtime_context
 from app.utils.constants import PATHS, _model_cache
 from duplicate_question_app._models.embeddings import clear_embedding_cache
 from duplicate_question_app._models.registry import build_registry
-from duplicate_question_app._models.week2 import check_week2_artifacts
 
 ROUTE_MAP: dict[str, str] = {
     "\U0001f3e0 Home": "Landing Page",
@@ -26,7 +25,7 @@ ROUTE_MAP: dict[str, str] = {
     "\U0001f4a1 Semantic Debugger": "Semantic Debugger",
     "\U0001f517 Model Manager": "Model Manager",
     "\U0001f4ca Dataset Info": "Dataset Information",
-    "\U0001f916 ARES Demo": "ARES Demo",
+    "\U0001f916 ARES Dashboard": "ARES Dashboard",
 }
 
 
@@ -40,6 +39,15 @@ def _render_group_label(label: str) -> None:
         f"letter-spacing:0.08em;color:#64748B;margin:0.75rem 0 0.15rem 0;'>{label}</div>",
         unsafe_allow_html=True,
     )
+
+
+TIER_ORDER = {"production": 0, "research": 1, "experimental": 2, "legacy": 3}
+TIER_LABELS = {
+    "production": "★ Production",
+    "research": "Research",
+    "experimental": "Experimental",
+    "legacy": "Legacy",
+}
 
 
 def _build_model_data() -> list[dict]:
@@ -63,6 +71,7 @@ def _build_model_data() -> list[dict]:
         acc = f"{e.accuracy:.3f}" if e.accuracy else ""
         f1 = f"{e.f1_score:.3f}" if e.f1_score else ""
         badge = "★" if e.display_name == "Improved DistilBERT (Week 4)" else ""
+        tier = getattr(e, "model_tier", "research")
         model_data.append(
             {
                 "name": e.display_name,
@@ -74,8 +83,11 @@ def _build_model_data() -> list[dict]:
                 "f1": f1,
                 "badge": badge,
                 "internal_id": e.internal_id,
+                "tier": tier,
+                "tier_order": TIER_ORDER.get(tier, 99),
             }
         )
+    model_data.sort(key=lambda x: (x["tier_order"], x["name"]))
     return model_data
 
 
@@ -99,6 +111,8 @@ def _render_model_selector() -> None:
     )
 
     filtered_models = []
+    current_tier = None
+    tier_labels_shown = set()
     for m in model_data:
         if search and search.lower() not in m["name"].lower():
             continue
@@ -110,6 +124,12 @@ def _render_model_selector() -> None:
             label = f"{label} {m['badge']}"
         if extras:
             label = f"{label} ({', '.join(extras)})"
+        tier = m.get("tier", "research")
+        tier_label = TIER_LABELS.get(tier, tier.title())
+        if tier != current_tier and tier_label not in tier_labels_shown and not search:
+            current_tier = tier
+            tier_labels_shown.add(tier_label)
+            filtered_models.append((f"── {tier_label} ──", f"── {tier_label} ──"))
         filtered_models.append((m["name"], label))
 
     if not filtered_models:
@@ -117,9 +137,10 @@ def _render_model_selector() -> None:
         st.sidebar.caption(f"Total: {len(model_data)} models registered")
         return
 
-    st.sidebar.caption(f"{len(filtered_models)} models | {len(model_data)} total")
+    model_count = sum(1 for f in filtered_models if not f[0].startswith("──"))
+    st.sidebar.caption(f"{model_count} models | {len(model_data)} total")
 
-    selected_names = [f[0] for f in filtered_models]
+    selected_names = [f[0] for f in filtered_models if not f[0].startswith("──")]
 
     current_idx = selected_names.index(default_model) if default_model in selected_names else 0
 
@@ -147,7 +168,7 @@ def _render_model_selector() -> None:
         entry = next((m for m in model_data if m["name"] == selected), None)
         if entry:
             st.caption(f"Category: {entry['category']}")
-            st.caption(f"Status: {entry['status']}")
+            st.caption(f"Status: {entry['status'].replace('_', ' ').title() if entry['status'] else 'Unknown'}")
             if entry["params"]:
                 st.caption(f"Params: {entry['params']}")
             if entry["size"]:
@@ -196,7 +217,7 @@ def sidebar_navigation() -> str:
                 "\U0001f4a1 Semantic Debugger",
             ],
         ),
-        ("ARES", ["\U0001f916 ARES Demo"]),
+        ("ARES", ["\U0001f916 ARES Dashboard"]),
         ("Information", ["\U0001f517 Model Manager", "\U0001f4ca Dataset Info"]),
     ]
 
@@ -239,7 +260,6 @@ def sidebar_navigation() -> str:
         unsafe_allow_html=True,
     )
 
-    resolution = get_model_resolution()
     model_name = st.session_state.get("selected_model", "Improved DistilBERT (Week 4)")
     try:
         _, metadata, _ = get_runtime_context()
@@ -267,11 +287,11 @@ def sidebar_navigation() -> str:
     }
     st.sidebar.caption(f"Mode: **{mode_icons.get(pred_mode, pred_mode)}**")
 
-    week2_ready = all(check_week2_artifacts(PATHS).values())
-    st.sidebar.caption(
-        f"W2: {'✅' if week2_ready else '❌'}  "
-        f"W3: {'✅' if resolution.week3.ready else '❌'}  "
-        f"W4: {'✅' if resolution.week4.ready else '❌'}"
-    )
+    from duplicate_question_app._models.registry import build_registry
+
+    registry_entries = build_registry(PATHS)
+    ready_count = sum(1 for e in registry_entries if hasattr(e, "health_status") and e.health_status.name == "READY")
+    total_count = len(registry_entries)
+    st.sidebar.caption(f"Models: **{ready_count}/{total_count}** ready")
 
     return ROUTE_MAP.get(selected, "Landing Page")

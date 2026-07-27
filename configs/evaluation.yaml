@@ -1,11 +1,7 @@
-# Evaluation configuration
+# Evaluation configuration (DOCUMENTATION ONLY)
+# Metrics and baseline model lists are hardcoded in source code.
 # Environment overrides: DQD_<KEY>
 
 metrics:
   ece_bins: 10
   default_roc_auc: true
-
-baseline_models:
-  - "E5-base-v2"
-  - "BGE-base-en-v1.5"
-  - "MPNet-base-v2"

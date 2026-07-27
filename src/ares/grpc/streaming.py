@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def stream_predictions(
     pairs: list[tuple[str, str]],
-    model: str = "Week 4 Improved DistilBERT",
+    model: str = "",
     threshold: float = 0.5,
 ) -> Generator[dict[str, Any]]:
     from ares._engine import ARES

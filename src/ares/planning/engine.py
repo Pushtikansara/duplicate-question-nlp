@@ -270,5 +270,5 @@ class PlanningEngine:
                 error=error,
             )
             self._event_bus.publish(event)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to publish error event for goal '%s': %s", goal_id, exc)

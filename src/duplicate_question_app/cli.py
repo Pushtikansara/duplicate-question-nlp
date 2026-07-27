@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 
 def _ensure_project_root() -> Path:
     root = Path(__file__).resolve().parent.parent.parent
@@ -51,13 +53,10 @@ def predict() -> None:
     parser.add_argument("--threshold", "-t", type=float, default=None, help="Decision threshold")
     args = parser.parse_args()
 
-    import pandas as pd
-
-    from duplicate_question_app._config.settings import get_app_paths, get_config
-    from duplicate_question_app._models.week2 import is_week2_model
+    from ares.inference.dispatcher import InferenceDispatcher
+    from duplicate_question_app._config.settings import get_config
     from duplicate_question_app.utils.device import resolve_device
 
-    paths = get_app_paths()
     device = resolve_device()
     input_path = Path(args.input_csv)
     if not input_path.exists():
@@ -81,33 +80,40 @@ def predict() -> None:
     logger = get_logger("cli.predict")
     logger.info("Predicting with model=%s threshold=%.2f device=%s", model_name, threshold, device)
 
-    if is_week2_model(model_name):
-        from duplicate_question_app._models.week2 import Week2InferenceService
-
-        service: Any = Week2InferenceService(paths)
-    else:
-        from duplicate_question_app._inference.transformer import (
-            DuplicateQuestionInferenceService,
-            load_model_and_tokenizer,
-        )
-
-        model, tokenizer, metadata = load_model_and_tokenizer(paths, model_version=model_name)
-        service = DuplicateQuestionInferenceService(model=model, tokenizer=tokenizer, metadata=metadata)
-
     results: list[dict[str, Any]] = []
     for _, row in df.iterrows():
-        result = dict(service.predict_single(row[q1_col], row[q2_col]))
-        results.append(result)
+        result = InferenceDispatcher.predict(
+            model_name=model_name,
+            question1=row[q1_col],
+            question2=row[q2_col],
+            threshold=threshold,
+        )
+        results.append(
+            {
+                "predicted_label": result.predicted_label,
+                "prediction": result.prediction,
+                "confidence": result.confidence,
+                "prob_duplicate": result.prob_duplicate,
+                "prob_non_duplicate": result.prob_non_duplicate,
+                "model_label": result.model_name,
+                "latency_ms": result.latency_ms,
+            }
+        )
 
     result_df = pd.DataFrame(results)
+    _save_and_report(result_df, args, model_name, df)
+
+
+def _save_and_report(result_df: pd.DataFrame, args: argparse.Namespace, model_name: str, df: pd.DataFrame) -> None:
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         result_df.to_csv(output_path, index=False)
         print(f"Predictions saved to {output_path}")
     else:
-        result_df.to_csv(input_path.parent / f"{input_path.stem}_predictions.csv", index=False)
-        print(f"Predictions saved to {input_path.parent / f'{input_path.stem}_predictions.csv'}")
+        output_path = Path(args.input_csv)
+        result_df.to_csv(output_path.parent / f"{output_path.stem}_predictions.csv", index=False)
+        print(f"Predictions saved to {output_path.parent / f'{output_path.stem}_predictions.csv'}")
 
     acc = None
     if "label" in df.columns:

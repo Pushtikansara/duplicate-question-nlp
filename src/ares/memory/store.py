@@ -8,14 +8,41 @@ from typing import Any
 from ares.memory.exceptions import MemoryNotFoundError
 from ares.memory.persistence import MemoryPersistence
 from ares.memory.types import MemoryDomain, MemoryEntry, MemoryQuery, MemoryResult, MemoryStats, MemoryTier
+from ares.metrics import MetricsRegistry
 
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_TIER_CAPACITIES: dict[MemoryTier, int] = {
+    MemoryTier.WORKING: 500,
+    MemoryTier.SHORT_TERM: 1000,
+    MemoryTier.LONG_TERM: 5000,
+}
+
+
 class MemoryStore:
-    def __init__(self, persistence: MemoryPersistence | None = None) -> None:
+    def __init__(
+        self,
+        persistence: MemoryPersistence | None = None,
+        tier_capacities: dict[MemoryTier, int] | None = None,
+    ) -> None:
         self._persistence = persistence or MemoryPersistence()
         self._in_memory: dict[str, MemoryEntry] = {}
+        self._tier_capacities = dict(DEFAULT_TIER_CAPACITIES)
+        if tier_capacities:
+            self._tier_capacities.update(tier_capacities)
+        self._eviction_count: int = 0
+
+    def _evict_if_needed(self, tier: MemoryTier) -> None:
+        capacity = self._tier_capacities.get(tier, 1000)
+        tier_entries = [e for e in self._in_memory.values() if e.tier == tier]
+        metrics = MetricsRegistry()
+        while len(tier_entries) >= capacity:
+            tier_entries.sort(key=lambda e: e.timestamp)
+            oldest = tier_entries.pop(0)
+            self._in_memory.pop(oldest.memory_id, None)
+            self._eviction_count += 1
+            metrics.increment("memory.evictions", tags={"tier": tier.name})
 
     def store(
         self,
@@ -45,6 +72,7 @@ class MemoryStore:
                     logger.error("Failed to persist deduplicated entry '%s': %s", existing.memory_id, e)
                 return existing
 
+        MetricsRegistry().increment("memory.stores", tags={"tier": tier.name})
         entry = MemoryEntry(
             memory_id=str(uuid.uuid4()),
             key=key,
@@ -58,6 +86,7 @@ class MemoryStore:
             score=score,
             tags=tags or [],
         )
+        self._evict_if_needed(tier)
         self._in_memory[entry.memory_id] = entry
         try:
             self._persistence.save_entry(entry)
@@ -128,6 +157,10 @@ class MemoryStore:
 
         return MemoryResult(entries=results, total_count=total, query_time_ms=elapsed)
 
+    @property
+    def eviction_count(self) -> int:
+        return self._eviction_count
+
     def get_stats(self) -> MemoryStats:
         all_entries: list[MemoryEntry] = []
         all_entries.extend(self._in_memory.values())
@@ -138,7 +171,7 @@ class MemoryStore:
                 if e.memory_id not in seen:
                     all_entries.append(e)
 
-        stats = MemoryStats(total_entries=len(all_entries))
+        stats = MemoryStats(total_entries=len(all_entries), eviction_count=self._eviction_count)
         for e in all_entries:
             tier_name = e.tier.name
             domain_name = e.domain.name
@@ -149,6 +182,14 @@ class MemoryStore:
             stats.oldest_entry = sorted_by_time[0].memory_id
             stats.newest_entry = sorted_by_time[-1].memory_id
         return stats
+
+    def sweep_expired(self) -> int:
+        expired_ids = [mid for mid, e in self._in_memory.items() if e.is_expired]
+        for mid in expired_ids:
+            self._in_memory.pop(mid, None)
+        if expired_ids:
+            MetricsRegistry().increment("memory.ttl_evictions", amount=len(expired_ids))
+        return len(expired_ids)
 
     def clear(self) -> int:
         count = len(self._in_memory)

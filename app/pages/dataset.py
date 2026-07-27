@@ -32,10 +32,10 @@ def render() -> None:
         missing_df = pd.DataFrame.from_dict(
             summary["missing_values"], orient="index", columns=["missing_count"]
         ).sort_values("missing_count", ascending=False)
-        st.dataframe(missing_df, use_container_width=True)
+        st.dataframe(missing_df, width="stretch")
     with tab_preview:
         st.subheader("Sample Records")
-        st.dataframe(summary["preview"], use_container_width=True)
+        st.dataframe(summary["preview"], width="stretch")
         if {"clean_q1", "clean_q2"}.issubset(df.columns):
             st.subheader("Cleaned Text Samples")
-            st.dataframe(df[["clean_q1", "clean_q2"]].head(10), use_container_width=True)
+            st.dataframe(df[["clean_q1", "clean_q2"]].head(10), width="stretch")

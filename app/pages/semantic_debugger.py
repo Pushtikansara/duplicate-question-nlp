@@ -25,7 +25,7 @@ def _render_cache_status() -> None:
                 "Hit Rate": f"{stat.hit_rate:.1%}",
             }
         )
-    st.dataframe(pd.DataFrame(cache_rows), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(cache_rows), width="stretch", hide_index=True)
 
 
 def _render_profiling_data() -> None:
@@ -33,7 +33,7 @@ def _render_profiling_data() -> None:
     report = profiler.get_report()
     if report:
         st.subheader("Pipeline Timings")
-        st.dataframe(pd.DataFrame(report), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(report), width="stretch", hide_index=True)
 
 
 def render() -> None:
@@ -103,13 +103,13 @@ def render() -> None:
                             for c in rep_a.concepts
                         ]
                     )
-                    st.dataframe(concepts_df, use_container_width=True)
+                    st.dataframe(concepts_df, width="stretch")
                 else:
                     st.info("No concepts")
 
                 st.subheader("Entities")
                 if rep_a.entities:
-                    st.dataframe(pd.DataFrame(rep_a.entities), use_container_width=True)
+                    st.dataframe(pd.DataFrame(rep_a.entities), width="stretch")
                 else:
                     st.info("No entities")
 
@@ -126,7 +126,7 @@ def render() -> None:
                             for r in rep_a.relationships
                         ]
                     )
-                    st.dataframe(rels_df, use_container_width=True)
+                    st.dataframe(rels_df, width="stretch")
                 else:
                     st.info("No relationships")
 
@@ -169,13 +169,13 @@ def render() -> None:
                             for c in rep_b.concepts
                         ]
                     )
-                    st.dataframe(concepts_df, use_container_width=True)
+                    st.dataframe(concepts_df, width="stretch")
                 else:
                     st.info("No concepts")
 
                 st.subheader("Entities")
                 if rep_b.entities:
-                    st.dataframe(pd.DataFrame(rep_b.entities), use_container_width=True)
+                    st.dataframe(pd.DataFrame(rep_b.entities), width="stretch")
                 else:
                     st.info("No entities")
 
@@ -192,7 +192,7 @@ def render() -> None:
                             for r in rep_b.relationships
                         ]
                     )
-                    st.dataframe(rels_df, use_container_width=True)
+                    st.dataframe(rels_df, width="stretch")
                 else:
                     st.info("No relationships")
 
@@ -226,7 +226,7 @@ def render() -> None:
                 "Confidence": assessment.confidence,
             }
             scores_df = pd.DataFrame([{"Component": k, "Score": v} for k, v in scores.items()])
-            st.dataframe(scores_df, use_container_width=True)
+            st.dataframe(scores_df, width="stretch")
 
             st.subheader("Conflicts")
             if assessment.conflicts:
@@ -241,7 +241,7 @@ def render() -> None:
                         for c in assessment.conflicts
                     ]
                 )
-                st.dataframe(conflicts_df, use_container_width=True)
+                st.dataframe(conflicts_df, width="stretch")
             else:
                 st.success("No conflicts detected.")
 
@@ -303,7 +303,7 @@ def render() -> None:
             if weights:
                 weights_df = pd.DataFrame([{"Component": k, "Weight": v} for k, v in weights.items()])
                 weights_df["Percentage"] = weights_df["Weight"].apply(lambda x: f"{x:.1%}")
-                st.dataframe(weights_df, use_container_width=True)
+                st.dataframe(weights_df, width="stretch")
 
             component_scores = fusion_result.get("component_scores", {})
             if component_scores:
@@ -311,7 +311,7 @@ def render() -> None:
                 scores_df2 = pd.DataFrame(
                     [{"Component": k.replace("_", " ").title(), "Score": v} for k, v in component_scores.items()]
                 )
-                st.dataframe(scores_df2, use_container_width=True)
+                st.dataframe(scores_df2, width="stretch")
 
             st.info(f"**Explanation**: {fusion_result.get('explanation', 'N/A')}")
 
@@ -322,7 +322,7 @@ def render() -> None:
             st.subheader("Pipeline Timing Metadata")
             meta_df = pd.DataFrame([{"Stage": k, "Time (ms)": v} for k, v in meta.get("stages", {}).items()])
             if not meta_df.empty:
-                st.dataframe(meta_df, use_container_width=True)
+                st.dataframe(meta_df, width="stretch")
 
             st.subheader("Processing Metadata (from Assessment)")
             pm = assessment.processing_metadata
@@ -346,17 +346,17 @@ def render() -> None:
                 if raw_scores:
                     st.markdown("**Raw Scores**")
                     raw_df = pd.DataFrame([{"Component": k, "Score": v} for k, v in raw_scores.items()])
-                    st.dataframe(raw_df, use_container_width=True)
+                    st.dataframe(raw_df, width="stretch")
 
                 if weights:
                     st.markdown("**Weights**")
                     w_df = pd.DataFrame([{"Component": k, "Weight": f"{v:.1%}"} for k, v in weights.items()])
-                    st.dataframe(w_df, use_container_width=True)
+                    st.dataframe(w_df, width="stretch")
 
                 if weighted_scores:
                     st.markdown("**Weighted Scores**")
                     ws_df = pd.DataFrame([{"Component": k, "Score": v} for k, v in weighted_scores.items()])
-                    st.dataframe(ws_df, use_container_width=True)
+                    st.dataframe(ws_df, width="stretch")
             else:
                 st.info("No confidence detail available")
 

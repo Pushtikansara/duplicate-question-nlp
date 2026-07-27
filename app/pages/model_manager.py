@@ -81,7 +81,7 @@ def _render_model_table(registry: list) -> None:
     if rows:
         st.dataframe(
             pd.DataFrame(rows),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 "Accuracy": st.column_config.NumberColumn(format="%.3f"),
@@ -146,7 +146,7 @@ def _render_model_details(registry: list) -> None:
                 "Cache Path": e.cache_path or "—",
             }
         )
-    st.dataframe(pd.DataFrame(path_rows), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(path_rows), width="stretch", hide_index=True)
 
 
 def render() -> None:

@@ -67,7 +67,7 @@ def render() -> None:
                             "params": result.parameters,
                         }
 
-                    st.dataframe(pd.DataFrame(results).T, use_container_width=True)
+                    st.dataframe(pd.DataFrame(results).T, width="stretch")
 
                     best = min(results.items(), key=lambda x: x[1]["ece_after"])
                     st.success(f"Best method: {best[0]} (ECE: {best[1]['ece_after']:.4f})")

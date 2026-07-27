@@ -17,7 +17,7 @@ def render() -> None:
     prediction_mode = st.session_state.get("prediction_mode", "fusion")
 
     try:
-        service, metadata, _ = get_runtime_context()
+        _, metadata, _ = get_runtime_context()
     except Exception as exc:
         st.error(f"Model could not be loaded: {exc}")
         return
@@ -90,9 +90,9 @@ def render() -> None:
     if (~valid_mask).any():
         st.warning("Rows with empty question text will be skipped.")
     st.subheader("Preview")
-    st.dataframe(batch_df.head(10), use_container_width=True)
+    st.dataframe(batch_df.head(10), width="stretch")
 
-    batch_size = st.number_input(
+    st.number_input(
         "Batch size", min_value=8, max_value=512, value=64, step=8, help="Number of pairs to process at once"
     )
 
@@ -131,32 +131,29 @@ def render() -> None:
                 _get_prediction_mode,
                 _get_semantic_pipeline,
             )
-            from duplicate_question_app._config.settings import is_ensemble_model, is_new_embedding_model
-            from duplicate_question_app._models.embeddings import (
-                get_ensemble_prediction,
-                predict_batch_sentence_transformer,
-            )
-            from duplicate_question_app._models.week2 import is_week2_model
+            from ares.inference.dispatcher import InferenceDispatcher
 
             mode = _get_prediction_mode()
             semantic_pipeline = _get_semantic_pipeline() if mode != "cross_encoder_only" else None
 
-            if is_week2_model(selected_model):
-                base_results = service.predict_batch(question_pairs, selected_model)
-                if isinstance(base_results, pd.DataFrame):
-                    base_results = base_results.to_dict("records")
-                else:
-                    base_results = list(base_results)
-            elif is_ensemble_model(selected_model):
-                base_results = []
-                for q1, q2 in question_pairs:
-                    base_results.append(get_ensemble_prediction(q1, q2))
-            elif is_new_embedding_model(selected_model):
-                base_results = predict_batch_sentence_transformer(selected_model, question_pairs, batch_size=batch_size)
-            else:
-                base_results = []
-                for q1, q2 in question_pairs:
-                    base_results.append(service.predict_single(q1, q2))
+            base_results = []
+            for q1, q2 in question_pairs:
+                result = InferenceDispatcher.predict(
+                    model_name=selected_model,
+                    question1=q1,
+                    question2=q2,
+                )
+                base_results.append(
+                    {
+                        "predicted_label": result.predicted_label,
+                        "prediction": result.prediction,
+                        "confidence": result.confidence,
+                        "prob_duplicate": result.prob_duplicate,
+                        "prob_non_duplicate": result.prob_non_duplicate,
+                        "model_label": result.model_name,
+                        "latency_ms": result.latency_ms,
+                    }
+                )
 
             for idx, (q1, q2) in enumerate(question_pairs):
                 row = base_results[idx] if idx < len(base_results) else {}
@@ -242,7 +239,7 @@ def render() -> None:
             )
 
         st.success(f"Generated predictions for {len(merged_results):,} question pairs.")
-        st.dataframe(merged_results, use_container_width=True)
+        st.dataframe(merged_results, width="stretch")
 
         pred_df = merged_results[merged_results["batch_status"] == "Predicted"]
         if not pred_df.empty:

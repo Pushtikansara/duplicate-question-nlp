@@ -100,4 +100,4 @@ def render() -> None:
         importance = generate_feature_importance(result)
         if importance:
             imp_df = pd.DataFrame(importance)
-            st.dataframe(imp_df, use_container_width=True, hide_index=True)
+            st.dataframe(imp_df, width="stretch", hide_index=True)

@@ -1,3 +1,3 @@
-from ares.inference.dispatcher import InferenceDispatcher, predict
+from ares.inference.dispatcher import InferenceDispatcher
 
-__all__ = ["InferenceDispatcher", "predict"]
+__all__ = ["InferenceDispatcher"]

@@ -24,7 +24,7 @@ deberta_model_dir: models/deberta_v3_cross_encoder
 
 # Fine-tuned model directories
 finetuned_e5_dir: models/e5-quora-finetuned
-finetuned_bge_dir: models/bge-quora-finetuned  # reserved for future use
+# finetuned_bge_dir: models/bge-quora-finetuned  # unused — no BGE fine-tuned model trained
 finetuned_cross_encoder_dir: models/cross-encoder-quora
 
 # Cache paths

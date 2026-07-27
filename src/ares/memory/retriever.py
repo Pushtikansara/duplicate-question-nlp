@@ -32,7 +32,8 @@ class MemoryRetriever:
                 entry = self._store.get(mid)
                 if tier is None or entry.tier == tier:
                     entries.append(entry)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Failed to retrieve memory entry '%s': %s", mid, exc)
                 continue
         return entries
 
@@ -93,7 +94,8 @@ class MemoryRetriever:
                 entry = self._store.get(mid)
                 if tier is None or entry.tier == tier:
                     entries.append(entry)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Failed to resolve memory entry '%s': %s", mid, exc)
                 continue
         entries.sort(key=lambda e: e.score, reverse=True)
         return entries[:limit]

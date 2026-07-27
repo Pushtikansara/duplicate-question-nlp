@@ -1,0 +1,55 @@
+Confusion Matrices — Phase 11.1 Benchmark
+==========================================
+All models evaluated on n=5000 validation pairs (dup rate: 0.369)
+Format: [[TN, FP], [FN, TP]]
+
+1. TF-IDF + Logistic Regression (Week 2)
+   [BROKEN] X has 5000 features, but LogisticRegression is expecting 10000 features
+
+2. TF-IDF + Linear SVM (Week 2)
+   [BROKEN] X has 5000 features, but LinearSVC is expecting 10000 features
+
+3. DistilBERT (Week 3) — threshold=0.50
+   [[2869, 324],
+    [ 75, 1732]]
+   TN=2869 FP=324 FN=75 TP=1732
+
+4. Improved DistilBERT (Week 4) — threshold=0.50
+   [[3072, 121],
+    [  49, 1758]]
+   TN=3072 FP=121 FN=49 TP=1758
+
+5. BGE-base-en-v1.5 — threshold=0.30
+   [[2200,  993],
+    [ 201, 1606]]
+   TN=2200 FP=993 FN=201 TP=1606
+
+6. E5-base-v2 — threshold=0.35
+   [[ 366, 2827],
+    [   0, 1807]]
+   TN=366 FP=2827 FN=0 TP=1807
+   ⚠️ Predicted ALL pairs as duplicate (threshold too low for this model)
+
+7. E5-quora-finetuned — threshold=0.40
+   [[1967, 1226],
+    [  55, 1752]]
+   TN=1967 FP=1226 FN=55 TP=1752
+
+8. MPNet-base-v2 — threshold=0.36
+   [[2407,  786],
+    [ 220, 1587]]
+   TN=2407 FP=786 FN=220 TP=1587
+
+9. DeBERTa-v3 Cross-Encoder (NLI) — threshold=0.50
+   [[1316, 1877],
+    [ 118, 1689]]
+   TN=1316 FP=1877 FN=118 TP=1689
+
+10. Cross-Encoder-Quora (Trained) — threshold=0.10
+    [[2686,  507],
+     [  84, 1723]]
+    TN=2686 FP=507 FN=84 TP=1723
+
+11. Semantic Ensemble
+    [TIMEOUT] Full evaluation on 5000 pairs timed out.
+    Per-pair latency: ~30s (model cache thrashing — MAX_CACHED_MODELS=3 evicts sub-models)

@@ -7,9 +7,26 @@ import threading
 from datetime import datetime
 from typing import Any
 
+import numpy as np
+
 from ares.memory.types import MemoryDomain, MemoryEntry, MemoryTier
 
 logger = logging.getLogger(__name__)
+
+
+class _JSONEncoder(json.JSONEncoder):
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 def _entry_to_dict(entry: MemoryEntry) -> dict[str, Any]:
@@ -112,7 +129,7 @@ class MemoryPersistence:
         path = os.path.join(directory, f"{entry.memory_id}.json")
         with self._lock:
             with open(path, "w") as f:
-                json.dump(_entry_to_dict(entry), f, indent=2)
+                json.dump(_entry_to_dict(entry), f, indent=2, cls=_JSONEncoder)
         logger.debug("Saved memory entry '%s' to %s", entry.memory_id, path)
         return path
 

@@ -1,94 +1,99 @@
 # Duplicate Question Detection NLP
 
-A Streamlit application for detecting duplicate Quora question pairs. The project follows the Summer Internship roadmap from data preparation through classical machine learning baselines, transformer fine-tuning, Week 4 improvements, and a Week 5 demonstration app.
+A production-grade NLP system for detecting duplicate question pairs, with 11 registered models spanning classical ML, transformer fine-tuning, bi-encoders, and cross-encoders. Delivered via a Streamlit dashboard and a FastAPI multi-agent ARES framework.
 
-## Roadmap Coverage
-
-- **Week 1:** data cleaning, exploratory analysis, and preprocessing in `notebooks/data_analysis.ipynb`.
-- **Week 2:** classical NLP baselines in `notebooks/baseline_model.ipynb`, including TF-IDF + Logistic Regression and TF-IDF + Linear SVM.
-- **Week 3:** DistilBERT fine-tuning in `notebooks/transformer_model.ipynb` with saved transformer artifacts and evaluation exports.
-- **Week 4:** improved DistilBERT workflow in `notebooks/week4_improvement.ipynb`, including class weighting, threshold tuning, ablation results, ROC comparison, and error analysis.
-- **Week 5:** Streamlit app in `app.py` demonstrating the complete project with prediction, batch prediction, dashboards, model comparison, and artifact-aware model loading.
-
-## Week 5 App Pages
-
-- Landing Page
-- Project Overview
-- Dataset Information
-- NLP Pipeline Visualization
-- Model Information
-- Model Comparison
-- Prediction Page
-- Batch CSV Prediction
-- Performance Dashboard
-- Error Analysis
-- Explainability
-
-## Model Behavior
-
-The prediction page uses the **Week 4 Improved DistilBERT** model by default when `models/week4_improved_model/` contains loadable Hugging Face artifacts. If Week 4 artifacts are unavailable or fail to load, the app automatically falls back to the Week 3 DistilBERT model in `models/saved_transformer_model/`.
-
-The app does not expose unnecessary model selection on the prediction page. It reports the active model and decision threshold clearly.
-
-## Model Comparison
-
-The dedicated Model Comparison page summarizes:
-
-- TF-IDF + Logistic Regression
-- TF-IDF + Linear SVM
-- DistilBERT (Week 3)
-- Improved DistilBERT (Week 4)
-
-Displayed fields include accuracy, precision, recall, F1 score, ROC AUC when available, training time when available, model size when available, and a short description.
-
-## Project Structure
-
-```text
-app/
-configs/
-docs/
-notebooks/
-src/duplicate_question_app/
-tests/
-tools/
-pyproject.toml
-README.md
-```
-
-## Required Artifacts
-
-The app reads project artifacts from repository-relative paths:
-
-- Dataset: `data/cleaned_quora.parquet` or `data/cleaned_quora.csv`
-- Week 2 comparison: `outputs/baseline_model/week2_model_comparison.parquet`
-- Week 3 model: `models/saved_transformer_model/`
-- Week 3 predictions: `outputs/transformer_model/transformer_test_predictions.csv`
-- Week 3 comparison: `outputs/transformer_model/week2_vs_week3_comparison.csv`
-- Week 4 model: `models/week4_improved_model/`
-- Week 4 threshold tuning: `outputs/week4_improvement/threshold_analysis.csv`
-- Week 4 ablation: `outputs/week4_improvement/ablation_study.csv`
-- Week 4 predictions: `outputs/week4_improvement/predictions_week4.csv`
-- Week 4 figures: `outputs/week4_improvement/fig*.png`
-
-## Run Locally
-
-From the repository root:
+## Quick Start
 
 ```bash
 pip install -e ".[dev]"
-streamlit run app/app.py
+# Launch the Streamlit dashboard
+dqd-app
+# Or use the CLI for single predictions
+dqd-predict --question1 "How to learn Python?" --question2 "Best way to learn Python"
 ```
 
-## Deployment Notes
+## Production Models
 
-For Streamlit Community Cloud, set the app entrypoint to:
+Three models are classified as **Production-ready** (F1 > 0.87):
 
-```text
-app/app.py
+| Model | F1 | Latency | Use Case |
+|-------|-----|---------|----------|
+| Improved DistilBERT (Week 4) | 0.954 | 2.7ms | Default — general purpose |
+| DistilBERT (Week 3) | 0.897 | 2.6ms | Conservative predictions |
+| Cross-Encoder-Quora (Trained) | 0.876 | 2.9ms | Accuracy-critical predictions |
+
+See `PRODUCTION_MODELS.md` for the full model lifecycle and `MODEL_LIFECYCLE.md` for the complete classification.
+
+## Architecture
+
+```
+app/                          # Streamlit UI (18 pages)
+configs/                      # YAML configuration (8 files)
+src/
+  duplicate_question_app/     # Core application
+    _inference/               # DistilBERT inference pipeline
+    _models/                  # Model registry + bi-encoder/cross-encoder loading
+    _calibration/             # Platt, Temperature, Isotonic calibration
+    _dataset/                 # Data loading + split management
+    _evaluation/              # Benchmark suite + metrics
+    _config/                  # Configuration loader
+  ares/                       # ARES multi-agent inference framework
+    api/                      # FastAPI REST API
+    inference/                # Inference dispatcher
+    model_registry.py         # Duplicate of _models/registry.py
+models/                       # Trained model artifacts
+tests/                        # 140+ tests (unit, integration, regression, API)
+evaluation_results/           # Benchmark outputs + calibration reports
 ```
 
-## Troubleshooting
+## Model Tiers
 
-- If the dataset page fails, verify that `data/cleaned_quora.parquet` or `data/cleaned_quora.csv` exists.
-- If prediction fails, verify that either Week 4 or Week 3 model artifacts include `config.json`, tokenizer files, and model weights.
-- If the dashboard or model comparison page has missing metrics, rerun the corresponding notebook to regenerate the exported files under `outputs/`.
+Models are classified into four lifecycle tiers:
+
+- **Production** (3): Ready for production use, validated on 40K+ pairs
+- **Research** (3): Good performance, benchmark-only candidates
+- **Experimental** (3): Need further work or retraining
+- **Legacy** (2): Broken models kept for reference
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `dqd` | Diagnostics: health, validate, config, doctor |
+| `dqd-app` | Launch Streamlit dashboard |
+| `dqd-predict` | Predict from CSV or command-line arguments |
+| `dqd-benchmark` | Run full model benchmark (7 models, 5 test sets) |
+
+## API
+
+```bash
+# Start the FastAPI ARES API
+uvicorn ares.api.main:app
+
+# Predict
+curl -X POST http://localhost:8000/api/v1/predict \
+  -H "Content-Type: application/json" \
+  -d '{"text_a": "How to learn Python?", "text_b": "Best way to learn Python"}'
+```
+
+## Requirements
+
+- Python 3.10+
+- See `pyproject.toml` for full dependency list
+- Optional: CUDA-compatible GPU for faster inference
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| `RELEASE_NOTES_v1.0.md` | v1.0 release notes |
+| `PROJECT_STATUS.md` | Current project status and known issues |
+| `MODEL_LIFECYCLE.md` | Full model lifecycle classification |
+| `PRODUCTION_MODELS.md` | Production model specifications and recommendations |
+| `evaluation_results/CALIBRATION_REPORT.md` | Calibration analysis (Phase 11.2) |
+| `evaluation_results/THRESHOLD_ANALYSIS.md` | Threshold optimization report |
+| `CHANGELOG.md` | Full change history |
+
+## License
+
+Apache 2.0

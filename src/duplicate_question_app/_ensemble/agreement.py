@@ -14,19 +14,9 @@ from typing import Any
 import numpy as np
 
 from duplicate_question_app._config.settings import (
-    MODEL_CHOICES,
     AppPaths,
     get_app_paths,
-    is_cross_encoder_model,
-    is_ensemble_model,
-    is_sentence_transformer_model,
 )
-from duplicate_question_app._inference.transformer import (
-    DuplicateQuestionInferenceService,
-    load_model_and_tokenizer,
-)
-from duplicate_question_app._models.embeddings import predict_with_sentence_transformer
-from duplicate_question_app._models.week2 import Week2InferenceService, check_week2_artifacts, is_week2_model
 
 
 @dataclass
@@ -68,18 +58,16 @@ class AgreementReport:
     latency_ms: float
 
 
-def _get_models_by_group() -> dict[str, list[str]]:
-    """Dynamically build model groups from MODEL_CHOICES."""
-    groups: dict[str, list[str]] = {"week2": [], "transformer": [], "sentence": []}
-    for m in MODEL_CHOICES:
-        if is_ensemble_model(m):
+def _get_models_by_group(paths: AppPaths) -> dict[str, list[str]]:
+    """Dynamically build model groups from registry."""
+    from duplicate_question_app._models.registry import build_registry
+
+    groups: dict[str, list[str]] = {"classical-ml": [], "transformer": [], "bi-encoder": [], "cross-encoder": []}
+    for entry in build_registry(paths):
+        if entry.model_type == "ensemble":
             continue
-        if is_week2_model(m):
-            groups["week2"].append(m)
-        elif not is_sentence_transformer_model(m) and not is_cross_encoder_model(m):
-            groups["transformer"].append(m)
-        else:
-            groups["sentence"].append(m)
+        if entry.model_type in groups:
+            groups[entry.model_type].append(entry.display_name)
     return groups
 
 
@@ -88,33 +76,35 @@ def collect_all_votes(
     q2: str,
     paths: AppPaths,
 ) -> list[ModelVote]:
-    """Collect predictions from every available model."""
-    votes: list[ModelVote] = []
-    groups = _get_models_by_group()
+    from ares.inference.dispatcher import InferenceDispatcher
 
-    # Week 2 models
-    if groups["week2"] and all(check_week2_artifacts(paths).values()):
-        w2 = Week2InferenceService(paths)
-        for m in groups["week2"]:
+    votes: list[ModelVote] = []
+    groups = _get_models_by_group(paths)
+
+    for model_names in groups.values():
+        for model_name in model_names:
             try:
                 t0 = time.time()
-                _, prob_dup = w2.predict_proba(q1, q2, m)
+                result = InferenceDispatcher.predict(
+                    model_name=model_name,
+                    question1=q1,
+                    question2=q2,
+                )
                 lat = (time.time() - t0) * 1000
-                confidence = max(prob_dup, 1.0 - prob_dup)
                 votes.append(
                     ModelVote(
-                        model_name=m,
-                        predicted_label=1 if prob_dup >= 0.5 else 0,
-                        prob_duplicate=prob_dup,
-                        confidence=confidence,
-                        threshold=0.5,
+                        model_name=model_name,
+                        predicted_label=result.predicted_label,
+                        prob_duplicate=result.prob_duplicate,
+                        confidence=result.confidence,
+                        threshold=result.threshold,
                         latency_ms=lat,
                     )
                 )
             except Exception as e:
                 votes.append(
                     ModelVote(
-                        model_name=m,
+                        model_name=model_name,
                         predicted_label=0,
                         prob_duplicate=0.0,
                         confidence=0.0,
@@ -123,69 +113,6 @@ def collect_all_votes(
                         error=str(e),
                     )
                 )
-
-    # Transformer models (Week 3/4 DistilBERT)
-    for m in groups["transformer"]:
-        try:
-            t0 = time.time()
-            model, tok, meta = load_model_and_tokenizer(paths, model_version=m)
-            svc = DuplicateQuestionInferenceService(model, tok, meta)
-            _, prob_dup = svc.predict_proba(q1, q2)
-            lat = (time.time() - t0) * 1000
-            confidence = max(prob_dup, 1.0 - prob_dup)
-            votes.append(
-                ModelVote(
-                    model_name=m,
-                    predicted_label=1 if prob_dup >= meta.decision_threshold else 0,
-                    prob_duplicate=prob_dup,
-                    confidence=confidence,
-                    threshold=meta.decision_threshold,
-                    latency_ms=lat,
-                )
-            )
-        except Exception as e:
-            votes.append(
-                ModelVote(
-                    model_name=m,
-                    predicted_label=0,
-                    prob_duplicate=0.0,
-                    confidence=0.0,
-                    threshold=0.5,
-                    latency_ms=0.0,
-                    error=str(e),
-                )
-            )
-
-    # Phase 2 embedding / cross-encoder models (dynamically from MODEL_CHOICES)
-    for m in groups["sentence"]:
-        try:
-            t0 = time.time()
-            result = predict_with_sentence_transformer(m, q1, q2)
-            lat = (time.time() - t0) * 1000
-            prob_dup = result["prob_duplicate"]
-            confidence = result["confidence"]
-            votes.append(
-                ModelVote(
-                    model_name=m,
-                    predicted_label=result["predicted_label"],
-                    prob_duplicate=prob_dup,
-                    confidence=confidence,
-                    threshold=result["threshold"],
-                    latency_ms=lat,
-                )
-            )
-        except Exception as e:
-            votes.append(
-                ModelVote(
-                    model_name=m,
-                    predicted_label=0,
-                    prob_duplicate=0.0,
-                    confidence=0.0,
-                    threshold=0.5,
-                    latency_ms=0.0,
-                    error=str(e),
-                )
-            )
 
     return votes
 

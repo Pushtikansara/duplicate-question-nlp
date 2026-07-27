@@ -115,7 +115,14 @@ def _render_execution_trace(result: dict[str, Any]) -> None:
     st.markdown("#### 1. Planning")
     with st.container(border=True):
         st.markdown(f"**Goal**: {result.get('goal', {}).get('description', 'N/A')}")
-        st.markdown(f"**Strategy**: {plan.get('strategy', 'N/A')}")
+        strategy_info = result.get("strategy", {})
+        st.markdown(f"**Requested Strategy**: `{strategy_info.get('requested', 'N/A')}`")
+        st.markdown(f"**Resolved Strategy**: `{strategy_info.get('resolved', 'N/A')}`")
+        st.markdown(f"**Graph Strategy**: `{plan.get('strategy', 'N/A')}`")
+        if strategy_info.get("requested") != plan.get("strategy"):
+            st.error(
+                f"⚠️ STRATEGY MISMATCH: Requested `{strategy_info.get('requested')}` but Graph shows `{plan.get('strategy')}`"
+            )
         st.markdown(f"**Nodes**: {plan.get('node_count', 0)} | **Edges**: {plan.get('edge_count', 0)}")
         st.markdown(f"**Validation Errors**: {len(result.get('validation_errors', []))}")
 
@@ -214,7 +221,7 @@ def render() -> None:
     col1, col2 = st.columns([1, 5])
     with col1:
         strategy = st.selectbox(
-            "Strategy", ["LINEAR", "DAG", "TREE", "HIERARCHICAL", "REACTIVE"], index=0, key="ares_strategy"
+            "Strategy", ["LINEAR", "TREE", "DAG", "GRAPH", "HIERARCHICAL", "AUTO"], index=0, key="ares_strategy"
         )
 
     run_clicked = st.button("Run ARES Demo", type="primary", use_container_width=True)
@@ -229,7 +236,6 @@ def render() -> None:
                     q2 = scenario["question2"]
                 if not goal:
                     goal = scenario.get("goal", goal)
-                strategy = scenario.get("strategy", strategy)
 
         if not q1 or not q2:
             st.warning("Please enter both questions or select a scenario.")

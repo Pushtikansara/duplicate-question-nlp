@@ -40,11 +40,28 @@ class Planner:
             return self._plan_tree(goal, agent_ids or [])
         elif strategy == PlanningStrategy.DAG:
             return self._plan_dag(goal, agent_ids or [])
+        elif strategy == PlanningStrategy.GRAPH:
+            graph = self._plan_dag(goal, agent_ids or [])
+            graph.plan.strategy = PlanningStrategy.GRAPH
+            return graph
         elif strategy == PlanningStrategy.HIERARCHICAL:
             return self._plan_hierarchical(goal, agent_ids or [])
         elif strategy == PlanningStrategy.REACTIVE:
             return self._plan_reactive(goal, agent_ids or [])
+        elif strategy == PlanningStrategy.AUTO:
+            return self._plan_auto(goal, agent_ids or [])
         raise GoalDecompositionError(detail=f"Unknown strategy: {strategy}")
+
+    def _plan_auto(self, goal: Goal, agent_ids: list[str]) -> PlanGraph:
+        stages = self._build_multi_stage_goal(goal)
+        if len(stages) <= 3:
+            graph = self._plan_linear(goal, agent_ids)
+        elif len(stages) <= 5:
+            graph = self._plan_tree(goal, agent_ids)
+        else:
+            graph = self._plan_dag(goal, agent_ids)
+        graph.plan.strategy = PlanningStrategy.AUTO
+        return graph
 
     def _plan_linear(self, goal: Goal, agent_ids: list[str]) -> PlanGraph:
         plan = Plan(plan_id=str(uuid.uuid4()), goal_id=goal.goal_id, strategy=PlanningStrategy.LINEAR)
@@ -153,11 +170,6 @@ class Planner:
             graph.add_edge(
                 PlanEdge(source_id=nodes[0].node_id, target_id=nodes[-1].node_id, condition="skip_intermediate")
             )
-            for i in range(0, len(nodes) - 2):
-                for j in range(i + 2, len(nodes)):
-                    graph.add_edge(
-                        PlanEdge(source_id=nodes[i].node_id, target_id=nodes[j].node_id, condition="parallel_allowed")
-                    )
         return graph
 
     def _plan_hierarchical(self, goal: Goal, agent_ids: list[str]) -> PlanGraph:

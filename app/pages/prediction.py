@@ -4,8 +4,8 @@ import time
 
 import streamlit as st
 
-from app.services.runtime import get_runtime_context
 from app.utils.constants import get_model_prediction
+from ares.inference.dispatcher import InferenceDispatcher
 from duplicate_question_app._visualization.plots import create_probability_figure
 
 
@@ -13,45 +13,16 @@ def render() -> None:
     st.title("Prediction Page")
     st.markdown(
         "<p style='color: #64748B; font-size: 0.95rem;'>"
-        "Run live inference on individual question pairs with the selected model and Semantic Intelligence Engine.</p>",
+        "Run live inference on individual question pairs with the selected model.</p>",
         unsafe_allow_html=True,
     )
     selected_model = st.session_state.get("selected_model", "Improved DistilBERT (Week 4)")
-    prediction_mode = st.session_state.get("prediction_mode", "fusion")
 
-    try:
-        service, metadata, _ = get_runtime_context()
-    except Exception as exc:
-        st.error(f"Model could not be loaded: {exc}")
-        return
+    backend_name = InferenceDispatcher.get_backend_for_model(selected_model)
 
-    if isinstance(metadata, dict):
-        model_label = metadata.get("model_label", "Unknown")
-        decision_threshold = metadata.get("decision_threshold", 0.5)
-        device = metadata.get("device", "cpu")
-    elif metadata:
-        model_label = metadata.model_label
-        decision_threshold = metadata.decision_threshold
-        device = metadata.device
-    else:
-        model_label = selected_model
-        decision_threshold = 0.5
-        device = "cpu"
-
-    mode_labels = {
-        "cross_encoder_only": "🔴 CrossEncoder Only",
-        "semantic_only": "🟢 Semantic Intelligence Only",
-        "fusion": "🔵 Fusion (Recommended)",
-        "cross_encoder_dominant": "🔵 CrossEncoder Dominant",
-        "semantic_dominant": "🟢 Semantic Dominant",
-        "confidence_weighted": "🟣 Confidence Weighted",
-        "adaptive": "🟠 Adaptive",
-    }
-
-    col1, col2, col3 = st.columns(3)
-    col1.caption(f"Model: **{model_label}**")
-    col2.caption(f"Device: **{device}**")
-    col3.caption(f"Mode: **{mode_labels.get(prediction_mode, prediction_mode)}**")
+    col1, col2 = st.columns(2)
+    col1.caption(f"Selected Model: **{selected_model}**")
+    col2.caption(f"Backend: **{backend_name}**")
 
     with st.form("single_prediction_form"):
         question1 = st.text_area("Question 1", placeholder="Enter the first question", height=100)
@@ -63,20 +34,17 @@ def render() -> None:
             st.error("Both question fields are required.")
             return
 
-        with st.spinner(f"Running {model_label} with Semantic Intelligence..."):
+        with st.spinner(f"Running {selected_model} via {backend_name}..."):
             try:
                 start_time = time.time()
-                result = get_model_prediction(service, selected_model, question1, question2)
+                result = get_model_prediction(None, selected_model, question1, question2)
                 result["inference_time"] = time.time() - start_time
             except Exception as exc:
                 st.error(f"Prediction failed: {exc}")
                 return
 
-        fusion_result = result.get("fusion_result", {})
-
         col1, col2, col3, col4 = st.columns(4)
-        final_pred = result.get("final_prediction", result.get("prediction", "Unknown"))
-
+        final_pred = result.get("prediction", "Unknown")
         pred_color = "#10B981" if final_pred == "Duplicate" else "#EF4444"
         col1.markdown(
             f"<div class='dashboard-card' style='text-align:center;'>"
@@ -85,91 +53,71 @@ def render() -> None:
             unsafe_allow_html=True,
         )
 
-        fusion_score = fusion_result.get("final_score", result.get("confidence", 0.0))
-        col2.metric("Fusion Confidence", f"{fusion_score:.2%}")
+        confidence = result.get("confidence", 0.0)
+        col2.metric("Confidence", f"{confidence:.2%}")
 
-        ce_score = fusion_result.get("cross_encoder_score", result.get("prob_duplicate", 0.0))
-        col3.metric("CrossEncoder Score", f"{ce_score:.2%}" if ce_score is not None else "N/A")
+        prob_dup = result.get("prob_duplicate", 0.0)
+        col3.metric("Duplicate Probability", f"{prob_dup:.2%}")
 
-        semantic_sim = result.get("semantic_similarity", 0.0)
-        col4.metric("Semantic Similarity", f"{semantic_sim:.2%}")
+        latency = result.get("inference_time", 0) * 1000
+        col4.metric("Latency", f"{latency:.1f} ms")
 
         st.caption(
-            f"Model: **{result.get('model_label', model_label)}** | "
-            f"Mode: **{result.get('prediction_mode', prediction_mode)}** | "
-            f"Time: {result.get('inference_time', 0) * 1000:.1f} ms | "
-            f"Strategy: **{fusion_result.get('strategy', 'N/A')}**"
+            f"Model: **{result.get('model_label', selected_model)}** | "
+            f"Backend: **{result.get('backend', 'N/A')}** | "
+            f"Time: {latency:.1f} ms"
         )
 
-        explanation = fusion_result.get("explanation", "")
-        if explanation:
-            st.info(explanation)
-
-        if fusion_result.get("strategy") == "fusion":
-            st.info(
-                f"CE={fusion_result.get('cross_encoder_score', 0):.2f} | "
-                f"Sem={fusion_result.get('semantic_score', 0):.2f} | "
-                f"Final={fusion_result.get('fusion_score', 0):.2f} | "
-                f"Conflict Penalty: {fusion_result.get('conflict_penalty_applied', 0):.2f}"
+        with st.expander("Developer Mode - Execution Proof", expanded=True):
+            st.markdown("#### Model Routing Verification")
+            st.json(
+                {
+                    "selected_model": result.get("selected_model", selected_model),
+                    "executed_model": result.get("executed_model", "N/A"),
+                    "backend": result.get("backend", "N/A"),
+                    "artifact_path": result.get("artifact_path", "N/A"),
+                    "tokenizer": result.get("tokenizer", "N/A"),
+                    "inference_function": result.get("inference_function", "N/A"),
+                    "execution_time_ms": result.get("execution_time_ms", 0),
+                }
             )
 
-        assessment = result.get("semantic_assessment")
-        if assessment:
-            with st.expander("Semantic Intelligence Assessment", expanded=False):
-                col_a, col_b, col_c = st.columns(3)
-                co = assessment.get("concept_overlap", {})
-                eo = assessment.get("entity_overlap", {})
-                ins = assessment.get("intent_similarity", {})
-                rs = assessment.get("relation_similarity", {})
-                cs = assessment.get("context_similarity", {})
+            st.markdown("#### Raw Logits & Softmax")
+            raw_logits = result.get("raw_logits")
+            softmax_out = result.get("softmax")
+            st.json(
+                {
+                    "raw_logits": raw_logits if raw_logits else "not captured",
+                    "softmax": softmax_out if softmax_out else "not captured",
+                    "prob_non_duplicate": result.get("prob_non_duplicate", "N/A"),
+                    "prob_duplicate": result.get("prob_duplicate", "N/A"),
+                    "threshold": result.get("threshold", 0.5),
+                }
+            )
 
-                col_a.metric("Concept Overlap", f"{co.get('overlap_score', 0):.2%}")
-                col_b.metric("Entity Overlap", f"{eo.get('overlap_score', 0):.2%}")
-                col_c.metric("Intent Match", f"{ins.get('score', 0):.2%}")
+            st.markdown("#### Label Mapping Trace")
+            st.code("Raw logits -> argmax -> class_id -> display_label")
+            predicted_class_id = result.get("predicted_class_id")
+            label_mapping = result.get("label_mapping")
+            final_label = result.get("final_label")
+            st.json(
+                {
+                    "argmax_index": predicted_class_id,
+                    "label_mapping": label_mapping if label_mapping else "not available",
+                    "final_label": final_label,
+                    "confidence": confidence,
+                }
+            )
 
-                col_a.metric("Relation Match", f"{rs.get('score', 0):.2%}")
-                col_b.metric("Context Similarity", f"{cs.get('score', 0):.2%}")
-                col_c.metric("Confidence", f"{assessment.get('confidence', 0):.2%}")
+            st.markdown("#### Decision Trace")
+            st.code(
+                f"predicted_label={result.get('predicted_label')} -> "
+                f"prediction='{result.get('prediction')}' -> "
+                f"confidence={confidence:.4f}"
+            )
 
-                st.markdown("#### Detected Conflicts")
-                conflicts = assessment.get("conflicts", [])
-                if conflicts:
-                    for c in conflicts:
-                        st.warning(
-                            f"**{c.get('conflict_type', 'unknown')}**: {c.get('description', '')} (severity: {c.get('severity', 0):.2f})"
-                        )
-                else:
-                    st.success("No conflicts detected.")
-
-                st.markdown("#### Supporting Evidence")
-                evidence = assessment.get("supporting_evidence", [])
-                for e in evidence:
-                    status = e.get("status", "info")
-                    msg = e.get("message", "")
-                    if status == "match":
-                        st.success(f"✓ {msg}")
-                    elif status in ("mismatch", "conflict"):
-                        st.error(f"✗ {msg}")
-                    elif status in ("warning", "low_overlap"):
-                        st.warning(f"⚠ {msg}")
-                    else:
-                        st.info(f"ℹ {msg}")
-
-                with st.expander("Raw Assessment Data", expanded=False):
-                    st.json(assessment)
-        else:
-            st.info("Semantic Intelligence Engine could not produce an assessment for these inputs.")
-
-        if result.get("reason"):
-            st.info(f"ℹ️ {result['reason']}")
-
-        if result.get("feature_breakdown"):
-            with st.expander("Model Contributions (Ensemble)"):
-                for model_name, contrib in result["feature_breakdown"].items():
-                    st.write(f"- **{model_name}**: duplicate probability = {contrib.get('prob_dup', 0):.4f}")
-
-        st.success(f"Final decision: **{final_pred}** using **{model_label}**.")
+        st.success(f"Final decision: **{final_pred}** using **{selected_model}**.")
         probability_figure = create_probability_figure(
-            prob_duplicate=float(fusion_score), threshold=float(decision_threshold)
+            prob_duplicate=float(prob_dup), threshold=float(result.get("threshold", 0.5))
         )
         st.pyplot(probability_figure, clear_figure=True)

@@ -134,10 +134,11 @@ async def predict_stream(
     req: BatchPredictionRequest,
     token: dict[str, Any] = Depends(require_user),
 ) -> StreamingResponse:
+    model = req.model or ""
     return await event_stream(
         stream_predictions(
             req.pairs,
-            req.model or "Week 4 Improved DistilBERT",
+            model,
             req.threshold or 0.5,
         )
     )

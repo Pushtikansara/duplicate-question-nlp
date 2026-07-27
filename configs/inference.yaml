@@ -10,10 +10,9 @@ default_threshold: 0.5
 
 # Per-model thresholds (optimal F1 thresholds on validation set)
 per_model_thresholds:
-  "Cross-Encoder-Quora (Trained)": 0.10
-  "E5-quora-finetuned": 0.40
-  "E5-base-v2": 0.35
-  "BGE-quora-finetuned": 0.38
+  "Cross-Encoder-Quora (Trained)": 0.52
+  "E5-quora-finetuned": 0.63
+  "E5-base-v2": 0.59
   "BGE-base-en-v1.5": 0.30
   "MPNet-base-v2": 0.36
 
@@ -21,17 +20,43 @@ per_model_thresholds:
 sigmoid_params:
   "E5-quora-finetuned": [10.0, 0.73]
   "E5-base-v2": [8.0, 0.82]
-  "BGE-quora-finetuned": [12.0, 0.88]
   "BGE-base-en-v1.5": [15.6755, 0.8591]
   "MPNet-base-v2": [11.5976, 0.8133]
   "default": [15.0, 0.50]
 
-# Batch sizes by context
-batch_sizes:
-  transformer_inference: 32
-  embedding_inference: 64
-  lr_head_inference: 256
-  cross_encoder_inference: 128
-  hard_mining: 256
-  hard_mining_lexical: 5000
-  cache_max_size: 10000
+# Confidence computation weights
+confidence:
+  single_model:
+    raw: 0.50
+    adjusted: 0.30
+    trust: 0.20
+  multi_model:
+    raw: 0.30
+    adjusted: 0.20
+    agreement: 0.30
+    calibration: 0.15
+    trust: 0.15
+    uncertainty_penalty: 0.10
+    diversity_bonus: 0.01
+
+# Trust score computation weights
+trust:
+  confidence_weight: 0.40
+  agreement_weight: 0.20
+  contradiction_weight: 0.15
+  calibration_weight: 0.15
+  uncertainty_weight: 0.10
+
+# Trust/risk thresholds
+trust_thresholds:
+  high: 0.80
+  medium: 0.60
+  low: 0.40
+
+# Demo engine defaults
+demo:
+  default_goal: "Analyze semantic similarity between two questions"
+  default_agents: ["planner", "predict", "memory", "reflection"]
+  default_tools: ["predict", "memory"]
+
+# Batch sizes are configured via function defaults in the source code

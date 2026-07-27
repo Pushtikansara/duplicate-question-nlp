@@ -44,7 +44,7 @@ def render() -> None:
                         for e in result.q1_entities
                     ]
                 )
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width="stretch", hide_index=True)
             else:
                 st.info("No entities detected in Question 1")
 
@@ -56,7 +56,7 @@ def render() -> None:
                         for e in result.q2_entities
                     ]
                 )
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width="stretch", hide_index=True)
             else:
                 st.info("No entities detected in Question 2")
 

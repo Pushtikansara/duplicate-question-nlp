@@ -60,10 +60,8 @@ class ModelMetadata:
     model_name: str = ""
 
 
-# DistilBERT models were fine-tuned on original (non-expanded) text.
-# Abbreviation expansion would change token distributions they were trained on.
 def _norm(text):
-    return normalize_question(text, expand_abbrevs=False)
+    return normalize_question(text, expand_abbrevs=True, fix_typos=True)
 
 
 def _resolve_threshold(paths: AppPaths) -> tuple[float, str]:
@@ -247,6 +245,25 @@ class DuplicateQuestionInferenceService:
         if not q1 or not q2:
             raise ValueError("Both question inputs are required.")
 
+        if q1 == q2:
+            latency_ms = (time.time() - start_time) * 1000
+            return {
+                "question1": q1,
+                "question2": q2,
+                "predicted_label": 1,
+                "prediction": "Duplicate",
+                "prob_non_duplicate": 0.0,
+                "prob_duplicate": 1.0,
+                "confidence": 1.0,
+                "threshold": self.metadata.decision_threshold,
+                "model_label": self.metadata.model_label,
+                "model_name": self.metadata.model_name,
+                "device": self.metadata.device,
+                "latency_ms": latency_ms,
+                "reason": "identical_text",
+                "feature_breakdown": None,
+            }
+
         inputs = self.tokenizer(
             q1,
             q2,
@@ -298,11 +315,38 @@ class DuplicateQuestionInferenceService:
                 raise ValueError("All question pairs must have non-empty question1 and question2 text.")
             normalized_pairs.append((q1, q2))
 
-        batch_size = 32
         results: list[dict[str, object]] = []
+        remaining_pairs: list[tuple[str, str]] = []
 
-        for start in range(0, len(normalized_pairs), batch_size):
-            batch = normalized_pairs[start : start + batch_size]
+        for q1, q2 in normalized_pairs:
+            if q1 == q2:
+                results.append(
+                    {
+                        "question1": q1,
+                        "question2": q2,
+                        "predicted_label": 1,
+                        "prediction": "Duplicate",
+                        "prob_non_duplicate": 0.0,
+                        "prob_duplicate": 1.0,
+                        "confidence": 1.0,
+                        "threshold": self.metadata.decision_threshold,
+                        "model_label": self.metadata.model_label,
+                        "model_name": self.metadata.model_name,
+                        "device": self.metadata.device,
+                        "latency_ms": 0.0,
+                        "reason": "identical_text",
+                        "feature_breakdown": None,
+                    }
+                )
+            else:
+                remaining_pairs.append((q1, q2))
+
+        if not remaining_pairs:
+            return pd.DataFrame(results)
+
+        batch_size = 32
+        for start in range(0, len(remaining_pairs), batch_size):
+            batch = remaining_pairs[start : start + batch_size]
             q1_list = [item[0] for item in batch]
             q2_list = [item[1] for item in batch]
 

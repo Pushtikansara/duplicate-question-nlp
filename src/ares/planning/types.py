@@ -10,8 +10,10 @@ class PlanningStrategy(Enum):
     LINEAR = auto()
     TREE = auto()
     DAG = auto()
+    GRAPH = auto()
     HIERARCHICAL = auto()
     REACTIVE = auto()
+    AUTO = auto()
 
 
 class PlanNodeStatus(Enum):

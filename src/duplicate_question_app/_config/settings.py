@@ -261,50 +261,18 @@ def resolve_preferred_model_dir(paths: AppPaths) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Model registry — loaded from YAML with env override support
+# Model registry — queries the registry (single source of truth)
 # ---------------------------------------------------------------------------
 
 
-def _load_model_choices() -> list[str]:
-    cfg = get_config("models")
-    if cfg and "model_choices" in cfg:
-        return list(cfg["model_choices"])
-    return _LEGACY_MODEL_CHOICES
+def _registry_query(query_fn):
+    """Lazily query the model registry. Returns empty result on import failure."""
+    try:
+        from duplicate_question_app._models.registry import build_registry, find_registry_entry
 
-
-def _load_model_version_short() -> dict[str, str]:
-    cfg = get_config("models")
-    if cfg and "model_version_short" in cfg:
-        return dict(cfg["model_version_short"])
-    return _LEGACY_MODEL_VERSION_SHORT
-
-
-def _load_transformer_models() -> frozenset[str]:
-    cfg = get_config("models")
-    if cfg and "backends" in cfg and "transformer_models" in cfg["backends"]:
-        return frozenset(cfg["backends"]["transformer_models"])
-    return _LEGACY_TRANSFORMER_MODELS
-
-
-def _load_sentence_transformer_models() -> frozenset[str]:
-    cfg = get_config("models")
-    if cfg and "backends" in cfg and "sentence_transformer_models" in cfg["backends"]:
-        return frozenset(cfg["backends"]["sentence_transformer_models"])
-    return _LEGACY_SENTENCE_TRANSFORMER_MODELS
-
-
-def _load_cross_encoder_models() -> frozenset[str]:
-    cfg = get_config("models")
-    if cfg and "backends" in cfg and "cross_encoder_models" in cfg["backends"]:
-        return frozenset(cfg["backends"]["cross_encoder_models"])
-    return _LEGACY_CROSS_ENCODER_MODELS
-
-
-def _load_finetuned_embedding_models() -> frozenset[str]:
-    cfg = get_config("models")
-    if cfg and "backends" in cfg and "finetuned_embedding_models" in cfg["backends"]:
-        return frozenset(cfg["backends"]["finetuned_embedding_models"])
-    return _LEGACY_FINETUNED_EMBEDDING_MODELS
+        return query_fn(build_registry, find_registry_entry)
+    except ImportError:
+        return None
 
 
 def _load_hub_name(model_key: str) -> str | None:
@@ -315,132 +283,69 @@ def _load_hub_name(model_key: str) -> str | None:
     return None
 
 
-# Legacy fallback values (identical to original hardcoded values)
-_LEGACY_MODEL_CHOICES: list[str] = [
-    "TF-IDF + Logistic Regression (Week 2)",
-    "TF-IDF + Linear SVM (Week 2)",
-    "DistilBERT (Week 3)",
-    "Improved DistilBERT (Week 4)",
-    "BGE-base-en-v1.5",
-    "E5-base-v2",
-    "E5-quora-finetuned",
-    "MPNet-base-v2",
-    "DeBERTa-v3 Cross-Encoder",
-    "Cross-Encoder-Quora (Trained)",
-    "Semantic Ensemble",
-]
-
-_LEGACY_MODEL_VERSION_SHORT: dict[str, str] = {
-    "TF-IDF + Logistic Regression (Week 2)": "week2_lr",
-    "TF-IDF + Linear SVM (Week 2)": "week2_svm",
-    "DistilBERT (Week 3)": "week3",
-    "Improved DistilBERT (Week 4)": "week4",
-    "BGE-base-en-v1.5": "bge",
-    "E5-base-v2": "e5",
-    "E5-quora-finetuned": "e5_ft",
-    "MPNet-base-v2": "mpnet",
-    "DeBERTa-v3 Cross-Encoder": "deberta",
-    "Cross-Encoder-Quora (Trained)": "ce_quora",
-    "Semantic Ensemble": "ensemble",
-}
-
-_LEGACY_TRANSFORMER_MODELS = frozenset(
-    {
-        "DistilBERT (Week 3)",
-        "Improved DistilBERT (Week 4)",
-    }
-)
-
-_LEGACY_SENTENCE_TRANSFORMER_MODELS = frozenset(
-    {
-        "BGE-base-en-v1.5",
-        "E5-base-v2",
-        "E5-quora-finetuned",
-        "MPNet-base-v2",
-    }
-)
-
-_LEGACY_FINETUNED_EMBEDDING_MODELS = frozenset(
-    {
-        "E5-quora-finetuned",
-    }
-)
-
-_LEGACY_CROSS_ENCODER_MODELS = frozenset(
-    {
-        "DeBERTa-v3 Cross-Encoder",
-        "Cross-Encoder-Quora (Trained)",
-    }
-)
-
-# Module-level constants populated lazily from config
-MODEL_CHOICES: list[str] = _LEGACY_MODEL_CHOICES
-MODEL_VERSION_SHORT: dict[str, str] = _LEGACY_MODEL_VERSION_SHORT
-TRANSFORMER_MODELS: frozenset[str] = _LEGACY_TRANSFORMER_MODELS
-SENTENCE_TRANSFORMER_MODELS: frozenset[str] = _LEGACY_SENTENCE_TRANSFORMER_MODELS
-FINETUNED_EMBEDDING_MODELS: frozenset[str] = _LEGACY_FINETUNED_EMBEDDING_MODELS
-CROSS_ENCODER_MODELS: frozenset[str] = _LEGACY_CROSS_ENCODER_MODELS
+# Module-level constants (kept for backward compatibility, populated from registry)
+def _get_model_choices() -> list[str]:
+    result = _registry_query(lambda b, _: [e.display_name for e in b()])
+    return result if result else []
 
 
-def _reload_module_constants() -> None:
-    """Reload model constants from YAML config. Called once at startup."""
-    global MODEL_CHOICES, MODEL_VERSION_SHORT
-    global TRANSFORMER_MODELS, SENTENCE_TRANSFORMER_MODELS
-    global FINETUNED_EMBEDDING_MODELS, CROSS_ENCODER_MODELS
+def _get_version_short(model_name: str) -> str:
+    try:
+        from duplicate_question_app._models.registry import find_registry_entry
 
-    choices = _load_model_choices()
-    if choices != _LEGACY_MODEL_CHOICES:
-        MODEL_CHOICES = choices
-
-    version_short = _load_model_version_short()
-    if version_short != _LEGACY_MODEL_VERSION_SHORT:
-        MODEL_VERSION_SHORT = version_short
-
-    tf = _load_transformer_models()
-    if tf != _LEGACY_TRANSFORMER_MODELS:
-        TRANSFORMER_MODELS = tf
-
-    st = _load_sentence_transformer_models()
-    if st != _LEGACY_SENTENCE_TRANSFORMER_MODELS:
-        SENTENCE_TRANSFORMER_MODELS = st
-
-    ce = _load_cross_encoder_models()
-    if ce != _LEGACY_CROSS_ENCODER_MODELS:
-        CROSS_ENCODER_MODELS = ce
-
-    ft = _load_finetuned_embedding_models()
-    if ft != _LEGACY_FINETUNED_EMBEDDING_MODELS:
-        FINETUNED_EMBEDDING_MODELS = ft
+        entry = find_registry_entry(model_name, get_app_paths())
+        return entry.internal_id if entry else ""
+    except Exception:
+        return ""
 
 
-# Load config on first import
-_reload_module_constants()
+MODEL_CHOICES: list[str] = _get_model_choices()
+MODEL_VERSION_SHORT: dict[str, str] = {}
+
+
+def _query_model_type(model_name: str, target_type: str | None = None) -> str | None:
+    try:
+        from duplicate_question_app._models.registry import find_registry_entry
+
+        entry = find_registry_entry(model_name, get_app_paths())
+        if entry is None:
+            return None
+        if target_type is not None:
+            return entry.model_type if entry.model_type == target_type else None
+        return entry.model_type
+    except Exception:
+        return None
 
 
 def is_transformer_model(model_name: str) -> bool:
-    return model_name in TRANSFORMER_MODELS
+    return _query_model_type(model_name, "transformer") is not None
 
 
 def is_sentence_transformer_model(model_name: str) -> bool:
-    return model_name in SENTENCE_TRANSFORMER_MODELS
+    return _query_model_type(model_name, "bi-encoder") is not None
 
 
 def is_cross_encoder_model(model_name: str) -> bool:
-    return model_name in CROSS_ENCODER_MODELS
+    return _query_model_type(model_name, "cross-encoder") is not None
 
 
 def is_ensemble_model(model_name: str) -> bool:
-    return model_name == "Semantic Ensemble"
+    return _query_model_type(model_name, "ensemble") is not None
 
 
 def is_finetuned_embedding_model(model_name: str) -> bool:
-    return model_name in FINETUNED_EMBEDDING_MODELS
+    try:
+        from duplicate_question_app._models.registry import find_registry_entry
+
+        entry = find_registry_entry(model_name, get_app_paths())
+        return entry is not None and entry.model_type == "bi-encoder" and entry.source == "local"
+    except Exception:
+        return False
 
 
 def is_new_embedding_model(model_name: str) -> bool:
-    return model_name in SENTENCE_TRANSFORMER_MODELS | CROSS_ENCODER_MODELS | FINETUNED_EMBEDDING_MODELS | {
-        "Semantic Ensemble"
-    }
+    model_type = _query_model_type(model_name)
+    return model_type in ("bi-encoder", "cross-encoder", "ensemble") if model_type else False
 
 
 @dataclass

@@ -62,4 +62,4 @@ def render() -> None:
             for v in report.votes
             if v.error is None
         ]
-        st.dataframe(pd.DataFrame(vote_data), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(vote_data), width="stretch", hide_index=True)

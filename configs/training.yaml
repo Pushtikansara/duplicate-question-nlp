@@ -1,6 +1,6 @@
-# Training configuration
+# Training configuration (DOCUMENTATION ONLY)
+# Values are hardcoded in function signatures and must be changed in source code.
 # Environment overrides: DQD_<KEY>
-# DO NOT change training behaviour; values match current hardcoded defaults.
 
 seed: 42
 

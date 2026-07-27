@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -30,7 +29,7 @@ def _render_live_performance() -> None:
     report_df = pd.DataFrame(report)
     st.dataframe(
         report_df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "name": "Component",
@@ -64,7 +63,7 @@ def _render_cache_performance() -> None:
             {
                 "Cache": name.replace("_", " ").title(),
                 "Size": stat.size,
-                "Max Size": stat.max_size if stat.max_size > 0 else "∞",
+                "Max Size": stat.max_size if stat.max_size > 0 else -1,
                 "Hits": stat.hits,
                 "Misses": stat.misses,
                 "Hit Rate": f"{stat.hit_rate:.1%}",
@@ -73,7 +72,7 @@ def _render_cache_performance() -> None:
         )
 
     if cache_rows:
-        st.dataframe(pd.DataFrame(cache_rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(cache_rows), width="stretch", hide_index=True)
     else:
         st.info("No cache statistics available.")
 
@@ -92,38 +91,12 @@ def _render_semantic_intelligence_performance() -> None:
     st.markdown(
         "<p style='color: #64748B; font-size: 0.95rem;'>"
         "Semantic Intelligence Engine performance statistics. "
-        "Real measurements from the pipeline are displayed below.</p>",
+        "Real profiling measurements from the pipeline are displayed below.</p>",
         unsafe_allow_html=True,
     )
 
     profiler = get_profiler()
     report = profiler.get_report()
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("**Semantic Similarity Distribution**")
-        sim_data = pd.Series(np.random.beta(2, 2, 500), name="Semantic Similarity")
-        st.bar_chart(sim_data.value_counts(bins=10).sort_index())
-
-    with col2:
-        st.markdown("**Concept Match Distribution**")
-        concept_data = pd.Series(np.random.beta(3, 2, 500), name="Concept Overlap")
-        st.bar_chart(concept_data.value_counts(bins=10).sort_index())
-
-    col3, col4 = st.columns(2)
-
-    with col3:
-        st.markdown("**Conflict Statistics**")
-        conflict_data = np.random.poisson(1, 500)
-        conflict_counts = pd.Series(conflict_data).value_counts().sort_index()
-        conflict_df = pd.DataFrame({"Num Conflicts": conflict_counts.index, "Count": conflict_counts.values})
-        st.bar_chart(conflict_df.set_index("Num Conflicts"))
-
-    with col4:
-        st.markdown("**Fusion Confidence Distribution**")
-        fusion_data = pd.Series(np.random.beta(5, 2, 500), name="Fusion Confidence")
-        st.bar_chart(fusion_data.value_counts(bins=10).sort_index())
 
     sie_rows = [
         s
@@ -136,10 +109,12 @@ def _render_semantic_intelligence_performance() -> None:
     if sie_rows:
         st.markdown("**Semantic Intelligence Timing Breakdown**")
         sie_df = pd.DataFrame(sie_rows)
-        st.dataframe(sie_df, use_container_width=True, hide_index=True)
+        st.dataframe(sie_df, width="stretch", hide_index=True)
         if not sie_df.empty:
             timing_chart = sie_df.set_index("name")[["avg_ms", "max_ms"]]
             st.bar_chart(timing_chart)
+    else:
+        st.info("No semantic intelligence profiling data collected yet. Run predictions to see measurements.")
 
 
 def render() -> None:
@@ -179,11 +154,11 @@ def render() -> None:
                 col1.metric("Best Threshold", f"{best_threshold:.2f}")
                 col2.metric("Best F1 (tuning)", f"{best_f1:.3f}")
                 with st.expander("Threshold Tuning Table"):
-                    st.dataframe(threshold_df, use_container_width=True)
+                    st.dataframe(threshold_df, width="stretch")
             week4_ablation = get_week4_ablation_df()
             if not week4_ablation.empty:
                 with st.expander("Ablation Study", expanded=True):
-                    st.dataframe(week4_ablation, use_container_width=True)
+                    st.dataframe(week4_ablation, width="stretch")
 
     with tabs[1]:
         if not week3_metrics:
@@ -208,7 +183,7 @@ def render() -> None:
             comparison_df = get_week2_vs_week3()
             st.subheader("Week 2 vs Week 3 Comparison")
             if not comparison_df.empty:
-                st.dataframe(comparison_df, use_container_width=True)
+                st.dataframe(comparison_df, width="stretch")
                 if "Method" in comparison_df.columns:
                     chart_cols = [
                         col for col in ["Accuracy", "Precision", "Recall", "F1 Score"] if col in comparison_df.columns
@@ -220,7 +195,7 @@ def render() -> None:
 
     with tabs[2]:
         comparison_df = build_model_comparison_table()
-        st.dataframe(format_model_comparison_for_display(comparison_df), use_container_width=True, hide_index=True)
+        st.dataframe(format_model_comparison_for_display(comparison_df), width="stretch", hide_index=True)
         chart_df = comparison_df.set_index("Model")[["Accuracy", "Precision", "Recall", "F1 Score"]].dropna(
             axis=1, how="all"
         )

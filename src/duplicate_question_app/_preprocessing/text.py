@@ -40,6 +40,7 @@ _ABBREVIATIONS: dict[str, str] = {
     r"\bSGD\b": "Stochastic Gradient Descent",
     r"\bReLU\b": "Rectified Linear Unit",
     r"\bBERT\b": "Bidirectional Encoder Representations from Transformers",
+    r"\bGPT\b": "Generative Pretrained Transformer",
     # Computer / technology
     r"\bCPU\b": "Central Processing Unit",
     r"\bGPU\b": "Graphics Processing Unit",
@@ -76,6 +77,7 @@ _ABBREVIATIONS: dict[str, str] = {
     r"\bCRUD\b": "Create Read Update Delete",
     r"\bORM\b": "Object Relational Mapping",
     r"\bOOP\b": "Object Oriented Programming",
+    r"\bBDA\b": "Big Data Analytics",
     r"\bTDD\b": "Test Driven Development",
     r"\bCI\b": "Continuous Integration",
     r"\bCD\b": "Continuous Deployment",

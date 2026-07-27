@@ -218,6 +218,14 @@ def predict_with_sentence_transformer(model_name: str, q1: str, q2: str) -> dict
     q1_norm = normalize_question(q1, expand_abbrevs=True, fix_typos=True)
     q2_norm = normalize_question(q2, expand_abbrevs=True, fix_typos=True)
 
+    if not q1_norm or not q2_norm:
+        raise ValueError("Both question inputs are required.")
+
+    if q1_norm == q2_norm:
+        latency_ms = (time.time() - start) * 1000
+        threshold = _get_threshold(model_name)
+        return _result_dict(q1_norm, q2_norm, 1, 1.0, 0.0, threshold, model_name, _resolve_device(), latency_ms)
+
     is_ft = is_finetuned_embedding_model(model_name)
 
     if is_cross_encoder_model(model_name):
@@ -287,68 +295,98 @@ def predict_batch_sentence_transformer(
     model = get_sentence_transformer_model(model_name)
     threshold = _get_threshold(model_name)
 
+    # Build result map indexed by original position
+    result_map: dict[int, dict[str, Any]] = {}
+
+    for i in range(n):
+        if q1s[i] == q2s[i]:
+            result_map[i] = _result_dict(
+                q1s[i],
+                q2s[i],
+                1,
+                1.0,
+                0.0,
+                threshold,
+                model_name,
+                device,
+                0.0,
+            )
+
+    non_identical_indices = [i for i in range(n) if q1s[i] != q2s[i]]
+
+    if not non_identical_indices:
+        return [result_map[i] for i in range(n)]
+
+    q1s_subset = [q1s[i] for i in non_identical_indices]
+    q2s_subset = [q2s[i] for i in non_identical_indices]
+    n_subset = len(non_identical_indices)
+
     # Cross-encoder batch path
     if is_cross_encoder_model(model_name):
         all_scores = model.predict(
-            list(zip(q1s, q2s, strict=False)), batch_size=batch_size, apply_softmax=True, show_progress_bar=False
+            list(zip(q1s_subset, q2s_subset, strict=False)),
+            batch_size=batch_size,
+            apply_softmax=True,
+            show_progress_bar=False,
         )
         encode_time_ms = (time.time() - start) * 1000
-        results = []
-        for i in range(n):
-            scores = all_scores[i]
+        for j in range(n_subset):
+            scores = all_scores[j]
             if len(scores) >= 3:
-                # NLI 3-class: [contradiction, neutral, entailment]
                 contra = float(scores[0])
                 entail = float(scores[2])
                 denom = contra + entail
                 prob_dup = entail / denom if denom > 0.01 else 0.5
             elif len(scores) == 2:
-                # Binary cross-encoder: [p_not_dup, p_dup]
                 prob_dup = float(scores[1])
             else:
                 prob_dup = max(0.0, min(1.0, (float(scores[0]) + 1) / 2))
             pred_label = int(prob_dup >= threshold)
-            results.append(
-                _result_dict(
-                    q1s[i], q2s[i], pred_label, prob_dup, 1.0 - prob_dup, threshold, model_name, device, encode_time_ms
-                )
+            orig_idx = non_identical_indices[j]
+            result_map[orig_idx] = _result_dict(
+                q1s[orig_idx],
+                q2s[orig_idx],
+                pred_label,
+                prob_dup,
+                1.0 - prob_dup,
+                threshold,
+                model_name,
+                device,
+                encode_time_ms,
             )
-        return results
+        return [result_map[i] for i in range(n)]
 
     # Bi-encoder batch path
     is_ft = is_finetuned_embedding_model(model_name)
     use_e5_prefix = ("e5" in model_name.lower() and not is_ft) or (is_ft and "e5" in model_name.lower())
-    q1_encoded = [f"query: {q}" if use_e5_prefix else q for q in q1s]
-    q2_encoded = [f"passage: {q}" if use_e5_prefix else q for q in q2s]
+    q1_encoded = [f"query: {q}" if use_e5_prefix else q for q in q1s_subset]
+    q2_encoded = [f"passage: {q}" if use_e5_prefix else q for q in q2s_subset]
 
-    # Batch encode all questions (GPU accelerated)
     emb1 = model.encode(q1_encoded, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
     emb2 = model.encode(q2_encoded, normalize_embeddings=True, batch_size=batch_size, show_progress_bar=False)
 
-    # Vectorized cosine similarity
     similarities = (emb1 * emb2).sum(axis=1)
 
-    # Vectorized sigmoid calibration
     steepness, midpoint = _get_sigmoid_params(model_name.lower())
     probs = 1.0 / (1.0 + np.exp(-steepness * (similarities - midpoint)))
     preds = (probs >= threshold).astype(int)
     prob_nons = 1.0 - probs
     encode_time_ms = (time.time() - start) * 1000
 
-    return [
-        _result_dict(
-            q1s[i],
-            q2s[i],
-            int(preds[i]),
-            float(probs[i]),
-            float(prob_nons[i]),
+    for j in range(n_subset):
+        orig_idx = non_identical_indices[j]
+        result_map[orig_idx] = _result_dict(
+            q1s[orig_idx],
+            q2s[orig_idx],
+            int(preds[j]),
+            float(probs[j]),
+            float(prob_nons[j]),
             threshold,
             model_name,
             device,
             encode_time_ms,
         )
-        for i in range(n)
-    ]
+    return [result_map[i] for i in range(n)]
 
 
 def get_ensemble_prediction(q1: str, q2: str, paths: Any = None) -> dict[str, Any]:

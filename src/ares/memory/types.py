@@ -95,3 +95,4 @@ class MemoryStats:
     oldest_entry: str = ""
     newest_entry: str = ""
     session_count: int = 0
+    eviction_count: int = 0

@@ -48,7 +48,7 @@ def render() -> None:
             columns=["Model Group", "Weight"],
         )
         st.bar_chart(weight_df.set_index("Model Group"))
-        st.dataframe(weight_df, use_container_width=True, hide_index=True)
+        st.dataframe(weight_df, width="stretch", hide_index=True)
 
         st.subheader("Feature Analysis")
         features = result["features"]
@@ -67,7 +67,7 @@ def render() -> None:
             ],
             columns=["Feature", "Value"],
         )
-        st.dataframe(feat_df, use_container_width=True, hide_index=True)
+        st.dataframe(feat_df, width="stretch", hide_index=True)
 
         st.subheader("Model Contributions")
         contrib = result.get("feature_breakdown", {})
@@ -83,6 +83,6 @@ def render() -> None:
                     for k, v in contrib.items()
                 ]
             )
-            st.dataframe(contrib_df, use_container_width=True, hide_index=True)
+            st.dataframe(contrib_df, width="stretch", hide_index=True)
 
         st.info(f"Reason: {result.get('reason', 'N/A')}")

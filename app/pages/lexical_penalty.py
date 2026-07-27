@@ -45,7 +45,7 @@ def render() -> None:
                     st.write(f"**{k}**: {sorted(v)}")
         with tab3:
             df = pd.DataFrame([{"Type": k, "Overlap": f"{v:.2%}"} for k, v in result.overlap_scores.items()])
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, width="stretch", hide_index=True)
 
         if result.penalties:
             st.subheader("Penalties Applied")

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -8,21 +10,38 @@ from duplicate_question_app._config.settings import AppPaths, get_app_paths, get
 from duplicate_question_app._models.week2 import check_week2_artifacts
 
 
+class ModelTier(Enum):
+    PRODUCTION = "production"
+    RESEARCH = "research"
+    LEGACY = "legacy"
+    EXPERIMENTAL = "experimental"
+
+
+class ModelHealthStatus(Enum):
+    READY = "ready"
+    MISSING = "missing"
+    CORRUPTED = "corrupted"
+    DOWNLOADING = "downloading"
+    DISABLED = "disabled"
+    UNSUPPORTED = "unsupported"
+
+
 @dataclass
 class ModelRegistryEntry:
-    display_name: str
-    internal_id: str
-    model_type: str
-    framework: str
-    source: str
-    version: str
-    local_path: str | None
-    cache_path: str | None
-    device: str
-    size_mb: float | None
-    load_status: str
-    is_loaded: bool
-    has_artifacts: bool
+    uid: str = ""
+    display_name: str = ""
+    internal_id: str = ""
+    model_type: str = ""
+    framework: str = ""
+    source: str = ""
+    version: str = ""
+    local_path: str | None = None
+    cache_path: str | None = None
+    device: str = "cpu"
+    size_mb: float | None = None
+    load_status: str = "missing"
+    is_loaded: bool = False
+    has_artifacts: bool = False
     parameters: str = "N/A"
     embedding_size: int | None = None
     hidden_size: int | None = None
@@ -35,6 +54,32 @@ class ModelRegistryEntry:
     f1_score: float | None = None
     precision: float | None = None
     recall: float | None = None
+    model_tier: str = "research"
+
+    def __post_init__(self) -> None:
+        if not self.uid:
+            self.uid = str(uuid.uuid4())
+
+
+def _map_health(status_str: str, has_artifacts: bool, is_loaded: bool) -> tuple[ModelHealthStatus, str]:
+    mapping = {
+        "available": ModelHealthStatus.READY,
+        "loaded": ModelHealthStatus.READY,
+        "missing": ModelHealthStatus.MISSING,
+        "downloading": ModelHealthStatus.DOWNLOADING,
+    }
+    status = mapping.get(status_str, ModelHealthStatus.MISSING)
+    if status == ModelHealthStatus.MISSING and has_artifacts:
+        status = ModelHealthStatus.CORRUPTED
+    if status == ModelHealthStatus.READY and not has_artifacts:
+        status = ModelHealthStatus.CORRUPTED
+        return status, "artifacts missing or incomplete"
+    reasons = {
+        "missing": "model artifacts not found on disk or cache",
+        "corrupted": "artifacts exist but are incomplete or corrupted",
+        "downloading": "model will be auto-downloaded on first use",
+    }
+    return status, reasons.get(status.value, "")
 
 
 def _get_directory_size_mb(path: Path | None) -> float | None:
@@ -110,6 +155,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="TF-IDF + Logistic Regression (Week 2)",
             internal_id="week2_lr",
+            model_tier="legacy",
             model_type="classical-ml",
             framework="joblib",
             source="local",
@@ -134,6 +180,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="TF-IDF + Linear SVM (Week 2)",
             internal_id="week2_svm",
+            model_tier="legacy",
             model_type="classical-ml",
             framework="joblib",
             source="local",
@@ -160,6 +207,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="DistilBERT (Week 3)",
             internal_id="week3",
+            model_tier="production",
             model_type="transformer",
             framework="pytorch",
             source="local",
@@ -188,6 +236,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="Improved DistilBERT (Week 4)",
             internal_id="week4",
+            model_tier="production",
             model_type="transformer",
             framework="pytorch",
             source="local",
@@ -215,6 +264,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="BGE-base-en-v1.5",
             internal_id="bge",
+            model_tier="research",
             model_type="bi-encoder",
             framework="sentence-transformers",
             source="huggingface",
@@ -242,6 +292,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="E5-base-v2",
             internal_id="e5",
+            model_tier="experimental",
             model_type="bi-encoder",
             framework="sentence-transformers",
             source="huggingface",
@@ -268,6 +319,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="E5-quora-finetuned",
             internal_id="e5_ft",
+            model_tier="research",
             model_type="bi-encoder",
             framework="sentence-transformers",
             source="local",
@@ -295,6 +347,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="MPNet-base-v2",
             internal_id="mpnet",
+            model_tier="research",
             model_type="bi-encoder",
             framework="sentence-transformers",
             source="huggingface",
@@ -322,6 +375,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="DeBERTa-v3 Cross-Encoder",
             internal_id="deberta",
+            model_tier="experimental",
             model_type="cross-encoder",
             framework="sentence-transformers",
             source="huggingface",
@@ -349,6 +403,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="Cross-Encoder-Quora (Trained)",
             internal_id="ce_quora",
+            model_tier="production",
             model_type="cross-encoder",
             framework="sentence-transformers",
             source="local",
@@ -375,6 +430,7 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
         ModelRegistryEntry(
             display_name="Semantic Ensemble",
             internal_id="ensemble",
+            model_tier="experimental",
             model_type="ensemble",
             framework="ensemble",
             source="built-in",
@@ -393,6 +449,9 @@ def build_registry(paths: AppPaths | None = None) -> list[ModelRegistryEntry]:
             recommended_use="Default choice for all predictions. Highest quality.",
         )
     )
+
+    for entry in entries:
+        entry.health_status, entry.health_reason = _map_health(entry.load_status, entry.has_artifacts, entry.is_loaded)
 
     return entries
 

@@ -22,13 +22,13 @@ class AresGrpcService:
         threshold: float | None = None,
         reflect: bool | None = None,
     ) -> dict[str, Any]:
-        engine = (
-            self._engine.with_model(model or "Week 4 Improved DistilBERT")
-            .with_threshold(threshold or 0.5)
-            .with_reflection(reflect if reflect is not None else True)
-        )
+        engine = self._engine.with_model(model or "").with_threshold(threshold or 0.5)
+        if reflect is not None:
+            engine = engine.with_reflection(reflect)
         result = engine.predict(question1, question2)
-        return result.raw if result.raw else result.to_dict()
+        d = result.to_dict()
+        d.pop("explanations", None)
+        return d
 
     def predict(
         self,
@@ -50,7 +50,7 @@ class AresGrpcService:
             "prob_non_duplicate": result.get("prob_non_duplicate", 0.0),
             "confidence": result.get("confidence", 0.0),
             "threshold": result.get("threshold", 0.5),
-            "model_label": result.get("model_label", ""),
+            "model_label": result.get("model_name", ""),
             "latency_ms": result.get("latency_ms", elapsed),
             "trust_score": result.get("trust_score"),
             "trust_level": result.get("trust_level", "unknown"),
@@ -59,10 +59,7 @@ class AresGrpcService:
             "request_id": "",
         }
 
-    def predict_batch(
-        self,
-        requests: list[dict[str, Any]],
-    ) -> dict[str, Any]:
+    def predict_batch(self, requests: list[dict[str, Any]]) -> dict[str, Any]:
         start = time.time()
         results = []
         successes = 0
@@ -109,48 +106,7 @@ class AresGrpcService:
             "components": components,
         }
 
-    def version(self) -> dict[str, Any]:
-        import platform
-        import sys
-
-        return {
-            "version": "0.2.0",
-            "api_version": "1.0.0",
-            "python_version": sys.version.split()[0],
-            "platform": platform.platform(),
-        }
-
-    def system_info(self) -> dict[str, Any]:
-        import os
-        import platform
-        import sys
-
-        import psutil
-        import torch
-
-        gpu_available = torch.cuda.is_available()
-        return {
-            "version": "0.2.0",
-            "python_version": sys.version.split()[0],
-            "platform": platform.platform(),
-            "cpu_cores": os.cpu_count() or 0,
-            "memory_gb": round(psutil.virtual_memory().total / (1024**3), 1),
-            "gpu_available": gpu_available,
-            "gpu_name": torch.cuda.get_device_name(0) if gpu_available else "",
-            "torch_version": torch.__version__,
-        }
-
-    def run_pipeline(
-        self,
-        question1: str,
-        question2: str,
-        enable_perception: bool = True,
-        enable_routing: bool = True,
-        enable_memory: bool = True,
-        enable_semantic: bool = True,
-        enable_reasoning: bool = True,
-        enable_debate: bool = True,
-    ) -> dict[str, Any]:
+    def run_pipeline(self, question1: str, question2: str, **kwargs: Any) -> dict[str, Any]:
         start = time.time()
         prediction = self._engine.predict(question1, question2)
         elapsed = (time.time() - start) * 1000
@@ -163,65 +119,11 @@ class AresGrpcService:
             "error": "",
         }
 
-    def run_reflection(
-        self,
-        question1: str,
-        question2: str,
-        prediction: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
+    def run_reflection(self, question1: str, question2: str, prediction: dict | None = None) -> dict[str, Any]:
         result = self._engine.predict(question1, question2)
         return {
             "trust_score": result.trust_score or 0.0,
             "trust_level": result.trust_level or "unknown",
             "risk_level": result.risk_level or "unknown",
             "confidence": result.confidence,
-            "explanation": str(result.explanations) if result.explanations else "",
-            "recommendations": result.recommendations,
         }
-
-    def search_memory(
-        self,
-        query: str,
-        limit: int = 10,
-        memory_type: str | None = None,
-    ) -> list[dict[str, Any]]:
-        entries: list[dict[str, Any]] = []
-        try:
-            from duplicate_question_app._memory.memory_manager import MemoryManager
-
-            mm = MemoryManager()
-            results = mm.search_text(query, limit=limit)
-            for e in results.entries:
-                entries.append(
-                    {
-                        "id": str(getattr(e, "id", "")),
-                        "type": str(getattr(e, "type", memory_type or "unknown")),
-                        "content_json": str(getattr(e, "content", {})),
-                        "confidence": float(getattr(e, "confidence", 0.0)),
-                        "created_at": int(
-                            time.mktime(getattr(e, "created_at", __import__("datetime").datetime.now()).timetuple())
-                        ),
-                    }
-                )
-        except Exception as e:
-            logger.warning("gRPC memory search failed: %s", e)
-        return entries
-
-    def list_plugins(self) -> list[dict[str, Any]]:
-        plugins: list[dict[str, Any]] = []
-        try:
-            from ares.plugins.manager import PluginManager
-
-            pm = PluginManager()
-            for p in pm.list():
-                plugins.append(
-                    {
-                        "id": getattr(p, "plugin_id", ""),
-                        "name": getattr(p, "name", ""),
-                        "version": getattr(p, "version", ""),
-                        "status": str(getattr(p, "status", "unknown")),
-                    }
-                )
-        except Exception as e:
-            logger.warning("gRPC plugin list failed: %s", e)
-        return plugins

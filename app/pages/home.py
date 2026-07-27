@@ -162,7 +162,7 @@ def _render_model_registry(registry: list) -> None:
     reg_df = pd.DataFrame(reg_data)
     st.dataframe(
         reg_df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "Status": st.column_config.TextColumn("Status", width="small"),

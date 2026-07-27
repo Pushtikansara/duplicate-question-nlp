@@ -50,7 +50,7 @@ def render() -> None:
                         for n in q1_negs
                     ]
                 )
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width="stretch", hide_index=True)
             else:
                 st.info("No negations detected in Question 1")
 
@@ -68,6 +68,6 @@ def render() -> None:
                         for n in q2_negs
                     ]
                 )
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width="stretch", hide_index=True)
             else:
                 st.info("No negations detected in Question 2")

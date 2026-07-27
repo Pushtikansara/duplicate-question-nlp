@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -25,6 +26,9 @@ class Event:
     severity: EventSeverity = EventSeverity.INFO
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     trace_id: str = ""
+
+
+logger = logging.getLogger(__name__)
 
 
 class EventBus:
@@ -122,8 +126,8 @@ class EventBus:
                             result[attr] = val.isoformat()
                         else:
                             result[attr] = str(val)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.warning("Failed to serialize attribute '%s': %s", attr, exc)
             return result
         return str(v)
 
@@ -156,8 +160,8 @@ class EventBus:
                         data[attr] = val.isoformat()
                     else:
                         data[attr] = str(val)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Failed to normalize attribute '%s': %s", attr, exc)
 
         severity = EventSeverity.ERROR if getattr(event, "error", None) else EventSeverity.INFO
         trace_id = getattr(event, "trace_id", "")

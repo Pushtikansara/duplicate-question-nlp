@@ -48,7 +48,7 @@ def render() -> None:
 
         st.subheader("Model Votes")
         vote_df = pd.DataFrame(dashboard.model_votes)
-        st.dataframe(vote_df, use_container_width=True, hide_index=True)
+        st.dataframe(vote_df, width="stretch", hide_index=True)
 
         if dashboard.models_disagreeing:
             st.warning(f"Models disagreeing: {', '.join(dashboard.models_disagreeing)}")
@@ -57,4 +57,4 @@ def render() -> None:
 
         st.subheader("Calibration Status")
         cal_df = pd.DataFrame(list(dashboard.calibration_status.items()), columns=["Model", "Status"])
-        st.dataframe(cal_df, use_container_width=True, hide_index=True)
+        st.dataframe(cal_df, width="stretch", hide_index=True)

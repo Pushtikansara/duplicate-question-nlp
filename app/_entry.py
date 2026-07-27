@@ -28,7 +28,7 @@ from app.pages import (
     render_advanced_calibration,
     render_advanced_explainability,
     render_agreement_dashboard,
-    render_ares_demo,
+    render_ares_dashboard,
     render_batch_prediction,
     render_contradiction_detection,
     render_dataset,
@@ -71,7 +71,7 @@ _ROUTE_RENDER_MAP: dict[str, tuple[str, object]] = {
     "Model Manager": ("🔗 Model Manager", render_model_manager),
     "Semantic Debugger": ("🐛 Semantic Debugger", render_semantic_debugger),
     "Dataset Information": ("📋 Dataset Info", render_dataset),
-    "ARES Demo": ("🤖 ARES Demo", render_ares_demo),
+    "ARES Dashboard": ("🧠 ARES Dashboard", render_ares_dashboard),
 }
 
 _QUERY_PARAM_MODEL = "selected_model"
@@ -102,10 +102,41 @@ def _sync_model_from_query() -> None:
 
 
 def main() -> None:
+    # ------------------------------------------------------------------
+    # 1. Bootstrap: initialise the application context exactly once.
+    #    This is the single place where AppPaths is created for the
+    #    Streamlit process.  Every downstream consumer (sidebar, pages,
+    #    services, ARES backends) receives the same paths object.
+    # ------------------------------------------------------------------
+    from app.context import ApplicationContext, initialize_context, render_startup_report
+    from app.utils.constants import PROJECT_ROOT as _BOOT_ROOT
+
+    if "app_context" not in st.session_state:
+        from duplicate_question_app._config.settings import get_app_paths
+
+        _paths = get_app_paths(_BOOT_ROOT)
+        ctx: ApplicationContext = initialize_context(paths=_paths, validate=True)
+        if ctx.has_errors():
+            render_startup_report(ctx)
+
+    # ------------------------------------------------------------------
+    # 2. Session state defaults
+    # ------------------------------------------------------------------
     _init_session_state()
+
+    # ------------------------------------------------------------------
+    # 3. Query parameter sync
+    # ------------------------------------------------------------------
     _sync_model_from_query()
+
+    # ------------------------------------------------------------------
+    # 4. Sidebar navigation
+    # ------------------------------------------------------------------
     page = sidebar_navigation()
 
+    # ------------------------------------------------------------------
+    # 5. Page rendering
+    # ------------------------------------------------------------------
     if page in _ROUTE_RENDER_MAP:
         display_name, render_fn = _ROUTE_RENDER_MAP[page]
         _safe_render(render_fn, display_name)

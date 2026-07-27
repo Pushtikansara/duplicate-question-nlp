@@ -2,5 +2,3 @@
 # Environment overrides: DQD_<KEY>
 
 default_model: "Improved DistilBERT (Week 4)"
-default_threshold: 0.5
-device: "cpu"

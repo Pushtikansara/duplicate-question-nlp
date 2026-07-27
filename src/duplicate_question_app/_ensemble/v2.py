@@ -19,12 +19,8 @@ import numpy as np
 from app.services.cache import cached_preprocessing
 from app.services.cache import get_cache as get_global_cache
 from duplicate_question_app._config.settings import (
-    MODEL_CHOICES,
     AppPaths,
     get_app_paths,
-    is_cross_encoder_model,
-    is_ensemble_model,
-    is_sentence_transformer_model,
 )
 from duplicate_question_app._ensemble.agreement import collect_all_votes
 from duplicate_question_app._ensemble.v1 import compute_adaptive_weights
@@ -33,7 +29,6 @@ from duplicate_question_app._linguistics.entity import get_entity_penalty
 from duplicate_question_app._linguistics.intent import intent_mismatch_penalty
 from duplicate_question_app._linguistics.lexical import get_lexical_penalty
 from duplicate_question_app._linguistics.negation import get_negation_penalty
-from duplicate_question_app._models.week2 import is_week2_model
 
 
 def cached_normalize(text: str, expand_abbrevs: bool = True) -> str:
@@ -319,20 +314,24 @@ def adaptive_ensemble_predict(
     # Get all model predictions
     predictions = get_model_predictions_batch(q1, q2, paths)
 
-    # Group predictions by model type — built dynamically from MODEL_CHOICES
+    # Group predictions by model type — built dynamically from registry model_type
+    from duplicate_question_app._models.registry import build_registry
+
     tfidf_models: dict[str, float] = {}
     transformer_models: dict[str, float] = {}
     embedding_models: dict[str, float] = {}
     cross_encoder_models: dict[str, float] = {}
-    for m_name in MODEL_CHOICES:
-        if is_week2_model(m_name) and not is_ensemble_model(m_name):
-            tfidf_models[m_name] = 0.0
-        elif is_sentence_transformer_model(m_name) and not is_ensemble_model(m_name):
-            embedding_models[m_name] = 0.0
-        elif is_cross_encoder_model(m_name) and not is_ensemble_model(m_name):
-            cross_encoder_models[m_name] = 0.0
-        elif not is_ensemble_model(m_name):
-            transformer_models[m_name] = 0.0
+    for entry in build_registry(paths):
+        if entry.model_type == "ensemble":
+            continue
+        target = {
+            "classical-ml": tfidf_models,
+            "transformer": transformer_models,
+            "bi-encoder": embedding_models,
+            "cross-encoder": cross_encoder_models,
+        }.get(entry.model_type)
+        if target is not None:
+            target[entry.display_name] = 0.0
 
     # Fill in predictions
     for model_name, (_label, prob) in predictions.items():

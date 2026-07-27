@@ -21,7 +21,15 @@ class PredictAgent(Agent):
         name="Prediction Agent",
         version="1.0",
         description="Makes duplicate question predictions using the ARES inference engine",
-        capabilities=frozenset({AgentCapability.PREDICTION, AgentCapability.SEMANTIC_UNDERSTANDING}),
+        capabilities=frozenset(
+            {
+                AgentCapability.PREDICTION,
+                AgentCapability.SEMANTIC_UNDERSTANDING,
+                AgentCapability.MONITORING,
+                AgentCapability.INTENT_ANALYSIS,
+                AgentCapability.CONFLICT_DETECTION,
+            }
+        ),
         timeout_seconds=60.0,
         max_retries=2,
     )
