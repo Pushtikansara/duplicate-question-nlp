@@ -38,11 +38,9 @@ import matplotlib
 from duplicate_question_app._calibration.v2 import (
     CalibrationMethod,
     calibrate_predictions,
-)
-from duplicate_question_app._calibration.v2 import evaluate_calibration as eval_cal
-from duplicate_question_app._calibration.v2 import (
     get_calibration_curve_data,
 )
+from duplicate_question_app._calibration.v2 import evaluate_calibration as eval_cal
 from duplicate_question_app._config.settings import get_app_paths, get_config
 from duplicate_question_app._dataset.loader import get_quora_splits
 from duplicate_question_app._inference.transformer import (
