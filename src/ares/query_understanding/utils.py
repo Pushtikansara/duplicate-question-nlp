@@ -3,7 +3,13 @@ from __future__ import annotations
 import re
 import unicodedata
 
-import emoji as emoji_lib
+try:
+    import emoji as emoji_lib
+
+    _HAS_EMOJI = True
+except ImportError:
+    emoji_lib = None  # type: ignore[assignment]
+    _HAS_EMOJI = False
 
 _URL_PATTERN = re.compile(
     r"https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?::\d+)?"
@@ -334,7 +340,9 @@ def contains_code(text: str) -> bool:
 
 
 def contains_emoji(text: str) -> bool:
-    return bool(emoji_lib.emoji_count(text)) or bool(_EMOJI_PATTERN.search(text))
+    if _HAS_EMOJI:
+        return bool(emoji_lib.emoji_count(text)) or bool(_EMOJI_PATTERN.search(text))
+    return bool(_EMOJI_PATTERN.search(text))
 
 
 def contains_number(text: str) -> bool:
