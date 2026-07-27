@@ -368,7 +368,6 @@ def is_stopword(word: str) -> bool:
 def repeated_char_ratio(text: str) -> float:
     if not text:
         return 0.0
-    matches = _REPEATED_CHAR.findall(text)
     repeated_count = sum(max(0, len(m.group()) - 3) for m in _REPEATED_CHAR.finditer(text))
     return repeated_count / len(text) if text else 0.0
 

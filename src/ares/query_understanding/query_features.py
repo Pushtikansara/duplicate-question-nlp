@@ -165,7 +165,6 @@ STOPWORDS = frozenset(
 def extract_question_metadata(text: str) -> QuestionMetadata:
     tokens = tokenize(text)
     sentences = sentencize(text)
-    total_syllables = sum(count_syllables(w) for w in tokens)
     total_sentences = len(sentences)
 
     avg_word_len = statistics.mean([len(w) for w in tokens]) if tokens else 0.0

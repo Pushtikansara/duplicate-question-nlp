@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import time
 from datetime import datetime
 
+from ares.query_understanding.complexity_analyzer import ComplexityAnalyzer
 from ares.query_understanding.entity_detector import EntityDetector
 from ares.query_understanding.query_features import (
     extract_complexity,
@@ -14,6 +16,7 @@ from ares.query_understanding.query_features import (
 )
 from ares.query_understanding.query_models import QueryAnalysis
 from ares.query_understanding.question_type_detector import QuestionTypeDetector
+from ares.query_understanding.relationship_analyzer import RelationshipAnalyzer
 from ares.query_understanding.utils import (
     detect_language,
     normalize_text,
@@ -27,13 +30,13 @@ class QueryAnalyzer:
     def __init__(self) -> None:
         self._type_detector = QuestionTypeDetector()
         self._entity_detector = EntityDetector()
+        self._relationship_analyzer = RelationshipAnalyzer()
+        self._complexity_analyzer = ComplexityAnalyzer()
 
     def analyze(self, question_1: str, question_2: str) -> QueryAnalysis:
         start = time.time()
-        try:
+        with contextlib.suppress(TypeError, ValueError):
             validate_input(question_1, question_2)
-        except (TypeError, ValueError):
-            pass
 
         normalized_1 = normalize_text(question_1) if isinstance(question_1, str) else ""
         normalized_2 = normalize_text(question_2) if isinstance(question_2, str) else ""
@@ -76,6 +79,21 @@ class QueryAnalyzer:
 
         entity_analysis = self._entity_detector.detect(question_1, question_2)
 
+        relationship_analysis = self._relationship_analyzer.analyze(
+            question_1,
+            question_2,
+        )
+
+        complexity_analysis = self._complexity_analyzer.analyze(
+            question_1=question_1,
+            question_2=question_2,
+            metadata_1=metadata_1,
+            metadata_2=metadata_2,
+            similarity=similarity,
+            entity_analysis=entity_analysis,
+            relationship_analysis=relationship_analysis,
+        )
+
         elapsed = round((time.time() - start) * 1000, 2)
 
         return QueryAnalysis(
@@ -100,4 +118,6 @@ class QueryAnalyzer:
             version=self.version,
             question_type=question_type,
             entity_analysis=entity_analysis,
+            relationship_analysis=relationship_analysis,
+            complexity_analysis=complexity_analysis,
         )

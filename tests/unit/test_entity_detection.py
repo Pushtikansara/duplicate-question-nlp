@@ -275,7 +275,6 @@ class TestEntityDetector:
             "Compare Paris and London",
         )
         types_q1 = {e.entity_type for e in result.entities_1}
-        types_q2 = {e.entity_type for e in result.entities_2}
         assert "COUNTRY" in types_q1 or "CITY" in types_q1
 
     def test_full_pipeline_result(self):

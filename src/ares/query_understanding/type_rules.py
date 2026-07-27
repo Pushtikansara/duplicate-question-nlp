@@ -19,7 +19,6 @@ def classify_question(text: str, normalized: str = "") -> tuple[str, float, str]
     if not text or not text.strip():
         return "other", 0.0, "empty input"
 
-    raw = text
     txt = normalized if normalized else text.strip().lower()
     tokens = tokenize(txt)
     first_word = tokens[0].lower().strip("""'""") if tokens else ""

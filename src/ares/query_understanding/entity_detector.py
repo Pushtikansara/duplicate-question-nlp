@@ -62,7 +62,6 @@ class EntityDetector:
             return {"overall": 0.0, "exact": 0.0, "partial": 0.0}
 
         base_score = (exact + partial * 0.5) / max(total_unique / 2, 1)
-        overlap_ratio = (exact + partial) / max(total_unique / 2, 1)
         overall = min(1.0, base_score * 1.5)
 
         return {

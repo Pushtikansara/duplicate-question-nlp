@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from ares.query_understanding.complexity_models import ComplexityAnalysis
 from ares.query_understanding.entity_models import EntityResult
+from ares.query_understanding.relationship_models import RelationshipAnalysis
 from ares.query_understanding.type_models import QuestionTypeResult
 
 
@@ -119,10 +121,16 @@ class QueryAnalysis:
 
     entity_analysis: EntityResult = field(default_factory=EntityResult)
 
+    relationship_analysis: RelationshipAnalysis = field(default_factory=RelationshipAnalysis)
+
+    complexity_analysis: ComplexityAnalysis = field(default_factory=ComplexityAnalysis)
+
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["question_type"] = self.question_type.to_dict()
         d["entity_analysis"] = self.entity_analysis.to_dict()
+        d["relationship_analysis"] = self.relationship_analysis.to_dict()
+        d["complexity_analysis"] = self.complexity_analysis.to_dict()
         return d
 
     def to_json(self) -> str:
@@ -135,6 +143,8 @@ class QueryAnalysis:
         similarity = QuestionSimilarityFeatures(**data.get("similarity", {}))
         question_type = QuestionTypeResult.from_dict(data.get("question_type", {}))
         entity_analysis = EntityResult.from_dict(data.get("entity_analysis", {}))
+        relationship_analysis = RelationshipAnalysis.from_dict(data.get("relationship_analysis", {}))
+        complexity_analysis = ComplexityAnalysis.from_dict(data.get("complexity_analysis", {}))
         metadata_1 = QuestionMetadata(**data.get("metadata_1", {}))
         metadata_2 = QuestionMetadata(**data.get("metadata_2", {}))
         token_stats_1 = TokenStatistics(**data.get("token_stats_1", {}))
@@ -168,4 +178,6 @@ class QueryAnalysis:
             version=data.get("version", "1.0.0"),
             question_type=question_type,
             entity_analysis=entity_analysis,
+            relationship_analysis=relationship_analysis,
+            complexity_analysis=complexity_analysis,
         )

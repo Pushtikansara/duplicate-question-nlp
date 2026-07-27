@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from ares.orchestration.cancellation import CancellationToken
+from ares.tools.exceptions import ToolNotFoundError
 from ares.tools.manager import ToolManager
 from ares.tools.registry import ToolRegistry
 from ares.tools.types import (
@@ -32,7 +33,7 @@ class TestToolManager:
 
     async def test_invoke_not_found(self):
         manager = ToolManager()
-        with pytest.raises(Exception):
+        with pytest.raises(ToolNotFoundError):
             await manager.invoke_tool("nonexistent", {})
 
     async def test_invoke_with_agent_and_trace(self, success_tool):

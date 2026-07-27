@@ -15,15 +15,14 @@ def match_entities(
     used_2: set[int] = set()
     matches: list[EntityPairMatch] = []
 
-    for i, e1 in enumerate(entities_1):
+    for _i, e1 in enumerate(entities_1):
         best_match: tuple[int, float, str] | None = None
         for j, e2 in enumerate(entities_2):
             if j in used_2:
                 continue
             match_type, score = _compare_entities(e1, e2)
-            if score > 0:
-                if best_match is None or score > best_match[1]:
-                    best_match = (j, score, match_type)
+            if score > 0 and (best_match is None or score > best_match[1]):
+                best_match = (j, score, match_type)
 
         if best_match is not None:
             j, score, match_type = best_match
@@ -98,11 +97,13 @@ def _is_abbreviation(a: str, b: str) -> bool:
                 return True
 
     short, long = (a_clean, b_clean) if len(a_clean) <= len(b_clean) else (b_clean, a_clean)
-    if len(short) >= 2 and len(long) >= 4:
-        if short[0] == long[0] and short[-1] == long[-1]:
-            if set(short).issubset(set(long)):
-                return True
-    return False
+    return bool(
+        len(short) >= 2
+        and len(long) >= 4
+        and short[0] == long[0]
+        and short[-1] == long[-1]
+        and set(short).issubset(set(long))
+    )
 
 
 def _is_partial_match(a: str, b: str) -> bool:

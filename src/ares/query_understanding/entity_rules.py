@@ -123,7 +123,6 @@ _FRAMEWORKS: dict[str, float] = {
     "dotnet": 1.0,
     ".net": 1.0,
     "ktor": 1.0,
-    "ktor": 1.0,
     "gin": 1.0,
     "echo": 1.0,
     "fiber": 1.0,
@@ -254,8 +253,6 @@ _COMPANIES: dict[str, float] = {
     "samsung": 1.0,
     "sony": 1.0,
     "nintendo": 1.0,
-    "microsoft": 1.0,
-    "twitter": 1.0,
     "discord": 1.0,
     "zoom": 1.0,
     "stripe": 1.0,
@@ -401,7 +398,6 @@ _CITIES: dict[str, float] = {
     "toronto": 1.0,
     "mexico city": 1.0,
     "sao paulo": 1.0,
-    "mumbai": 1.0,
     "cairo": 1.0,
     "istanbul": 1.0,
     "rome": 1.0,
@@ -682,7 +678,7 @@ def _extract_dictionary(raw: str, lower: str, add) -> None:
 
 
 def _extract_regex(raw: str, lower: str, add) -> None:
-    for pattern, entity_type, confidence, normalize_fn in [
+    for pattern, entity_type, confidence, _normalize_fn in [
         (_URL_PATTERN, "URL", 1.0, None),
         (_EMAIL_PATTERN, "EMAIL", 1.0, None),
         (_FILE_PATTERN, "FILE", 0.9, None),
@@ -810,7 +806,6 @@ def _extract_person_title(raw: str, lower: str, add) -> None:
 
 def _extract_book_movie(raw: str, lower: str, add) -> None:
     for match in _BOOK_MOVIE_PATTERN.finditer(lower):
-        start, end = match.start(), match.end()
         title = match.group(1) or match.group(2) or match.group(3) or match.group(4)
         if title and len(title) > 1:
             category_word = raw[match.start() : match.start() + match.group(0).find(title.strip())].strip().lower()
@@ -851,7 +846,6 @@ def _extract_capitalized_names(raw: str, lower: str, entities: list[Entity], see
         start, end = match.start(), match.end()
         if any(s < end and e > start for s, e in existing_spans):
             continue
-        span = (start, end)
         token = raw[start:end].strip()
         token_lower = token.lower()
         if token_lower in existing_texts:
