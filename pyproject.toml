@@ -163,6 +163,7 @@ ignore = [
     "UP007", # non-pep604 typing
     "B008",  # function call in default args
     "SIM117", # nested with statements (preserves context manager cleanup order)
+    "I",     # isort handles import organization in pre-commit
 ]
 
 [tool.ruff.format]

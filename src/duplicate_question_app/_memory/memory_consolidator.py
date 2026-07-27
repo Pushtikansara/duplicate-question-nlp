@@ -94,7 +94,7 @@ class DefaultMemoryConsolidator(MemoryConsolidator):
 
         key_parts.extend(sorted(entry.tags))
         raw = "|".join(key_parts)
-        return hashlib.md5(raw.encode()).hexdigest()
+        return hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()
 
     def _merge_episodic(self, group: list[MemoryEntry]) -> MemoryEntry:
         best = max(group, key=lambda e: (e.confidence, e.quality_score))

@@ -55,6 +55,8 @@ class ModelRegistryEntry:
     precision: float | None = None
     recall: float | None = None
     model_tier: str = "research"
+    health_status: ModelHealthStatus = ModelHealthStatus.MISSING
+    health_reason: str = ""
 
     def __post_init__(self) -> None:
         if not self.uid:
