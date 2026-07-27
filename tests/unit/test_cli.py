@@ -66,7 +66,7 @@ class TestCLI:
         fake_result.model_name = "test"
         fake_result.latency_ms = 1.0
         with patch.object(sys, "argv", ["dqd-predict", fname]):
-            with patch("duplicate_question_app.cli.InferenceDispatcher.predict", return_value=fake_result):
+            with patch("ares.inference.dispatcher.InferenceDispatcher.predict", return_value=fake_result):
                 from duplicate_question_app.cli import predict
 
                 predict()
