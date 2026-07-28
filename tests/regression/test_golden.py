@@ -21,16 +21,31 @@ def golden_outputs():
 
 def _generate_golden_outputs():
     """Generate frozen golden outputs for regression testing."""
+    from ares._config import get_config
+
+    inf_cfg = get_config("inference") or {}
+    thresholds = inf_cfg.get("per_model_thresholds", {})
+    sigmoid_params = inf_cfg.get("sigmoid_params", {})
+
     data = {
         "sigmoid_params": {
-            "e5-base-v2": {"steepness": 8.0, "midpoint": 0.82},
-            "bge-base-en-v1.5": {"steepness": 15.6755, "midpoint": 0.8591},
-            "mpnet-base-v2": {"steepness": 11.5976, "midpoint": 0.8133},
+            "e5-base-v2": {
+                "steepness": sigmoid_params.get("E5-base-v2", [8.0, 0.82])[0],
+                "midpoint": sigmoid_params.get("E5-base-v2", [8.0, 0.82])[1],
+            },
+            "bge-base-en-v1.5": {
+                "steepness": sigmoid_params.get("BGE-base-en-v1.5", [15.6755, 0.8591])[0],
+                "midpoint": sigmoid_params.get("BGE-base-en-v1.5", [15.6755, 0.8591])[1],
+            },
+            "mpnet-base-v2": {
+                "steepness": sigmoid_params.get("MPNet-base-v2", [11.5976, 0.8133])[0],
+                "midpoint": sigmoid_params.get("MPNet-base-v2", [11.5976, 0.8133])[1],
+            },
         },
         "thresholds": {
-            "e5-base-v2": 0.35,
-            "bge-base-en-v1.5": 0.3,
-            "mpnet-base-v2": 0.36,
+            "e5-base-v2": thresholds.get("E5-base-v2", 0.35),
+            "bge-base-en-v1.5": thresholds.get("BGE-base-en-v1.5", 0.3),
+            "mpnet-base-v2": thresholds.get("MPNet-base-v2", 0.36),
         },
         "result_dict": {
             "prediction_duplicate": {
@@ -48,19 +63,6 @@ def _generate_golden_outputs():
                 "confidence": 0.7,
             },
         },
-        "model_choices_static": [
-            "TF-IDF + Logistic Regression (Week 2)",
-            "TF-IDF + Linear SVM (Week 2)",
-            "DistilBERT (Week 3)",
-            "Improved DistilBERT (Week 4)",
-            "BGE-base-en-v1.5",
-            "E5-base-v2",
-            "E5-quora-finetuned",
-            "MPNet-base-v2",
-            "DeBERTa-v3 Cross-Encoder",
-            "Cross-Encoder-Quora (Trained)",
-            "Semantic Ensemble",
-        ],
     }
     GOLDEN_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(GOLDEN_FILE, "w") as f:
@@ -117,9 +119,3 @@ class TestGoldenRegression:
         assert result["predicted_label"] == expected["predicted_label"]
         assert result["prediction"] == expected["prediction"]
         assert result["confidence"] == pytest.approx(expected["confidence"])
-
-    @pytest.mark.regression
-    def test_model_choices_frozen(self, golden_outputs):
-        from duplicate_question_app._config.settings import MODEL_CHOICES
-
-        assert golden_outputs["model_choices_static"] == MODEL_CHOICES

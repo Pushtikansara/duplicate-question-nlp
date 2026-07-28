@@ -14,7 +14,7 @@ _model_cache: dict[str, Any] = {}
 _model_load_times: dict[str, float] = {}
 _model_load_errors: dict[str, str] = {}
 
-MAX_CACHED_MODELS = 3
+MAX_CACHED_MODELS = 20
 
 
 def get_cached_model(model_name: str) -> Any:

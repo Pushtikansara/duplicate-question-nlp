@@ -12,6 +12,7 @@ concurrency:
 
 env:
   PYTHONUNBUFFERED: "1"
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
 
 jobs:
   test:
@@ -41,9 +42,21 @@ jobs:
         run: |
           pip install -e . --no-build-isolation
           pip install pytest pytest-cov pytest-asyncio tabulate
+          pip install scikit-learn joblib
 
       - name: Verify editable install
         run: python -c "import duplicate_question_app; print(duplicate_question_app.__version__)"
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: hf-cache-${{ hashFiles('configs/models.yaml') }}
+          restore-keys: |
+            hf-cache-
+
+      - name: Set up CI model artifacts
+        run: python scripts/setup_ci_models.py
 
       - name: Run unit tests
         run: python -m pytest tests/unit/ -m "not slow and not gpu" -q --tb=short --no-header
