@@ -101,6 +101,10 @@ def __getattr__(name: str) -> Any:
 
             _PATHS = get_app_paths(PROJECT_ROOT)
         return _PATHS
+    if name == "get_app_paths":
+        from duplicate_question_app._config.settings import get_app_paths
+
+        return get_app_paths
     msg = f"module {__name__!r} has no attribute {name!r}"
     raise AttributeError(msg)
 
