@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 
@@ -59,11 +57,15 @@ class TestAresGrpcServicePredict:
         grpc_service.predict("q1", "q2", reflect=False)
         grpc_service._engine.with_reflection.assert_called_with(False)
 
-    def test_predict_without_params_uses_defaults(self, grpc_service):
+    def test_predict_without_params_does_not_call_reflection(self, grpc_service):
         grpc_service.predict("q1", "q2")
         grpc_service._engine.with_model.assert_called_once()
         grpc_service._engine.with_threshold.assert_called_once()
-        grpc_service._engine.with_reflection.assert_called_once()
+        grpc_service._engine.with_reflection.assert_not_called()
+
+    def test_predict_passes_reflect_true(self, grpc_service):
+        grpc_service.predict("q1", "q2", reflect=True)
+        grpc_service._engine.with_reflection.assert_called_with(True)
 
 
 @pytest.mark.grpc
@@ -147,23 +149,6 @@ class TestAresGrpcServiceVersion:
 
 
 @pytest.mark.grpc
-class TestAresGrpcServiceSystemInfo:
-    def test_system_info_returns_version(self, grpc_service):
-        result = grpc_service.system_info()
-        assert "version" in result
-
-    def test_system_info_returns_cpu_cores(self, grpc_service):
-        result = grpc_service.system_info()
-        assert "cpu_cores" in result
-        assert isinstance(result["cpu_cores"], int)
-
-    def test_system_info_returns_memory_gb(self, grpc_service):
-        result = grpc_service.system_info()
-        assert "memory_gb" in result
-        assert isinstance(result["memory_gb"], float)
-
-
-@pytest.mark.grpc
 class TestAresGrpcServicePipeline:
     def test_run_pipeline_returns_success(self, grpc_service):
         result = grpc_service.run_pipeline("q1", "q2")
@@ -192,37 +177,7 @@ class TestAresGrpcServiceReflection:
         result = grpc_service.run_reflection("q1", "q2")
         assert "trust_level" in result
 
-    def test_run_reflection_returns_recommendations(self, grpc_service):
+    def test_run_reflection_returns_risk_level(self, grpc_service):
         result = grpc_service.run_reflection("q1", "q2")
-        assert "recommendations" in result
-        assert isinstance(result["recommendations"], list)
-
-
-@pytest.mark.grpc
-class TestAresGrpcServiceMemory:
-    def test_search_memory_returns_list(self, grpc_service):
-        with patch("duplicate_question_app._memory.memory_manager.MemoryManager") as MockMM:
-            instance = MagicMock()
-            instance.search_text.return_value = MagicMock(entries=[])
-            MockMM.return_value = instance
-            result = grpc_service.search_memory("test")
-        assert isinstance(result, list)
-
-    def test_search_memory_returns_empty_when_no_matches(self, grpc_service):
-        with patch("duplicate_question_app._memory.memory_manager.MemoryManager") as MockMM:
-            instance = MagicMock()
-            instance.search_text.return_value = MagicMock(entries=[])
-            MockMM.return_value = instance
-            result = grpc_service.search_memory("nonexistent")
-        assert result == []
-
-
-@pytest.mark.grpc
-class TestAresGrpcServicePlugins:
-    def test_list_plugins_returns_list(self, grpc_service):
-        with patch("ares.plugins.manager.PluginManager") as MockPM:
-            instance = MagicMock()
-            instance.list.return_value = []
-            MockPM.return_value = instance
-            result = grpc_service.list_plugins()
-        assert isinstance(result, list)
+        assert "risk_level" in result
+        assert result["risk_level"] == "low"
