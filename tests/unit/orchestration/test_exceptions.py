@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 from ares.orchestration.exceptions import (
+    CacheError,
+    InputValidationError,
     MaxRetriesExceededError,
+    ModelTimeoutError,
+    ModelUnavailableError,
     OrchestrationError,
+    PipelineAbortedError,
     PolicyViolationError,
+    QueryUnderstandingError,
     RunCancelledError,
     RunTimeoutError,
     StrategyNotFoundError,
+    StrategyResolutionError,
     TaskDependencyError,
     TaskExecutionError,
 )
@@ -62,3 +69,95 @@ class TestOrchestrationExceptions:
         assert issubclass(RunTimeoutError, OrchestrationError)
         assert issubclass(MaxRetriesExceededError, OrchestrationError)
         assert issubclass(PolicyViolationError, OrchestrationError)
+
+
+class TestInputValidationError:
+    def test_create(self):
+        exc = InputValidationError(detail="Empty question")
+        assert exc.status_code == 400
+        assert exc.error_code == "INPUT_VALIDATION_ERROR"
+        assert exc.detail == "Empty question"
+        assert issubclass(InputValidationError, OrchestrationError)
+
+
+class TestQueryUnderstandingError:
+    def test_create(self):
+        exc = QueryUnderstandingError(detail="QU failed")
+        assert exc.status_code == 500
+        assert exc.error_code == "QUERY_UNDERSTANDING_ERROR"
+        assert issubclass(QueryUnderstandingError, OrchestrationError)
+
+
+class TestStrategyResolutionError:
+    def test_create(self):
+        exc = StrategyResolutionError(detail="Unknown strategy")
+        assert exc.status_code == 500
+        assert exc.error_code == "STRATEGY_RESOLUTION_ERROR"
+        assert issubclass(StrategyResolutionError, OrchestrationError)
+
+
+class TestModelTimeoutError:
+    def test_create(self):
+        exc = ModelTimeoutError(detail="Prediction timed out")
+        assert exc.status_code == 504
+        assert exc.error_code == "MODEL_TIMEOUT_ERROR"
+        assert issubclass(ModelTimeoutError, OrchestrationError)
+
+
+class TestModelUnavailableError:
+    def test_create(self):
+        exc = ModelUnavailableError(detail="Model not loaded")
+        assert exc.status_code == 503
+        assert exc.error_code == "MODEL_UNAVAILABLE_ERROR"
+        assert issubclass(ModelUnavailableError, OrchestrationError)
+
+
+class TestCacheError:
+    def test_create(self):
+        exc = CacheError(detail="Cache unreachable")
+        assert exc.status_code == 500
+        assert exc.error_code == "CACHE_ERROR"
+        assert issubclass(CacheError, OrchestrationError)
+
+
+class TestPipelineAbortedError:
+    def test_create(self):
+        exc = PipelineAbortedError(detail="Unrecoverable")
+        assert exc.status_code == 500
+        assert exc.error_code == "PIPELINE_ABORTED_ERROR"
+        assert issubclass(PipelineAbortedError, OrchestrationError)
+
+
+class TestPredictionExceptionHierarchy:
+    def test_all_prediction_errors_under_orchestration_error(self):
+        errors = [
+            InputValidationError,
+            QueryUnderstandingError,
+            StrategyResolutionError,
+            ModelTimeoutError,
+            ModelUnavailableError,
+            CacheError,
+            PipelineAbortedError,
+        ]
+        for err in errors:
+            assert issubclass(err, OrchestrationError), f"{err.__name__} is not a subclass of OrchestrationError"
+
+    def test_error_codes_unique(self):
+        errors = [
+            InputValidationError,
+            QueryUnderstandingError,
+            StrategyResolutionError,
+            ModelTimeoutError,
+            ModelUnavailableError,
+            CacheError,
+            PipelineAbortedError,
+            StrategyNotFoundError,
+            TaskExecutionError,
+            TaskDependencyError,
+            RunCancelledError,
+            RunTimeoutError,
+            MaxRetriesExceededError,
+            PolicyViolationError,
+        ]
+        codes = [e.error_code for e in errors]
+        assert len(codes) == len(set(codes)), f"Duplicate error codes: {codes}"

@@ -125,3 +125,9 @@ class RunPolicies:
     stop_on_first_error: bool = False
     enable_cancellation: bool = True
     max_queue_size: int = 1000
+
+
+class StageStatus(Enum):
+    SUCCESS = auto()
+    FAILED = auto()
+    SKIPPED = auto()

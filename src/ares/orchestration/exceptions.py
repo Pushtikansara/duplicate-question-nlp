@@ -49,3 +49,45 @@ class PolicyViolationError(OrchestrationError):
     status_code = 400
     detail = "Run policy violation"
     error_code = "POLICY_VIOLATION"
+
+
+class InputValidationError(OrchestrationError):
+    status_code = 400
+    detail = "Invalid prediction input"
+    error_code = "INPUT_VALIDATION_ERROR"
+
+
+class QueryUnderstandingError(OrchestrationError):
+    status_code = 500
+    detail = "Query understanding pipeline failed"
+    error_code = "QUERY_UNDERSTANDING_ERROR"
+
+
+class StrategyResolutionError(OrchestrationError):
+    status_code = 500
+    detail = "Strategy resolution failed"
+    error_code = "STRATEGY_RESOLUTION_ERROR"
+
+
+class ModelTimeoutError(OrchestrationError):
+    status_code = 504
+    detail = "Prediction model timed out"
+    error_code = "MODEL_TIMEOUT_ERROR"
+
+
+class ModelUnavailableError(OrchestrationError):
+    status_code = 503
+    detail = "Prediction model is unavailable"
+    error_code = "MODEL_UNAVAILABLE_ERROR"
+
+
+class CacheError(OrchestrationError):
+    status_code = 500
+    detail = "Cache operation failed"
+    error_code = "CACHE_ERROR"
+
+
+class PipelineAbortedError(OrchestrationError):
+    status_code = 500
+    detail = "Pipeline aborted due to unrecoverable error"
+    error_code = "PIPELINE_ABORTED_ERROR"

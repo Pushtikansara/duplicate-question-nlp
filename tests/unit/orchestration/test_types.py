@@ -7,6 +7,7 @@ from ares.orchestration.types import (
     OrchestrationStrategyType,
     RunPolicies,
     SharedAgentContext,
+    StageStatus,
     TaskEdge,
     TaskNode,
     TaskStatus,
@@ -175,3 +176,16 @@ class TestOrchestrationStatus:
         assert OrchestrationStatus.PARTIAL in statuses
         assert OrchestrationStatus.CANCELLED in statuses
         assert OrchestrationStatus.TIMEOUT in statuses
+
+
+class TestStageStatus:
+    def test_values(self):
+        statuses = list(StageStatus)
+        assert StageStatus.SUCCESS in statuses
+        assert StageStatus.FAILED in statuses
+        assert StageStatus.SKIPPED in statuses
+
+    def test_enum_values(self):
+        assert StageStatus.SUCCESS.name == "SUCCESS"
+        assert StageStatus.FAILED.name == "FAILED"
+        assert StageStatus.SKIPPED.name == "SKIPPED"
