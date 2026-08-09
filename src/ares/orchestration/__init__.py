@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from ares.orchestration.aggregator import ResultAggregator
+from ares.orchestration.cache import CacheStats, InMemoryCacheProvider
+from ares.orchestration.cache_key import build_query_understanding_cache_key, normalize_cache_text
 from ares.orchestration.cancellation import CancellationManager, CancellationToken
 from ares.orchestration.config import EngineConfiguration, OrchestrationConfiguration
+from ares.orchestration.config_loader import build_strategy_registry, load_orchestration_yaml
 from ares.orchestration.constants import (
+    CACHE_SCHEMA_VERSION,
     DEFAULT_BATCH_MAX_PAIRS,
     DEFAULT_CACHE_MAX_ENTRIES,
     DEFAULT_CACHE_TTL_SECONDS,
@@ -43,7 +47,9 @@ from ares.orchestration.engine import OrchestrationEngine
 from ares.orchestration.events import OrchestrationEvent, OrchestrationEventType
 from ares.orchestration.exceptions import (
     CacheError,
+    DuplicateStrategyError,
     InputValidationError,
+    InvalidStrategyConfigurationError,
     MaxRetriesExceededError,
     ModelTimeoutError,
     ModelUnavailableError,
@@ -85,6 +91,12 @@ from ares.orchestration.strategies import (
     SupervisorStrategy,
     VotingStrategy,
 )
+from ares.orchestration.strategy_registry import (
+    CAPABILITY_ATTRIBUTES,
+    StrategyDefinition,
+    StrategyRegistry,
+    StrategySelector,
+)
 from ares.orchestration.task_graph import TaskGraph
 from ares.orchestration.timeout import TimeoutManager
 from ares.orchestration.types import (
@@ -103,8 +115,13 @@ from ares.orchestration.types import (
 __all__ = [
     "AgentCoordinator",
     "AgentMessage",
+    "build_query_understanding_cache_key",
+    "build_strategy_registry",
     "CacheError",
     "CacheProvider",
+    "CacheStats",
+    "CACHE_SCHEMA_VERSION",
+    "CAPABILITY_ATTRIBUTES",
     "CancellationManager",
     "CancellationToken",
     "DebateStrategy",
@@ -119,6 +136,7 @@ __all__ = [
     "DEFAULT_STAGE_ORDER",
     "DEFAULT_THRESHOLD",
     "DEFAULT_TIMEOUT_MS",
+    "DuplicateStrategyError",
     "EngineConfiguration",
     "EVENT_CACHE_HIT",
     "EVENT_CACHE_MISS",
@@ -134,11 +152,14 @@ __all__ = [
     "ExecutionMetadata",
     "FallbackPolicy",
     "HierarchicalStrategy",
+    "InMemoryCacheProvider",
     "InputValidationError",
+    "InvalidStrategyConfigurationError",
     "MaxRetriesExceededError",
     "MetricsCollector",
     "ModelTimeoutError",
     "ModelUnavailableError",
+    "normalize_cache_text",
     "ORCHESTRATION_VERSION",
     "OrchestrationConfiguration",
     "OrchestrationEngine",
@@ -181,9 +202,12 @@ __all__ = [
     "STRATEGY_ENSEMBLE",
     "STRATEGY_FALLBACK",
     "STRATEGY_FAST_LEXICAL",
+    "StrategyDefinition",
     "StrategyNotFoundError",
     "StrategyProvider",
+    "StrategyRegistry",
     "StrategyResolutionError",
+    "StrategySelector",
     "SupervisorStrategy",
     "TaskDependencyError",
     "TaskEdge",
@@ -193,4 +217,5 @@ __all__ = [
     "TaskStatus",
     "TimeoutManager",
     "VotingStrategy",
+    "load_orchestration_yaml",
 ]

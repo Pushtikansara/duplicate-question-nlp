@@ -15,6 +15,18 @@ class StrategyNotFoundError(OrchestrationError):
     error_code = "STRATEGY_NOT_FOUND"
 
 
+class DuplicateStrategyError(OrchestrationError):
+    status_code = 409
+    detail = "Orchestration strategy already registered"
+    error_code = "DUPLICATE_STRATEGY"
+
+
+class InvalidStrategyConfigurationError(OrchestrationError):
+    status_code = 500
+    detail = "Invalid orchestration strategy configuration"
+    error_code = "INVALID_STRATEGY_CONFIGURATION"
+
+
 class TaskExecutionError(OrchestrationError):
     status_code = 500
     detail = "Task execution failed"

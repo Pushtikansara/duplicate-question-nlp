@@ -1,0 +1,72 @@
+# Orchestration configuration
+# Consumed by ares.orchestration.config_loader (Phase 13.2).
+# Environment overrides: none — the file is loaded directly.
+
+cache:
+  enabled: true
+  ttl_seconds: 300
+  max_entries: 1000
+
+retry:
+  enabled: true
+  max_attempts: 2
+  backoff_ms: 100
+
+fallback:
+  enabled: true
+  model: "Improved DistilBERT (Week 4)"
+
+pipeline:
+  execution_mode: "sync"
+  fail_on_hook_error: false
+
+plugins:
+  enable_pre_hooks: true
+  enable_post_hooks: true
+
+# Strategy -> model mapping (configuration-driven; owned by config, not code).
+# Model names MUST match ares.model_registry display names.
+strategy_defaults:
+  fast_lexical:
+    model: "TF-IDF + Logistic Regression (Week 2)"
+    reflection: false
+    semantic_validation: false
+    enabled: true
+    timeout_ms: 1000
+    cache_enabled: true
+    priority: 100
+    capabilities: ["batch"]
+  baseline_classifier:
+    model: "TF-IDF + Linear SVM (Week 2)"
+    reflection: false
+    semantic_validation: false
+    enabled: true
+    timeout_ms: 1000
+    cache_enabled: true
+    priority: 90
+    capabilities: ["batch"]
+  cross_encoder:
+    model: "Cross-Encoder-Quora (Trained)"
+    reflection: true
+    semantic_validation: true
+    enabled: true
+    timeout_ms: 10000
+    cache_enabled: true
+    priority: 80
+    capabilities: ["cross_encoding"]
+  ensemble:
+    model: "Semantic Ensemble"
+    reflection: true
+    semantic_validation: true
+    enabled: true
+    timeout_ms: 30000
+    cache_enabled: true
+    priority: 70
+  fallback:
+    model: "Improved DistilBERT (Week 4)"
+    reflection: true
+    semantic_validation: true
+    enabled: true
+    timeout_ms: 30000
+    cache_enabled: true
+    priority: 10
