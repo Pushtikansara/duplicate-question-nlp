@@ -93,6 +93,30 @@ class ModelUnavailableError(OrchestrationError):
     error_code = "MODEL_UNAVAILABLE_ERROR"
 
 
+class DuplicateStageError(OrchestrationError):
+    status_code = 409
+    detail = "Pipeline stage already registered"
+    error_code = "DUPLICATE_STAGE"
+
+
+class StageNotFoundError(OrchestrationError):
+    status_code = 404
+    detail = "Pipeline stage not found"
+    error_code = "STAGE_NOT_FOUND"
+
+
+class InvalidStageConfigurationError(OrchestrationError):
+    status_code = 500
+    detail = "Invalid pipeline stage configuration"
+    error_code = "INVALID_STAGE_CONFIGURATION"
+
+
+class StageDependencyError(OrchestrationError):
+    status_code = 400
+    detail = "Circular or missing stage dependency"
+    error_code = "STAGE_DEPENDENCY_ERROR"
+
+
 class CacheError(OrchestrationError):
     status_code = 500
     detail = "Cache operation failed"

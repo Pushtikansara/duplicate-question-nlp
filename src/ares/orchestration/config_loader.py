@@ -5,6 +5,8 @@ from typing import Any
 
 import yaml
 
+from ares.orchestration.constants import DEFAULT_STAGE_ORDER
+from ares.orchestration.exceptions import InvalidStageConfigurationError
 from ares.orchestration.strategy_registry import StrategyRegistry
 
 _CONFIG_NAME = "orchestration"
@@ -60,3 +62,32 @@ def build_strategy_registry(
     if defaults:
         return StrategyRegistry.from_config(config)
     return StrategyRegistry.with_defaults()
+
+
+def build_pipeline_stage_config(
+    config_dir: Path | None = None,
+    project_root: Path | None = None,
+) -> dict[str, Any]:
+    """Extract the ``pipeline.stages`` mapping from ``configs/orchestration.yaml``.
+
+    Returns ``{}`` when the file or section is absent. The mapping keys are
+    the ``STAGE_*`` names and values are ``{enabled, order, depends_on}``.
+    Unknown stage names are rejected to catch configuration typos early.
+    """
+    config = load_orchestration_yaml(config_dir, project_root)
+    pipeline = config.get("pipeline") or {}
+    stages = pipeline.get("stages") or {}
+    if not isinstance(stages, dict):
+        raise InvalidStageConfigurationError("'pipeline.stages' must be a mapping of stage name to config")
+    known = set(DEFAULT_STAGE_ORDER)
+    for name, entry in stages.items():
+        if name not in known:
+            raise InvalidStageConfigurationError(f"Unknown stage '{name}' in 'pipeline.stages'")
+        if not isinstance(entry, dict):
+            raise InvalidStageConfigurationError(f"Stage '{name}' configuration must be a mapping")
+        for key in entry:
+            if key not in {"enabled", "order", "depends_on"}:
+                raise InvalidStageConfigurationError(
+                    f"Stage '{name}' has unsupported key '{key}' (allowed: enabled, order, depends_on)"
+                )
+    return dict(stages)

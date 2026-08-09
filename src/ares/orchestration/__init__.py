@@ -5,7 +5,11 @@ from ares.orchestration.cache import CacheStats, InMemoryCacheProvider
 from ares.orchestration.cache_key import build_query_understanding_cache_key, normalize_cache_text
 from ares.orchestration.cancellation import CancellationManager, CancellationToken
 from ares.orchestration.config import EngineConfiguration, OrchestrationConfiguration
-from ares.orchestration.config_loader import build_strategy_registry, load_orchestration_yaml
+from ares.orchestration.config_loader import (
+    build_pipeline_stage_config,
+    build_strategy_registry,
+    load_orchestration_yaml,
+)
 from ares.orchestration.constants import (
     CACHE_SCHEMA_VERSION,
     DEFAULT_BATCH_MAX_PAIRS,
@@ -44,11 +48,14 @@ from ares.orchestration.constants import (
 from ares.orchestration.context import PipelineState, PredictionInput, RequestParams
 from ares.orchestration.coordinator import AgentCoordinator
 from ares.orchestration.engine import OrchestrationEngine
+from ares.orchestration.engine_adapter import ARESPredictionEngine
 from ares.orchestration.events import OrchestrationEvent, OrchestrationEventType
 from ares.orchestration.exceptions import (
     CacheError,
+    DuplicateStageError,
     DuplicateStrategyError,
     InputValidationError,
+    InvalidStageConfigurationError,
     InvalidStrategyConfigurationError,
     MaxRetriesExceededError,
     ModelTimeoutError,
@@ -59,17 +66,21 @@ from ares.orchestration.exceptions import (
     QueryUnderstandingError,
     RunCancelledError,
     RunTimeoutError,
+    StageDependencyError,
+    StageNotFoundError,
     StrategyNotFoundError,
     StrategyResolutionError,
     TaskDependencyError,
     TaskExecutionError,
 )
+from ares.orchestration.factory import build_default_stage_registry
 from ares.orchestration.interfaces import (
     CacheProvider,
     EventPublisher,
     FallbackPolicy,
     MetricsCollector,
     PipelineStage,
+    PredictionEngine,
     RetryPolicy,
     StrategyProvider,
 )
@@ -80,7 +91,11 @@ from ares.orchestration.metadata import (
     StageResult,
 )
 from ares.orchestration.metrics import OrchestrationMetrics
+from ares.orchestration.orchestrator import PredictionOrchestrator
+from ares.orchestration.pipeline import Pipeline
+from ares.orchestration.policies import DefaultFallbackPolicy, DefaultRetryPolicy
 from ares.orchestration.retry import RetryManager
+from ares.orchestration.stage_registry import StageDefinition, StageRegistry
 from ares.orchestration.strategies import (
     DebateStrategy,
     HierarchicalStrategy,
@@ -115,6 +130,9 @@ from ares.orchestration.types import (
 __all__ = [
     "AgentCoordinator",
     "AgentMessage",
+    "ARESPredictionEngine",
+    "build_default_stage_registry",
+    "build_pipeline_stage_config",
     "build_query_understanding_cache_key",
     "build_strategy_registry",
     "CacheError",
@@ -125,6 +143,8 @@ __all__ = [
     "CancellationManager",
     "CancellationToken",
     "DebateStrategy",
+    "DefaultFallbackPolicy",
+    "DefaultRetryPolicy",
     "DEFAULT_BATCH_MAX_PAIRS",
     "DEFAULT_CACHE_MAX_ENTRIES",
     "DEFAULT_CACHE_TTL_SECONDS",
@@ -136,6 +156,7 @@ __all__ = [
     "DEFAULT_STAGE_ORDER",
     "DEFAULT_THRESHOLD",
     "DEFAULT_TIMEOUT_MS",
+    "DuplicateStageError",
     "DuplicateStrategyError",
     "EngineConfiguration",
     "EVENT_CACHE_HIT",
@@ -154,6 +175,7 @@ __all__ = [
     "HierarchicalStrategy",
     "InMemoryCacheProvider",
     "InputValidationError",
+    "InvalidStageConfigurationError",
     "InvalidStrategyConfigurationError",
     "MaxRetriesExceededError",
     "MetricsCollector",
@@ -173,13 +195,16 @@ __all__ = [
     "OrchestrationStrategy",
     "OrchestrationStrategyType",
     "ParallelStrategy",
+    "Pipeline",
     "PipelineAbortedError",
     "PipelineResult",
     "PipelineStage",
     "PipelineState",
     "PipelineStrategy",
     "PolicyViolationError",
+    "PredictionEngine",
     "PredictionInput",
+    "PredictionOrchestrator",
     "QueryUnderstandingError",
     "RequestParams",
     "ResultAggregator",
@@ -190,6 +215,10 @@ __all__ = [
     "RunTimeoutError",
     "SequentialStrategy",
     "SharedAgentContext",
+    "StageDefinition",
+    "StageDependencyError",
+    "StageNotFoundError",
+    "StageRegistry",
     "StageResult",
     "StageStatus",
     "STAGE_INPUT_VALIDATION",

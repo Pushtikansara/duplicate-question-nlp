@@ -64,3 +64,8 @@ class MetricsCollector(Protocol):
 @runtime_checkable
 class EventPublisher(Protocol):
     def publish(self, event_type: str, payload: dict[str, Any] | None = None) -> None: ...
+
+
+@runtime_checkable
+class PredictionEngine(Protocol):
+    def predict(self, question1: str, question2: str, **kwargs: Any) -> Any: ...

@@ -31,6 +31,9 @@ class PredictionResult:
     label_mapping: dict[int, str] | None = None
     final_label: str | None = None
     threshold: float = 0.5
+    error: str | None = None
+    error_code: str | None = None
+    orchestration_trace: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = {
@@ -62,4 +65,10 @@ class PredictionResult:
         }
         if self.explanations:
             d["explanations"] = self.explanations
+        if self.error is not None:
+            d["error"] = self.error
+        if self.error_code is not None:
+            d["error_code"] = self.error_code
+        if self.orchestration_trace is not None:
+            d["orchestration_trace"] = self.orchestration_trace
         return d

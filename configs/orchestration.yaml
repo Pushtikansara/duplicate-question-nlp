@@ -6,6 +6,7 @@ cache:
   enabled: true
   ttl_seconds: 300
   max_entries: 1000
+  fail_closed: false
 
 retry:
   enabled: true
@@ -19,6 +20,25 @@ fallback:
 pipeline:
   execution_mode: "sync"
   fail_on_hook_error: false
+  stages:
+    InputValidationStage:
+      enabled: true
+      order: 1
+    QueryUnderstandingStage:
+      enabled: true
+      order: 2
+    StrategySelectionStage:
+      enabled: true
+      order: 3
+      depends_on: ["QueryUnderstandingStage"]
+    PredictionStage:
+      enabled: true
+      order: 4
+      depends_on: ["StrategySelectionStage"]
+    ResultEnrichmentStage:
+      enabled: true
+      order: 5
+      depends_on: ["PredictionStage"]
 
 plugins:
   enable_pre_hooks: true

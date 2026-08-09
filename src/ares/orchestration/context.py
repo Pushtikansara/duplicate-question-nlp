@@ -27,3 +27,4 @@ class PipelineState:
     prediction_result: Any = None
     error: str | None = None
     fallback_used: bool = False
+    execution_metadata: Any = None

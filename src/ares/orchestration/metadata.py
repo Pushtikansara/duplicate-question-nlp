@@ -65,6 +65,27 @@ class ExecutionMetadata:
     total_duration_ms: float = 0.0
     stage_timings: dict[str, float] = field(default_factory=dict)
 
+    def to_trace_dict(self) -> dict[str, Any]:
+        return {
+            "request_id": self.request_id,
+            "model_name": self.model_name,
+            "strategy": self.strategy,
+            "cache_hit": self.cache_hit,
+            "retry_count": self.retry_count,
+            "fallback_used": self.fallback_used,
+            "error": self.error,
+            "total_duration_ms": self.total_duration_ms,
+            "stages": [
+                {
+                    "name": s.name,
+                    "status": s.status.name,
+                    "duration_ms": s.duration_ms,
+                    "detail": s.detail,
+                }
+                for s in self.stages
+            ],
+        }
+
 
 @dataclass(frozen=True)
 class PipelineResult:

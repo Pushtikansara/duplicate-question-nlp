@@ -17,6 +17,7 @@ DEFAULT_MAX_CONCURRENCY: Final[int] = 4
 DEFAULT_BATCH_MAX_PAIRS: Final[int] = 1000
 DEFAULT_TIMEOUT_MS: Final[float] = 30000.0
 DEFAULT_THRESHOLD: Final[float] = 0.5
+DEFAULT_MAX_QUESTION_LENGTH: Final[int] = 4096
 
 STAGE_INPUT_VALIDATION: Final[str] = "InputValidationStage"
 STAGE_QUERY_UNDERSTANDING: Final[str] = "QueryUnderstandingStage"
@@ -48,3 +49,6 @@ EVENT_PREDICTION_STARTED: Final[str] = "orchestration.prediction.started"
 EVENT_PREDICTION_COMPLETE: Final[str] = "orchestration.prediction.complete"
 EVENT_CACHE_HIT: Final[str] = "orchestration.cache.hit"
 EVENT_CACHE_MISS: Final[str] = "orchestration.cache.miss"
+EVENT_STRATEGY_SELECTED: Final[str] = "orchestration.strategy.selected"
+EVENT_BATCH_COMPLETE: Final[str] = "orchestration.batch.complete"
+EVENT_STAGE_ABORTED: Final[str] = "orchestration.stage.aborted"
