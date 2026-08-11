@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ares.orchestration.prediction_service import get_prediction_service
 from ares.tools.base import Tool
 from ares.tools.types import ToolMetadata, ToolResult, ToolStatus, ToolType
 
@@ -37,17 +38,13 @@ class PredictTool(Tool):
             )
 
         try:
-            from ares._engine import ARES
-
-            engine = ARES()
-            if model:
-                engine = engine.with_model(model)
-            if threshold is not None:
-                engine = engine.with_threshold(float(threshold))
-            if reflect is not None:
-                engine = engine.with_reflection(bool(reflect))
-
-            result = engine.predict(question1, question2)
+            result = get_prediction_service().predict(
+                question1,
+                question2,
+                model=model,
+                threshold=float(threshold) if threshold is not None else None,
+                reflect=bool(reflect) if reflect is not None else None,
+            )
             return self.create_output(
                 result={
                     "predicted_label": result.predicted_label,

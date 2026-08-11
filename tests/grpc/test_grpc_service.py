@@ -1,6 +1,41 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
+
+from ares._result import PredictionResult
+from ares.orchestration.exceptions import ModelUnavailableError, OrchestrationError
+
+
+class SpyPredictionService:
+    """Records orchestrator call parameters; returns a canned result."""
+
+    def __init__(self, result: PredictionResult | None = None, error: Exception | None = None) -> None:
+        self.result = result
+        self.error = error
+        self.calls: list[tuple[str, str, dict[str, object]]] = []
+
+    def predict(self, question1: str, question2: str, **kwargs: object) -> PredictionResult:
+        self.calls.append((question1, question2, kwargs))
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
+def _result() -> PredictionResult:
+    return PredictionResult(
+        predicted_label=1,
+        prediction="duplicate",
+        confidence=0.95,
+        prob_duplicate=0.95,
+        prob_non_duplicate=0.05,
+        model_name="test-model",
+        latency_ms=10.5,
+        trust_score=0.9,
+        trust_level="high",
+        risk_level="low",
+    )
 
 
 @pytest.mark.grpc
@@ -45,27 +80,58 @@ class TestAresGrpcServicePredict:
         result = grpc_service.predict("q1", "q2")
         assert isinstance(result["latency_ms"], float)
 
+    def test_predict_delegates_to_prediction_service(self, grpc_service):
+        spy = SpyPredictionService(result=_result())
+        with patch("ares.grpc.services.get_prediction_service", return_value=spy):
+            grpc_service.predict("q1", "q2")
+        assert len(spy.calls) == 1
+        assert spy.calls[0][0] == "q1"
+        assert spy.calls[0][1] == "q2"
+
     def test_predict_passes_model_parameter(self, grpc_service):
-        grpc_service.predict("q1", "q2", model="custom-model")
-        grpc_service._engine.with_model.assert_called_with("custom-model")
+        spy = SpyPredictionService(result=_result())
+        with patch("ares.grpc.services.get_prediction_service", return_value=spy):
+            grpc_service.predict("q1", "q2", model="custom-model")
+        assert spy.calls[0][2]["model"] == "custom-model"
 
     def test_predict_passes_threshold_parameter(self, grpc_service):
-        grpc_service.predict("q1", "q2", threshold=0.7)
-        grpc_service._engine.with_threshold.assert_called_with(0.7)
+        spy = SpyPredictionService(result=_result())
+        with patch("ares.grpc.services.get_prediction_service", return_value=spy):
+            grpc_service.predict("q1", "q2", threshold=0.7)
+        assert spy.calls[0][2]["threshold"] == 0.7
 
     def test_predict_passes_reflect_parameter(self, grpc_service):
-        grpc_service.predict("q1", "q2", reflect=False)
-        grpc_service._engine.with_reflection.assert_called_with(False)
-
-    def test_predict_without_params_does_not_call_reflection(self, grpc_service):
-        grpc_service.predict("q1", "q2")
-        grpc_service._engine.with_model.assert_called_once()
-        grpc_service._engine.with_threshold.assert_called_once()
-        grpc_service._engine.with_reflection.assert_not_called()
+        spy = SpyPredictionService(result=_result())
+        with patch("ares.grpc.services.get_prediction_service", return_value=spy):
+            grpc_service.predict("q1", "q2", reflect=False)
+        assert spy.calls[0][2]["reflect"] is False
 
     def test_predict_passes_reflect_true(self, grpc_service):
-        grpc_service.predict("q1", "q2", reflect=True)
-        grpc_service._engine.with_reflection.assert_called_with(True)
+        spy = SpyPredictionService(result=_result())
+        with patch("ares.grpc.services.get_prediction_service", return_value=spy):
+            grpc_service.predict("q1", "q2", reflect=True)
+        assert spy.calls[0][2]["reflect"] is True
+
+    def test_predict_without_params_passes_reflect_none(self, grpc_service):
+        """Reflect is only applied when explicitly supplied: the orchestrator
+        (not the gRPC layer) decides the default, so no unconditional
+        reflection override is reintroduced here."""
+        spy = SpyPredictionService(result=_result())
+        with patch("ares.grpc.services.get_prediction_service", return_value=spy):
+            grpc_service.predict("q1", "q2")
+        assert spy.calls[0][2]["reflect"] is None
+        assert spy.calls[0][2]["model"] is None
+        assert spy.calls[0][2]["threshold"] is None
+
+    def test_predict_propagates_orchestration_errors(self, grpc_service):
+        spy = SpyPredictionService(result=_result(), error=ModelUnavailableError("model gone"))
+        with patch("ares.grpc.services.get_prediction_service", return_value=spy):
+            with pytest.raises(OrchestrationError):
+                grpc_service.predict("q1", "q2")
+
+    def test_predict_response_does_not_include_explanations(self, grpc_service):
+        result = grpc_service.predict("q1", "q2")
+        assert "explanations" not in result
 
 
 @pytest.mark.grpc
@@ -86,6 +152,13 @@ class TestAresGrpcServiceBatch:
         requests = [{"question1": "q1", "question2": "q2"}]
         result = grpc_service.predict_batch(requests)
         assert "total_latency_ms" in result
+
+    def test_predict_batch_delegates_to_prediction_service(self, grpc_service):
+        spy = SpyPredictionService(result=_result())
+        with patch("ares.grpc.services.get_prediction_service", return_value=spy):
+            grpc_service.predict_batch([{"question1": "q1", "question2": "q2", "model": "m1"}])
+        assert len(spy.calls) == 1
+        assert spy.calls[0][2]["model"] == "m1"
 
 
 @pytest.mark.grpc

@@ -94,6 +94,12 @@ from ares.orchestration.metrics import OrchestrationMetrics
 from ares.orchestration.orchestrator import PredictionOrchestrator
 from ares.orchestration.pipeline import Pipeline
 from ares.orchestration.policies import DefaultFallbackPolicy, DefaultRetryPolicy
+from ares.orchestration.prediction_service import (
+    PredictionService,
+    build_default_prediction_service,
+    get_prediction_service,
+    reset_prediction_service,
+)
 from ares.orchestration.retry import RetryManager
 from ares.orchestration.stage_registry import StageDefinition, StageRegistry
 from ares.orchestration.strategies import (
@@ -205,6 +211,7 @@ __all__ = [
     "PredictionEngine",
     "PredictionInput",
     "PredictionOrchestrator",
+    "PredictionService",
     "QueryUnderstandingError",
     "RequestParams",
     "ResultAggregator",
@@ -246,5 +253,12 @@ __all__ = [
     "TaskStatus",
     "TimeoutManager",
     "VotingStrategy",
+    "build_default_prediction_service",
+    "build_default_stage_registry",
+    "build_pipeline_stage_config",
+    "build_query_understanding_cache_key",
+    "build_strategy_registry",
+    "get_prediction_service",
     "load_orchestration_yaml",
+    "reset_prediction_service",
 ]

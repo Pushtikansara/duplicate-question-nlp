@@ -6,6 +6,8 @@ import typer
 
 from ares.cli.utils.console import console, exit_with_error
 from ares.cli.utils.formatting import format_duration
+from ares.orchestration.exceptions import OrchestrationError
+from ares.orchestration.prediction_service import get_prediction_service
 
 
 def predict(
@@ -16,18 +18,16 @@ def predict(
     reflect: bool = typer.Option(False, "--reflect", help="Enable reflection/trust scoring"),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ) -> None:
-    from ares import ARES
-
-    engine = ARES()
-    if model:
-        engine.with_model(model)
-    if threshold is not None:
-        engine.with_threshold(threshold)
-    if reflect:
-        engine.with_reflection(True)
-
     try:
-        result = engine.predict(question1, question2)
+        result = get_prediction_service().predict(
+            question1,
+            question2,
+            model=model,
+            threshold=threshold,
+            reflect=reflect if reflect else None,
+        )
+    except OrchestrationError as e:
+        exit_with_error(f"Prediction failed: {e.detail}")
     except Exception as e:
         exit_with_error(f"Prediction failed: {e}")
 

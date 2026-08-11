@@ -14,6 +14,7 @@ from ares.api.app import create_app
 from ares.api.config import APIConfig, Settings
 from ares.api.models import UserRole
 from ares.api.security import SecurityManager
+from ares.model_registry import ModelCapabilities, ModelEntry, ModelHealth
 
 
 class _MockPredictionResult(dict):
@@ -68,6 +69,8 @@ def _make_mock_engine():
     engine.with_model.return_value = engine
     engine.with_threshold.return_value = engine
     engine.with_reflection.return_value = engine
+    engine.with_semantic_validation.return_value = engine
+    engine.with_fusion_mode.return_value = engine
     engine.reflect.return_value = {
         "trust_score": 0.9,
         "trust_level": "high",
@@ -84,10 +87,20 @@ def _make_mock_engine():
 
 @pytest.fixture(autouse=True)
 def _patch_ares_engine():
-    """Replace ARES class with a mock so no real model loading occurs."""
+    """Replace ARES class with a mock so no real model loading occurs.
+
+    The mock is bound in every namespace that constructs the engine,
+    including the Phase 13 orchestration engine adapter (the canonical
+    engine path for all entry points) so that entry-point tests exercise
+    the orchestrator pipeline without touching real model artifacts.
+    """
     mock_engine = _make_mock_engine()
     mock_ares_class = MagicMock(return_value=mock_engine)
-    with patch("ares._engine.ARES", mock_ares_class), patch("ares.ARES", mock_ares_class):
+    with (
+        patch("ares._engine.ARES", mock_ares_class),
+        patch("ares.ARES", mock_ares_class),
+        patch("ares.orchestration.engine_adapter.ARES", mock_ares_class),
+    ):
         yield
 
 
@@ -95,6 +108,33 @@ def _patch_ares_engine():
 def _patch_torch_cuda():
     """Prevent CUDA checks from failing."""
     with patch("torch.cuda.is_available", return_value=False):
+        yield
+
+
+def _ready_entry(display_name: str) -> ModelEntry:
+    return ModelEntry(
+        display_name=display_name,
+        internal_id=display_name.lower().replace(" ", "_"),
+        status=ModelHealth.READY,
+        capabilities=ModelCapabilities(
+            supports_batch=True,
+            supports_cross_encoding="Cross-Encoder" in display_name,
+            supports_explainability=True,
+        ),
+    )
+
+
+@pytest.fixture(autouse=True)
+def _mock_model_registry():
+    """Mock model registry validation so strategy resolution works in CI.
+
+    Without this, strategy resolution fails because model files (e.g.
+    Cross-Encoder-Quora) are not available in CI environments.
+    """
+    with patch(
+        "ares.orchestration.strategy_registry.find_entry",
+        side_effect=lambda model_name, paths=None: _ready_entry(model_name),
+    ):
         yield
 
 

@@ -11,6 +11,7 @@ from ares.agents.types import (
     AgentMetadata,
     AgentOutput,
 )
+from ares.orchestration.prediction_service import get_prediction_service
 
 logger = logging.getLogger(__name__)
 
@@ -52,21 +53,17 @@ class PredictAgent(Agent):
             )
 
         try:
-            from ares._engine import ARES
-
-            engine = ARES()
             model = input.get("model") or context.get("model")
             threshold = input.get("threshold") or context.get("threshold")
             reflect = input.get("reflect", True)
 
-            if model:
-                engine = engine.with_model(model)
-            if threshold is not None:
-                engine = engine.with_threshold(float(threshold) if not isinstance(threshold, float) else threshold)
-            if reflect is not None:
-                engine = engine.with_reflection(bool(reflect))
-
-            result = engine.predict(question1, question2)
+            result = get_prediction_service().predict(
+                question1,
+                question2,
+                model=model,
+                threshold=float(threshold) if threshold is not None else None,
+                reflect=bool(reflect) if reflect is not None else None,
+            )
             elapsed = (time.perf_counter() - start) * 1000
 
             return self.create_output(

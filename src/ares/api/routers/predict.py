@@ -7,7 +7,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
-from ares._result import PredictionResult
 from ares.api.dependencies import apply_rate_limit, get_request_id, require_user
 from ares.api.models import (
     BatchPredictionRequest,
@@ -17,6 +16,8 @@ from ares.api.models import (
 )
 from ares.api.streaming import event_stream, stream_predictions
 from ares.api.validators import validate_model_name, validate_question_pair, validate_threshold
+from ares.orchestration.exceptions import OrchestrationError
+from ares.orchestration.prediction_service import get_prediction_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -28,20 +29,37 @@ def _run_prediction(
     model: str | None = None,
     threshold: float | None = None,
     reflect: bool | None = None,
-) -> PredictionResult:
-    from ares import ARES
+    request_id: str | None = None,
+):
+    """Canonical prediction path: delegate to the orchestrated prediction service.
 
-    engine = ARES()
+    The service runs the question pair through the Phase 13 pipeline
+    (validation → query understanding → strategy selection → prediction →
+    enrichment) and returns a ``PredictionResult`` carrying the orchestration
+    trace. No ARES engine is constructed here.
+    """
     model_name = validate_model_name(model)
     thresh = validate_threshold(threshold)
-    if model_name is not None:
-        engine = engine.with_model(model_name)
-    if thresh is not None:
-        engine = engine.with_threshold(thresh)
-    if reflect is not None:
-        engine = engine.with_reflection(reflect)
-    result = engine.predict(question1, question2)
-    return result
+    return get_prediction_service().predict(
+        question1,
+        question2,
+        model=model_name,
+        threshold=thresh,
+        reflect=reflect,
+        request_id=request_id,
+    )
+
+
+def _map_prediction_error(exc: Exception) -> HTTPException:
+    """Translate unexpected prediction failures into a safe HTTP error.
+
+    Orchestration errors are re-raised untouched (they are
+    ``ARESAPIError`` subclasses carrying status/detail/error-code, rendered
+    by the API middleware without leaking stack traces). Any other failure
+    is collapsed into a generic 500 with no internal details.
+    """
+    logger.exception("Unexpected prediction failure")
+    return HTTPException(status_code=500, detail="Prediction failed")
 
 
 @router.post(
@@ -56,10 +74,13 @@ async def predict(
 ) -> PredictionResponse:
     validate_question_pair(req.question1, req.question2)
     try:
-        result = _run_prediction(req.question1, req.question2, req.model, req.threshold, req.reflect)
+        result = _run_prediction(req.question1, req.question2, req.model, req.threshold, req.reflect, request_id)
+    except OrchestrationError:
+        raise
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.exception("Prediction failed")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _map_prediction_error(e) from e
     return PredictionResponse(
         question1=req.question1,
         question2=req.question2,
@@ -89,32 +110,37 @@ async def predict_batch(
     request_id: str = Depends(get_request_id),
 ) -> BatchPredictionResponse:
     start = time.time()
+    outcomes = get_prediction_service().predict_batch(
+        req.pairs,
+        model=req.model,
+        threshold=req.threshold,
+        reflect=req.reflect,
+        request_id=request_id,
+    )
     results: list[PredictionResponse] = []
     successes = 0
     failures = 0
-    for q1, q2 in req.pairs:
-        try:
-            validate_question_pair(q1, q2)
-            result = _run_prediction(q1, q2, req.model, req.threshold, req.reflect)
-            results.append(
-                PredictionResponse(
-                    question1=q1,
-                    question2=q2,
-                    predicted_label=result.predicted_label,
-                    prediction=result.prediction,
-                    prob_duplicate=result.prob_duplicate,
-                    prob_non_duplicate=result.prob_non_duplicate,
-                    confidence=result.confidence,
-                    threshold=req.threshold or 0.5,
-                    model_label=result.model_name,
-                    latency_ms=result.latency_ms,
-                    request_id=request_id,
-                )
-            )
-            successes += 1
-        except Exception as e:
+    for pair, outcome in zip(req.pairs, outcomes, strict=True):
+        if isinstance(outcome, Exception):
             failures += 1
-            logger.warning("Batch item failed: %s", e)
+            logger.warning("Batch item failed: %s", outcome)
+            continue
+        results.append(
+            PredictionResponse(
+                question1=pair[0],
+                question2=pair[1],
+                predicted_label=outcome.predicted_label,
+                prediction=outcome.prediction,
+                prob_duplicate=outcome.prob_duplicate,
+                prob_non_duplicate=outcome.prob_non_duplicate,
+                confidence=outcome.confidence,
+                threshold=req.threshold or 0.5,
+                model_label=outcome.model_name,
+                latency_ms=outcome.latency_ms,
+                request_id=request_id,
+            )
+        )
+        successes += 1
     total = (time.time() - start) * 1000
     return BatchPredictionResponse(
         results=results,

@@ -33,6 +33,7 @@ class ResultEnrichmentStage(PipelineStage):
         trace: dict[str, Any] = metadata.to_trace_dict()
         execution_metadata = state.execution_metadata
         if isinstance(execution_metadata, ExecutionMetadata):
+            trace["request_id"] = execution_metadata.request_id
             trace["fallback_used"] = execution_metadata.fallback_used
             trace["retry_count"] = execution_metadata.retry_count
             trace["strategy"] = execution_metadata.strategy

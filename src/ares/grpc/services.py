@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, cast
+
+from ares.orchestration.prediction_service import get_prediction_service
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +13,10 @@ class AresGrpcService:
     def __init__(self) -> None:
         from ares._engine import ARES
 
+        # Used only by the auxiliary diagnostic methods (``run_pipeline``,
+        # ``run_reflection``) which intentionally inspect raw engine output.
+        # The canonical ``predict``/``predict_batch`` paths go through the
+        # orchestration service instead.
         self._engine = ARES()
         self._start_time = time.time()
 
@@ -22,11 +28,19 @@ class AresGrpcService:
         threshold: float | None = None,
         reflect: bool | None = None,
     ) -> dict[str, Any]:
-        engine = self._engine.with_model(model or "").with_threshold(threshold or 0.5)
-        if reflect is not None:
-            engine = engine.with_reflection(reflect)
-        result = engine.predict(question1, question2)
-        d = result.to_dict()
+        from ares._result import PredictionResult
+
+        result = cast(
+            PredictionResult,
+            get_prediction_service().predict(
+                question1,
+                question2,
+                model=model,
+                threshold=threshold,
+                reflect=reflect,
+            ),
+        )
+        d: dict[str, Any] = result.to_dict()
         d.pop("explanations", None)
         return d
 

@@ -70,6 +70,7 @@ class PredictionOrchestrator:
         skip_cache: bool = False,
         timeout_ms: float | None = None,
         cancellation_token: CancellationToken | None = None,
+        request_id: str | None = None,
     ) -> Any:
         request_params = RequestParams(
             model=model,
@@ -81,7 +82,7 @@ class PredictionOrchestrator:
         input = PredictionInput(question1=question1, question2=question2, request_params=request_params)
         metadata = OrchestrationMetadata(start_time=time.time())
         execution_metadata = ExecutionMetadata(
-            request_id=self._new_request_id(),
+            request_id=request_id or self._new_request_id(),
             model_name=model or "",
             strategy="",
         )
@@ -94,6 +95,10 @@ class PredictionOrchestrator:
             if result is None:
                 raise PipelineAbortedError("Pipeline completed without a prediction result")
             execution_metadata.strategy = self._selected_strategy(state, execution_metadata)
+            if result is not None and hasattr(result, "orchestration_trace"):
+                trace = result.orchestration_trace
+                if isinstance(trace, dict):
+                    trace["strategy"] = execution_metadata.strategy
             self._publish(
                 EVENT_ORCHESTRATION_COMPLETE,
                 {"request_id": execution_metadata.request_id, "strategy": execution_metadata.strategy},
@@ -116,6 +121,7 @@ class PredictionOrchestrator:
         skip_cache: bool = False,
         timeout_ms: float | None = None,
         max_concurrency: int | None = None,
+        request_id: str | None = None,
     ) -> list[Any]:
         if not pairs:
             return []
@@ -134,6 +140,7 @@ class PredictionOrchestrator:
                     reflect=reflect,
                     skip_cache=skip_cache,
                     timeout_ms=timeout_ms,
+                    request_id=request_id,
                 )
                 return index, result
             except Exception as exc:
@@ -161,13 +168,15 @@ class PredictionOrchestrator:
 
     @staticmethod
     def _selected_strategy(state: PipelineState, execution_metadata: ExecutionMetadata) -> str:
-        if execution_metadata.strategy:
-            return execution_metadata.strategy
+        strategy: str = execution_metadata.strategy
+        if strategy:
+            return strategy
         analysis = state.query_analysis
         if analysis is not None:
             routing_decision = getattr(analysis, "routing_decision", None)
             if routing_decision is not None:
-                return getattr(routing_decision, "selected_strategy", "") or ""
+                selected: str = getattr(routing_decision, "selected_strategy", "") or ""
+                return selected
         return ""
 
     @staticmethod
