@@ -169,6 +169,49 @@ class TestPredictionService:
         assert isinstance(exc_info.value, ModelUnavailableError)
 
 
+class TestPredictionServiceRaw:
+    def test_predict_raw_skips_enrichment_stage(self) -> None:
+        service, engine, pipeline = _service()
+        result = service.predict_raw("q1", "q2")
+        assert result.prediction == "duplicate"
+        assert result.orchestration_trace is not None
+        stages_run = result.orchestration_trace.get("stages_run", [])
+        assert "result_enrichment" not in stages_run
+        assert engine.calls == [
+            (
+                "q1",
+                "q2",
+                {
+                    "model": "TF-IDF + Logistic Regression (Week 2)",
+                    "threshold": 0.5,
+                    "reflect": False,
+                    "timeout_ms": None,
+                },
+            )
+        ]
+
+    def test_predict_raw_forwards_overrides(self) -> None:
+        service, engine, _ = _service()
+        service.predict_raw("q1", "q2", model="Cross-Encoder-Quora (Trained)", threshold=0.7, reflect=True)
+        assert engine.calls[0][2] == {
+            "model": "Cross-Encoder-Quora (Trained)",
+            "threshold": 0.7,
+            "reflect": True,
+            "timeout_ms": None,
+        }
+
+    def test_predict_raw_still_runs_pipeline(self) -> None:
+        service, engine, pipeline = _service()
+        service.predict_raw("q1", "q2")
+        assert pipeline.calls == [("q1", "q2")]
+
+    def test_predict_raw_has_orchestration_trace(self) -> None:
+        service, _, _ = _service()
+        result = service.predict_raw("q1", "q2")
+        assert result.orchestration_trace is not None
+        assert result.orchestration_trace["request_id"]
+
+
 class TestPredictionServiceSingleton:
     def test_get_prediction_service_returns_shared_instance(self) -> None:
         first = get_prediction_service()

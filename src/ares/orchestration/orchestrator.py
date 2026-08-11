@@ -71,6 +71,7 @@ class PredictionOrchestrator:
         timeout_ms: float | None = None,
         cancellation_token: CancellationToken | None = None,
         request_id: str | None = None,
+        skip_stages: tuple[str, ...] = (),
     ) -> Any:
         request_params = RequestParams(
             model=model,
@@ -90,7 +91,7 @@ class PredictionOrchestrator:
 
         self._publish(EVENT_ORCHESTRATION_STARTED, {"request_id": execution_metadata.request_id})
         try:
-            self._pipeline_instance().execute(input, state, metadata, cancellation_token)
+            self._pipeline_instance().execute(input, state, metadata, cancellation_token, skip_stages=skip_stages)
             result = state.prediction_result
             if result is None:
                 raise PipelineAbortedError("Pipeline completed without a prediction result")

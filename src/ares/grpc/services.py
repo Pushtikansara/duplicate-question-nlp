@@ -11,13 +11,6 @@ logger = logging.getLogger(__name__)
 
 class AresGrpcService:
     def __init__(self) -> None:
-        from ares._engine import ARES
-
-        # Used only by the auxiliary diagnostic methods (``run_pipeline``,
-        # ``run_reflection``) which intentionally inspect raw engine output.
-        # The canonical ``predict``/``predict_batch`` paths go through the
-        # orchestration service instead.
-        self._engine = ARES()
         self._start_time = time.time()
 
     def _run_prediction(
@@ -135,7 +128,7 @@ class AresGrpcService:
 
     def run_pipeline(self, question1: str, question2: str, **kwargs: Any) -> dict[str, Any]:
         start = time.time()
-        prediction = self._engine.predict(question1, question2)
+        prediction = get_prediction_service().predict_raw(question1, question2)
         elapsed = (time.time() - start) * 1000
         return {
             "success": True,
@@ -147,7 +140,7 @@ class AresGrpcService:
         }
 
     def run_reflection(self, question1: str, question2: str, prediction: dict | None = None) -> dict[str, Any]:
-        result = self._engine.predict(question1, question2)
+        result = get_prediction_service().predict_raw(question1, question2)
         return {
             "trust_score": result.trust_score or 0.0,
             "trust_level": result.trust_level or "unknown",

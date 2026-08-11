@@ -380,3 +380,47 @@ class TestEvents:
             pipeline.execute(_input(), _state(), _metadata())
         types = [event for event, _ in recorder.events]
         assert "orchestration.stage.aborted" in types
+
+
+class TestPipelineSkipStages:
+    def test_skip_stages_excludes_named_stages(self) -> None:
+        stages = [RecordingStage("A"), RecordingStage("B"), RecordingStage("C")]
+        pipeline = Pipeline(_registry(stages))
+        pipeline.execute(_input(), _state(), _metadata(), skip_stages=("B",))
+        assert stages[0].runs == [1]
+        assert stages[1].runs == []
+        assert stages[2].runs == [1]
+
+    def test_skip_stages_multiple_names(self) -> None:
+        stages = [RecordingStage("A"), RecordingStage("B"), RecordingStage("C")]
+        pipeline = Pipeline(_registry(stages))
+        pipeline.execute(_input(), _state(), _metadata(), skip_stages=("A", "C"))
+        assert stages[0].runs == []
+        assert stages[1].runs == [1]
+        assert stages[2].runs == []
+
+    def test_skip_stages_empty_tuple_runs_all(self) -> None:
+        stages = [RecordingStage("A"), RecordingStage("B")]
+        pipeline = Pipeline(_registry(stages))
+        pipeline.execute(_input(), _state(), _metadata(), skip_stages=())
+        assert [s.runs for s in stages] == [[1], [1]]
+
+    def test_skip_stages_nonexistent_name_runs_all(self) -> None:
+        stages = [RecordingStage("A"), RecordingStage("B")]
+        pipeline = Pipeline(_registry(stages))
+        pipeline.execute(_input(), _state(), _metadata(), skip_stages=("nonexistent",))
+        assert [s.runs for s in stages] == [[1], [1]]
+
+    def test_skip_stages_records_metadata_correctly(self) -> None:
+        stages = [RecordingStage("A"), RecordingStage("B"), RecordingStage("C")]
+        pipeline = Pipeline(_registry(stages))
+        metadata = _metadata()
+        pipeline.execute(_input(), _state(), metadata, skip_stages=("B",))
+        assert [s.name for s in metadata.stages] == ["A", "C"]
+
+    def test_skip_stages_preserves_state(self) -> None:
+        stages = [RecordingStage("A"), RecordingStage("B")]
+        pipeline = Pipeline(_registry(stages))
+        state = _state()
+        pipeline.execute(_input(), state, _metadata(), skip_stages=("B",))
+        assert state.error is None

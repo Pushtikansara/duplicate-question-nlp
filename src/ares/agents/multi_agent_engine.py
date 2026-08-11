@@ -80,13 +80,16 @@ class MultiAgentEngine:
         self, ctx: ExecutionContext, question1: str, question2: str, model_name: str, mode: str = "selected"
     ) -> None:
         try:
-            from ares._engine import ARES
+            from ares.orchestration.prediction_service import get_prediction_service
 
             resolved = self._resolve_model(model_name)
-            engine = ARES().with_reflection(False).with_model(resolved)
-            if mode == "fusion":
-                engine = engine.with_fusion_mode("fusion")
-            prediction_result = engine.predict(question1, question2)
+            service = get_prediction_service()
+            prediction_result = service.predict_raw(
+                question1,
+                question2,
+                model=resolved,
+                reflect=False,
+            )
             ctx.phase_results["raw_prediction"] = (
                 prediction_result.to_dict()
                 if hasattr(prediction_result, "to_dict")

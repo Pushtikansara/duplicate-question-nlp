@@ -23,15 +23,16 @@ async def run_trace(
     token: dict[str, Any] = Depends(require_user),
     request_id: str = Depends(get_request_id),
 ) -> TraceResponse:
-    from ares._engine import ARES
+    from ares.orchestration.prediction_service import get_prediction_service
 
-    engine = ARES()
+    service = get_prediction_service()
     start = time.time()
-    if req.model is not None:
-        engine = engine.with_model(req.model)
-    if req.threshold is not None:
-        engine = engine.with_threshold(req.threshold)
-    prediction = engine.predict(req.question1, req.question2)
+    prediction = service.predict_raw(
+        req.question1,
+        req.question2,
+        model=req.model,
+        threshold=req.threshold,
+    )
     elapsed = (time.time() - start) * 1000
     steps: list[dict[str, Any]] = [
         {"step": "preprocessing", "latency_ms": 0.0},

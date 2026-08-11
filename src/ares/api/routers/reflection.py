@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends
 
@@ -23,33 +23,31 @@ async def run_reflection(
     token: dict[str, Any] = Depends(require_user),
     request_id: str = Depends(get_request_id),
 ) -> ReflectionResponse:
-    from ares._engine import ARES
     from ares._result import PredictionResult
+    from ares.orchestration.prediction_service import get_prediction_service
 
-    engine = ARES()
+    service = get_prediction_service()
     start = time.time()
-    prediction: PredictionResult | None = None
-    if req.prediction is not None:
-        prediction = engine.predict(req.question1, req.question2)
-    else:
-        prediction = engine.predict(req.question1, req.question2)
-    result: dict[str, Any] = (
-        engine.reflect(req.question1, req.question2, prediction) if hasattr(engine, "reflect") else {}
+    prediction_result = service.predict_raw(
+        req.question1,
+        req.question2,
     )
+    prediction = cast(PredictionResult, prediction_result)
     elapsed = (time.time() - start) * 1000
-    trust_score = result.get("trust_score", prediction.trust_score if prediction else 0.0)
-    trust_level = result.get("trust_level", prediction.trust_level if prediction else "unknown")
-    risk_level = result.get("risk_level", prediction.risk_level if prediction else "unknown")
+    evidence_raw = getattr(prediction, "explanations", None) or []
+    evidence = [] if isinstance(evidence_raw, dict) else list(evidence_raw)
+    recommendations_raw = getattr(prediction, "recommendations", None) or []
+    recommendations = [] if not isinstance(recommendations_raw, list) else recommendations_raw
     return ReflectionResponse(
-        trust_score=trust_score,
-        trust_level=trust_level,
-        risk_level=risk_level,
-        confidence=result.get("confidence", prediction.confidence if prediction else 0.0),
-        explanation=result.get("explanation", ""),
-        confidence_audit=result.get("confidence_audit"),
-        consistency_check=result.get("consistency_check"),
-        evidence=result.get("evidence", []),
-        recommendations=result.get("recommendations", []),
+        trust_score=prediction.trust_score,
+        trust_level=prediction.trust_level,
+        risk_level=prediction.risk_level,
+        confidence=prediction.confidence,
+        explanation="",
+        confidence_audit=None,
+        consistency_check=None,
+        evidence=evidence,
+        recommendations=recommendations,
         latency_ms=elapsed,
         request_id=request_id,
     )

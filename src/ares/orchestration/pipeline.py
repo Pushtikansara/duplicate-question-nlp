@@ -81,10 +81,13 @@ class Pipeline:
         state: PipelineState,
         metadata: OrchestrationMetadata,
         cancellation_token: CancellationToken | None = None,
+        skip_stages: tuple[str, ...] = (),
     ) -> PipelineState:
         stages = self._registry.ordered_stages()
         if not stages:
             raise InvalidStageConfigurationError("No pipeline stages are registered or enabled")
+        if skip_stages:
+            stages = [s for s in stages if s.name not in skip_stages]
 
         try:
             self._execute_stages(stages, input, state, metadata, cancellation_token)

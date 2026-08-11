@@ -15,6 +15,7 @@ from ares.orchestration.constants import (
     DEFAULT_CACHE_TTL_SECONDS,
     DEFAULT_FALLBACK_MODEL,
     DEFAULT_MAX_CONCURRENCY,
+    STAGE_RESULT_ENRICHMENT,
 )
 from ares.orchestration.engine_adapter import ARESPredictionEngine
 from ares.orchestration.factory import build_default_stage_registry
@@ -98,6 +99,37 @@ class PredictionService:
             timeout_ms=timeout_ms,
             max_concurrency=max_concurrency,
             request_id=request_id,
+        )
+
+    def predict_raw(
+        self,
+        question1: str,
+        question2: str,
+        *,
+        model: str | None = None,
+        threshold: float | None = None,
+        reflect: bool | None = None,
+        skip_cache: bool = False,
+        timeout_ms: float | None = None,
+        request_id: str | None = None,
+    ) -> Any:
+        """Run prediction through the orchestration pipeline but skip
+        result enrichment.  Returns the raw ``PredictionResult`` with an
+        orchestration trace that excludes the enrichment stage.
+
+        Intended for diagnostic endpoints and multi-agent consumers that
+        need raw engine output without the enrichment layer.
+        """
+        return self._orchestrator.run(
+            question1,
+            question2,
+            model=model,
+            threshold=threshold,
+            reflect=reflect,
+            skip_cache=skip_cache,
+            timeout_ms=timeout_ms,
+            request_id=request_id,
+            skip_stages=(STAGE_RESULT_ENRICHMENT,),
         )
 
 
