@@ -100,6 +100,13 @@ class PredictionOrchestrator:
                 trace = result.orchestration_trace
                 if isinstance(trace, dict):
                     trace["strategy"] = execution_metadata.strategy
+                    adaptive_trace = getattr(result, "adaptive_trace", None)
+                    if isinstance(adaptive_trace, dict):
+                        # Phase 14: merge adaptive routing sections additively.
+                        trace["adaptive_routing"] = adaptive_trace
+                        adaptive_final = adaptive_trace.get("final") or {}
+                        if adaptive_final.get("final_strategy"):
+                            trace["strategy"] = adaptive_final["final_strategy"]
             self._publish(
                 EVENT_ORCHESTRATION_COMPLETE,
                 {"request_id": execution_metadata.request_id, "strategy": execution_metadata.strategy},

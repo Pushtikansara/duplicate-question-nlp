@@ -34,6 +34,7 @@ class PredictionResult:
     error: str | None = None
     error_code: str | None = None
     orchestration_trace: dict[str, Any] | None = None
+    adaptive_trace: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = {
@@ -71,4 +72,6 @@ class PredictionResult:
             d["error_code"] = self.error_code
         if self.orchestration_trace is not None:
             d["orchestration_trace"] = self.orchestration_trace
+        if self.adaptive_trace is not None:
+            d["adaptive_trace"] = self.adaptive_trace
         return d

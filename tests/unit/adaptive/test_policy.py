@@ -4,9 +4,11 @@ from ares.adaptive.budget import BudgetPolicy
 from ares.adaptive.models import DifficultyAssessment
 from ares.adaptive.policy import AdaptiveRoutingPolicy
 
+from .conftest import hermetic_profile_registry
+
 
 def plan_for(difficulty: str, risk: str = "low", strategy: str | None = None, cfg=None):
-    pol = AdaptiveRoutingPolicy(cfg)
+    pol = AdaptiveRoutingPolicy(cfg, profile_registry=hermetic_profile_registry(cfg))
     assessment = DifficultyAssessment(
         difficulty_level=difficulty,
         uncertainty_score=0.2,

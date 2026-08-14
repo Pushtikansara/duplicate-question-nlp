@@ -8,6 +8,54 @@ import pytest
 from ares._result import PredictionResult
 from ares.adaptive.config_loader import load_adaptive_config
 from ares.adaptive.models import DifficultyAssessment, ModelEvidence
+from ares.adaptive.profiles import ModelProfileRegistry
+from ares.model_registry import ModelBackend, ModelEntry, ModelHealth
+
+#: Canonical Phase 13/14 strategy models, all marked READY.  The adaptive unit
+#: tests drive a ``FakeEngine`` and must be hermetic: they cannot depend on
+#: which model artifacts happen to be present on the host (CI runners only ship
+#: week2 + embedding encoders, never the trained Cross-Encoder).
+ADAPTIVE_STRATEGY_ENTRIES = [
+    ModelEntry(
+        display_name="TF-IDF + Logistic Regression (Week 2)",
+        internal_id="week2_lr",
+        backend=ModelBackend.CLASSICAL_ML,
+        status=ModelHealth.READY,
+        has_artifacts=True,
+    ),
+    ModelEntry(
+        display_name="TF-IDF + Linear SVM (Week 2)",
+        internal_id="week2_svm",
+        backend=ModelBackend.CLASSICAL_ML,
+        status=ModelHealth.READY,
+        has_artifacts=True,
+    ),
+    ModelEntry(
+        display_name="Cross-Encoder-Quora (Trained)",
+        internal_id="ce_quora",
+        backend=ModelBackend.CROSS_ENCODER,
+        status=ModelHealth.READY,
+        has_artifacts=True,
+    ),
+    ModelEntry(
+        display_name="Semantic Ensemble",
+        internal_id="ensemble",
+        backend=ModelBackend.ENSEMBLE,
+        status=ModelHealth.READY,
+        has_artifacts=True,
+    ),
+]
+
+
+def hermetic_profile_registry(cfg: dict[str, Any] | None = None) -> ModelProfileRegistry:
+    """A ``ModelProfileRegistry`` over a fixed, environment-independent catalogue.
+
+    Because ``ModelProfileRegistry`` without a ``registry`` builds from the real
+    model registry (whose ``available`` flag reflects artifacts on disk), this
+    helper pins the strategy models so routing/policy tests are deterministic on
+    every machine and CI runner.
+    """
+    return ModelProfileRegistry(cfg, registry=list(ADAPTIVE_STRATEGY_ENTRIES))
 
 
 class FakeEngine:
@@ -90,6 +138,11 @@ def make_assessment(
 @pytest.fixture
 def default_config() -> dict[str, Any]:
     return load_adaptive_config()
+
+
+@pytest.fixture
+def profile_registry() -> ModelProfileRegistry:
+    return hermetic_profile_registry()
 
 
 @pytest.fixture

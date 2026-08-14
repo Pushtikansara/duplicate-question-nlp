@@ -31,6 +31,7 @@ def build_default_stage_registry(
     event_publisher: EventPublisher | None = None,
     max_question_length: int = DEFAULT_MAX_QUESTION_LENGTH,
     stage_config: dict[str, Any] | None = None,
+    adaptive_auto_route: bool = False,
 ) -> StageRegistry:
     """Build the default five-stage registry.
 
@@ -39,6 +40,10 @@ def build_default_stage_registry(
     ``configs/orchestration.yaml``); otherwise every stage is enabled with
     the documented execution order. Stages are resolved by their
     ``STAGE_*`` constant names.
+
+    ``adaptive_auto_route`` (Phase 14) lets the strategy-selection stage drop
+    the resolved model when no caller override exists, leaving routing to the
+    adaptive prediction engine.
     """
     stage_config = stage_config or {}
     registry = StageRegistry()
@@ -54,6 +59,7 @@ def build_default_stage_registry(
         DEFAULT_STAGE_ORDER[2]: StrategySelectionStage(
             strategy_selector,
             event_publisher=event_publisher,
+            adaptive_auto_route=adaptive_auto_route,
         ),
         DEFAULT_STAGE_ORDER[3]: PredictionStage(engine, event_publisher=event_publisher),
         DEFAULT_STAGE_ORDER[4]: ResultEnrichmentStage(),

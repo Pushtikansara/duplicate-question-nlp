@@ -133,6 +133,13 @@ class PredictionService:
         )
 
 
+def load_adaptive_routing_config(config_dir: Path | None = None) -> dict[str, Any]:
+    """Load the Phase 14 ``configs/adaptive_routing.yaml`` payload ({} if absent)."""
+    from ares.adaptive.config_loader import load_adaptive_config
+
+    return load_adaptive_config(config_dir=config_dir)
+
+
 def build_default_prediction_service(
     config_dir: Path | None = None,
     *,
@@ -187,6 +194,14 @@ def build_default_prediction_service(
 
     if engine is None:
         engine = ARESPredictionEngine()
+
+    adaptive_config = load_adaptive_routing_config(config_dir) or {}
+    adaptive_enabled = bool(adaptive_config.get("enabled", False))
+    if adaptive_enabled:
+        from ares.adaptive.executor import AdaptivePredictionEngine
+
+        engine = AdaptivePredictionEngine(engine, config=adaptive_config)
+
     if query_pipeline is None:
         query_pipeline = QueryPipeline()
     if strategy_selector is None:
@@ -201,6 +216,7 @@ def build_default_prediction_service(
         cache_fail_closed=bool(cache_config.get("fail_closed", False)),
         event_publisher=event_publisher,
         stage_config=stage_config,
+        adaptive_auto_route=adaptive_enabled,
     )
 
     orchestrator = PredictionOrchestrator(

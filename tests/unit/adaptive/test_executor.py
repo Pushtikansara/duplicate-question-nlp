@@ -7,7 +7,7 @@ import pytest
 from ares.adaptive.executor import AdaptiveExecutor
 from ares.orchestration.exceptions import TaskExecutionError
 
-from .conftest import FakeEngine, make_assessment
+from .conftest import FakeEngine, hermetic_profile_registry, make_assessment
 
 LR = "TF-IDF + Logistic Regression (Week 2)"
 SVM = "TF-IDF + Linear SVM (Week 2)"
@@ -28,6 +28,7 @@ def build_executor(cfg: dict[str, Any], assessment, engine: FakeEngine) -> Adapt
         engine,
         config=cfg,
         difficulty_analyzer=StubAnalyzer(assessment),
+        profile_registry=hermetic_profile_registry(cfg),
     )
 
 

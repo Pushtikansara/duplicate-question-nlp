@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from ares.adaptive.profiles import ModelProfileRegistry
 
+from .conftest import hermetic_profile_registry
+
 
 def registry(cfg=None) -> ModelProfileRegistry:
-    return ModelProfileRegistry(cfg)
+    return hermetic_profile_registry(cfg)
 
 
 class TestRegistryBasics:

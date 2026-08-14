@@ -16,7 +16,7 @@ from ares.adaptive.executor import AdaptiveExecutor
 from ares.adaptive.trace import build_adaptive_trace
 from ares.orchestration.exceptions import TaskExecutionError
 
-from .conftest import FakeEngine, make_assessment, make_evidence
+from .conftest import FakeEngine, hermetic_profile_registry, make_assessment, make_evidence
 
 LR = "TF-IDF + Logistic Regression (Week 2)"
 SVM = "TF-IDF + Linear SVM (Week 2)"
@@ -33,7 +33,12 @@ class StubAnalyzer:
 
 
 def run(cfg: dict[str, Any], assessment, engine: FakeEngine, **kw) -> Any:
-    return AdaptiveExecutor(engine, config=cfg, difficulty_analyzer=StubAnalyzer(assessment)).execute("A", "B", **kw)
+    return AdaptiveExecutor(
+        engine,
+        config=cfg,
+        difficulty_analyzer=StubAnalyzer(assessment),
+        profile_registry=hermetic_profile_registry(cfg),
+    ).execute("A", "B", **kw)
 
 
 class TestCategories:
